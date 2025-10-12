@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  fenix-nextjs:
+    build: .
+    container_name: fenix-nextjs-app
+    ports:
+      - 3004:3000
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    networks:
+      - fenix-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  fenix-network:
+    driver: bridge
