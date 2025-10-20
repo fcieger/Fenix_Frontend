@@ -104,9 +104,9 @@ export default function UserMenu() {
       icon: Settings,
       children: [
         {
-          title: 'Certificado digital',
-          href: '/configuracoes/certificado',
-          icon: Award
+          title: 'Certificado Novo',
+          href: '/v2certificado',
+          icon: Shield
         },
         {
           title: 'Configurações de notas fiscais',
