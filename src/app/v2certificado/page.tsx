@@ -9,16 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Progress } from '@/components/ui/progress';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-
-interface FileInfo {
-  nome: string;
-  tamanho: string;
-  tipo: string;
-}
 
 interface Certificado {
   id: string;
@@ -36,15 +26,11 @@ interface Certificado {
 export default function CertificadoPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading } = useAuth();
-  const [step, setStep] = useState<'upload' | 'password' | 'success'>('upload');
   const [file, setFile] = useState<File | null>(null);
-  const [fileInfo, setFileInfo] = useState<FileInfo | null>(null);
-  const [sessionId, setSessionId] = useState<string>('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [certificado, setCertificado] = useState<Certificado | null>(null);
   const [certificados, setCertificados] = useState<Certificado[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -53,6 +39,12 @@ export default function CertificadoPage() {
       router.push('/login');
     }
   }, [isAuthenticated, isLoading, router]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadCertificados();
+    }
+  }, [isAuthenticated]);
 
   if (isLoading) {
     return (
@@ -84,78 +76,52 @@ export default function CertificadoPage() {
         return;
       }
 
+      // Validar tamanho mínimo (1KB)
+      if (selectedFile.size < 1024) {
+        setError('Arquivo muito pequeno. Verifique se é um certificado válido');
+        return;
+      }
+
       setFile(selectedFile);
       setError('');
     }
   };
 
   const handleUpload = async () => {
-    if (!file || !user?.companyId) return;
-
-    setLoading(true);
-    setError('');
-
-    try {
-      const formData = new FormData();
-      formData.append('certificado', file);
-      formData.append('companyId', user.companyId);
-
-      const response = await fetch('/api/v2certificado/upload', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: formData
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setSessionId(data.sessionId);
-        setFileInfo(data.fileInfo);
-        setStep('password');
-        setSuccess('Arquivo carregado com sucesso!');
-      } else {
-        setError(data.message || 'Erro ao fazer upload');
-      }
-    } catch (err) {
-      setError('Erro de conexão. Tente novamente.');
-    } finally {
-      setLoading(false);
+    if (!file || !password || !user?.companyId) {
+      setError('Selecione um arquivo, digite a senha e certifique-se de que a empresa está selecionada');
+      return;
     }
-  };
-
-  const handleSubmitPassword = async () => {
-    if (!sessionId || !password) return;
 
     setLoading(true);
     setError('');
 
+    const formData = new FormData();
+    formData.append('certificado', file);
+    formData.append('companyId', user.companyId);
+    formData.append('senha', password);
+
     try {
-      const response = await fetch('/api/v2certificado/submit-password', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/v2certificado/upload`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
-        body: JSON.stringify({
-          sessionId,
-          senha: password
-        })
+        body: formData,
       });
 
       const data = await response.json();
 
-      if (data.success) {
-        setCertificado(data.certificado);
-        setStep('success');
-        setSuccess('Certificado A1 processado com sucesso!');
-        loadCertificados();
-      } else {
-        setError(data.message || 'Erro ao processar certificado');
+      if (!response.ok) {
+        throw new Error(data.message || 'Erro ao enviar certificado');
       }
-    } catch (err) {
-      setError('Erro de conexão. Tente novamente.');
+
+      setSuccess('Certificado enviado com sucesso!');
+      setFile(null);
+      setPassword('');
+      loadCertificados();
+    } catch (err: any) {
+      setError(err.message || 'Erro ao enviar certificado');
     } finally {
       setLoading(false);
     }
@@ -163,10 +129,10 @@ export default function CertificadoPage() {
 
   const loadCertificados = async () => {
     try {
-      const response = await fetch('/api/v2certificado/meus-certificados', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/v2certificado/meus-certificados`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
       });
 
       const data = await response.json();
@@ -178,17 +144,24 @@ export default function CertificadoPage() {
     }
   };
 
-  const resetForm = () => {
-    setStep('upload');
-    setFile(null);
-    setFileInfo(null);
-    setSessionId('');
-    setPassword('');
-    setError('');
-    setSuccess('');
-    setCertificado(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+  const handleDelete = async (id: string) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/v2certificado/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setSuccess('Certificado deletado com sucesso!');
+        loadCertificados();
+      } else {
+        setError(data.message || 'Erro ao deletar certificado');
+      }
+    } catch (err) {
+      setError('Erro ao deletar certificado');
     }
   };
 
@@ -221,32 +194,6 @@ export default function CertificadoPage() {
           </div>
         </div>
 
-        {/* Progress Steps */}
-        <div className="mb-8">
-          <div className="flex items-center justify-center space-x-8">
-            <div className={`flex items-center space-x-2 ${step === 'upload' ? 'text-blue-600' : step === 'password' || step === 'success' ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'upload' ? 'bg-blue-600 text-white' : step === 'password' || step === 'success' ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>
-                <Upload className="h-4 w-4" />
-              </div>
-              <span className="font-medium">1. Upload</span>
-            </div>
-            <div className={`w-16 h-0.5 ${step === 'password' || step === 'success' ? 'bg-green-600' : 'bg-gray-200'}`}></div>
-            <div className={`flex items-center space-x-2 ${step === 'password' ? 'text-blue-600' : step === 'success' ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'password' ? 'bg-blue-600 text-white' : step === 'success' ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>
-                <Lock className="h-4 w-4" />
-              </div>
-              <span className="font-medium">2. Senha</span>
-            </div>
-            <div className={`w-16 h-0.5 ${step === 'success' ? 'bg-green-600' : 'bg-gray-200'}`}></div>
-            <div className={`flex items-center space-x-2 ${step === 'success' ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'success' ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>
-                <CheckCircle className="h-4 w-4" />
-              </div>
-              <span className="font-medium">3. Concluído</span>
-            </div>
-          </div>
-        </div>
-
         {/* Error/Success Messages */}
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-2">
@@ -268,194 +215,86 @@ export default function CertificadoPage() {
           </div>
         )}
 
-        {/* Step 1: Upload */}
-        {step === 'upload' && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Upload className="h-5 w-5 text-purple-600" />
-                Selecione o arquivo do certificado
-              </CardTitle>
-              <CardDescription>
-                Formatos aceitos: .pfx, .p12 (máximo 10MB)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-purple-400 transition-colors">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pfx,.p12"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex flex-col items-center space-y-2 text-gray-600 hover:text-purple-600"
-                  >
-                    <FileText className="h-12 w-12" />
-                    <span className="text-lg font-medium">Clique para selecionar o arquivo</span>
-                    <span className="text-sm">Formatos aceitos: .pfx, .p12 (máximo 10MB)</span>
-                  </button>
-                </div>
-
-                {file && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <div className="flex items-center space-x-3">
-                      <CheckCircle className="h-8 w-8 text-green-600" />
-                      <div className="flex-1">
-                        <p className="font-medium text-green-900">{file.name}</p>
-                        <p className="text-sm text-green-700">
-                          {(file.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <Button
-                  onClick={handleUpload}
-                  disabled={!file || loading}
-                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+        {/* Upload Form */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5 text-purple-600" />
+              Enviar Novo Certificado
+            </CardTitle>
+            <CardDescription>
+              Selecione o arquivo do seu certificado digital (.pfx ou .p12) e digite a senha
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* File Upload */}
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-purple-400 transition-colors">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pfx,.p12"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex flex-col items-center space-y-2 text-gray-600 hover:text-purple-600"
                 >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      <span>Enviando...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-4 w-4 mr-2" />
-                      <span>Enviar Arquivo</span>
-                    </>
-                  )}
-                </Button>
+                  <FileText className="h-12 w-12" />
+                  <span className="text-lg font-medium">Clique para selecionar o arquivo</span>
+                  <span className="text-sm">Formatos aceitos: .pfx, .p12 (máximo 10MB)</span>
+                </button>
               </div>
-            </CardContent>
-          </Card>
-        )}
 
-        {/* Step 2: Password */}
-        {step === 'password' && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Lock className="h-5 w-5 text-blue-600" />
-                Informe a senha do certificado
-              </CardTitle>
-              <CardDescription>
-                O arquivo foi carregado com sucesso. Agora digite a senha para processá-lo.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {fileInfo && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              {file && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <div className="flex items-center space-x-3">
-                    <FileText className="h-8 w-8 text-blue-600" />
-                    <div>
-                      <p className="font-medium text-blue-900">{fileInfo.nome}</p>
-                      <p className="text-sm text-blue-700">{fileInfo.tamanho} • {fileInfo.tipo}</p>
+                    <CheckCircle className="h-8 w-8 text-green-600" />
+                    <div className="flex-1">
+                      <p className="font-medium text-green-900">{file.name}</p>
+                      <p className="text-sm text-green-700">
+                        {(file.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
                     </div>
                   </div>
                 </div>
               )}
 
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="password">Senha do Certificado</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Digite a senha do certificado"
-                    className="mt-1"
-                  />
-                </div>
-
-                <div className="flex space-x-3">
-                  <Button
-                    onClick={resetForm}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    Voltar
-                  </Button>
-                  <Button
-                    onClick={handleSubmitPassword}
-                    disabled={!password || loading}
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700"
-                  >
-                    {loading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        <span>Processando...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="h-4 w-4 mr-2" />
-                        <span>Processar Certificado</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step 3: Success */}
-        {step === 'success' && certificado && (
-          <Card className="mb-6">
-            <CardHeader>
-              <div className="text-center">
-                <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                  <CheckCircle className="h-8 w-8 text-green-600" />
-                </div>
-                <CardTitle className="text-xl">Certificado Processado!</CardTitle>
-                <CardDescription>Seu certificado A1 foi salvo com sucesso.</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                <h3 className="font-medium text-green-900 mb-3">Informações do Certificado</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-green-700">Empresa:</span>
-                    <span className="font-medium text-green-900">{certificado.nomeRazaoSocial}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-green-700">CNPJ:</span>
-                    <span className="font-medium text-green-900">{certificado.cnpj}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-green-700">Validade:</span>
-                    <span className="font-medium text-green-900">{formatDate(certificado.validade)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-green-700">Tipo:</span>
-                    <span className="font-medium text-green-900">{certificado.tipo}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-green-700">Status:</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(certificado.status)}`}>
-                      {certificado.status}
-                    </span>
-                  </div>
-                </div>
+              {/* Password Input */}
+              <div>
+                <Label htmlFor="password">Senha do Certificado</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Digite a senha do certificado"
+                  className="mt-1"
+                />
               </div>
 
+              {/* Upload Button */}
               <Button
-                onClick={resetForm}
+                onClick={handleUpload}
+                disabled={!file || !password || loading}
                 className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Enviar Outro Certificado
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    <span>Enviando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    <span>Enviar Certificado</span>
+                  </>
+                )}
               </Button>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Meus Certificados */}
         <Card>
@@ -499,27 +338,13 @@ export default function CertificadoPage() {
                           </span>
                           <p className="text-sm text-gray-600 mt-1">{formatDate(cert.dataUpload)}</p>
                         </div>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Esta ação não pode ser desfeita. Isso removerá permanentemente o certificado de {cert.nomeRazaoSocial}.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(cert.id)}>
-                                Deletar
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <Button
+                          onClick={() => handleDelete(cert.id)}
+                          variant="destructive"
+                          size="sm"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   </div>
