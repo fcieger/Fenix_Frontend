@@ -47,7 +47,9 @@ import {
   MapPin,
   RefreshCw,
   Building2,
-  User as UserIcon
+  User as UserIcon,
+  MessageSquare,
+  Truck
 } from 'lucide-react';
 import CadastrosAIAssistant from '@/components/CadastrosAIAssistant';
 
@@ -65,6 +67,7 @@ export default function CadastrosPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{id: number, name: string} | null>(null);
   const [expandedCadastros, setExpandedCadastros] = useState<Set<number>>(new Set());
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -86,7 +89,7 @@ export default function CadastrosPage() {
         console.log('🔍 Buscando cadastros com token:', token.substring(0, 20) + '...');
         setIsLoadingCadastros(true);
         setError(null);
-        const data = await apiService.getCadastros(token);
+        const data = await apiService.getCadastros();
         console.log('✅ Cadastros carregados:', data);
         setCadastros(data);
       } catch (error) {
@@ -120,7 +123,6 @@ export default function CadastrosPage() {
   // Filtrar cadastros baseado no termo de busca
   const filteredCadastros = cadastros.filter(cadastro =>
     cadastro.nomeRazaoSocial?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cadastro.codigo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     cadastro.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -203,39 +205,129 @@ export default function CadastrosPage() {
     router.push('/cadastros/novo');
   };
 
+  // Calcular estatísticas
+  const stats = {
+    total: cadastros.length,
+    clientes: cadastros.filter(c => c.tiposCliente?.cliente).length,
+    vendedores: cadastros.filter(c => c.tiposCliente?.vendedor).length,
+    fornecedores: cadastros.filter(c => c.tiposCliente?.fornecedor).length,
+    transportadoras: cadastros.filter(c => c.tiposCliente?.transportadora).length
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="bg-gradient-to-r from-purple-600 to-violet-600 rounded-2xl p-8 text-white">
-          <div className="flex items-center justify-between">
-              <div>
-              <h1 className="text-3xl font-bold mb-2">Lista de Clientes</h1>
-              <p className="text-purple-100">Mostrando 1 a {Math.min(itemsPerPage, totalCadastros)} de {totalCadastros} clientes</p>
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6"
+        >
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center">
+                <Users className="w-8 h-8 mr-3 text-purple-600" />
+                Lista de Cadastros
+              </h1>
+              <p className="text-gray-600">Gerencie seus cadastros de clientes, fornecedores e parceiros</p>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-col sm:flex-row gap-3">
               <Button
                 onClick={() => setIsAIAssistantOpen(true)}
-                className="bg-white text-purple-700 hover:bg-gray-100 font-semibold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                variant="outline"
+                className="bg-white text-purple-700 hover:bg-purple-50 border-purple-200"
               >
-                <Sparkles className="w-5 h-5 mr-2" />
-                IA - Gerar Cliente
+                <Sparkles className="w-4 h-4 mr-2" />
+                IA - Gerar Cadastro
               </Button>
               <Button
                 onClick={handleNewCadastro}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                className="bg-purple-600 hover:bg-purple-700 text-white"
               >
-                <Plus className="w-5 h-5 mr-2" />
-                + Novo Cliente
+                <Plus className="w-4 h-4 mr-2" />
+                Novo Cadastro
               </Button>
             </div>
           </div>
-        </div>
+        </motion.div>
+
+        {/* Stats Cards */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4"
+        >
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+            <div className="flex items-center">
+              <div className="p-3 bg-purple-100 rounded-xl">
+                <Users className="w-6 h-6 text-purple-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+            <div className="flex items-center">
+              <div className="p-3 bg-blue-100 rounded-xl">
+                <UserIcon className="w-6 h-6 text-blue-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Clientes</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.clientes}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+            <div className="flex items-center">
+              <div className="p-3 bg-green-100 rounded-xl">
+                <TrendingUp className="w-6 h-6 text-green-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Vendedores</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.vendedores}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+            <div className="flex items-center">
+              <div className="p-3 bg-orange-100 rounded-xl">
+                <Building2 className="w-6 h-6 text-orange-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Fornecedores</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.fornecedores}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+            <div className="flex items-center">
+              <div className="p-3 bg-yellow-100 rounded-xl">
+                <Truck className="w-6 h-6 text-yellow-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Transportadoras</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.transportadoras}</p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
 
         {/* Controls */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6"
+        >
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+            <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
               <div className="flex items-center space-x-2">
                 <span className="text-sm font-medium text-gray-700">Itens por página:</span>
                 <select
@@ -252,31 +344,59 @@ export default function CadastrosPage() {
             </div>
             
             <div className="flex items-center space-x-4">
-              <div className="relative">
+              <div className="relative w-full sm:w-auto">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
-                  placeholder="Buscar clientes..."
+                  placeholder="Buscar cadastros..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-80 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="pl-10 pr-4 py-2 w-full sm:w-80 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
+              </div>
+              
+              {/* Toggle de Visualização */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                  <Button
+                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('grid')}
+                    className="px-3 py-1"
+                  >
+                    <Users className="w-4 h-4 mr-1" />
+                    Grid
+                  </Button>
+                  <Button
+                    variant={viewMode === 'table' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('table')}
+                    className="px-3 py-1"
+                  >
+                    <FileText className="w-4 h-4 mr-1" />
+                    Lista
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
             
         {/* Cadastros Table */}
-        <Card className="overflow-hidden">
-
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden"
+        >
           {isLoadingCadastros ? (
             <div className="flex items-center justify-center py-12">
               <div className="flex flex-col items-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
                 <p className="text-gray-600 mt-2">Carregando cadastros...</p>
-                  </div>
-                </div>
+              </div>
+            </div>
           ) : error ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
@@ -297,219 +417,485 @@ export default function CadastrosPage() {
                 </p>
                 {!searchTerm && (
                   <Button onClick={handleNewCadastro}>
-                      <Plus className="w-4 h-4 mr-2" />
+                    <Plus className="w-4 h-4 mr-2" />
                     Novo Cadastro
-                    </Button>
+                  </Button>
                 )}
+              </div>
+            </div>
+          ) : viewMode === 'grid' ? (
+            /* Grid View */
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6"
+            >
+              {currentCadastros.map((cadastro, index) => (
+                <motion.div
+                  key={cadastro.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200 p-6"
+                >
+                  {/* Header do Card */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center flex-1 min-w-0">
+                      <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center mr-3 shadow-lg flex-shrink-0">
+                        <Users className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-lg font-semibold text-gray-900 truncate">{cadastro.nomeRazaoSocial || 'Nome não informado'}</h3>
+                        <p className="text-sm text-gray-500 flex items-center mt-1">
+                          <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                          {cadastro.tipoPessoa === 'Pessoa Física' ? 'PF' : 'PJ'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-1 ml-2">
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md">
+                        {cadastro.tipoPessoa === 'Pessoa Física' ? 'PF' : 'PJ'}
+                      </span>
+                    </div>
                   </div>
-                </div>
-          ) : (
-                <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          NOME/RAZÃO SOCIAL
-                        </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          CÓDIGO
-                        </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          APELIDO
-                        </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      TIPO
-                        </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          DOCUMENTO
-                        </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          EMAIL
-                        </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          TELEFONE
-                        </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          AÇÕES
-                        </th>
-                      </tr>
-                    </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {currentCadastros.map((cadastro) => {
-                    const isExpanded = expandedCadastros.has(cadastro.id);
-                    return (
-                      <React.Fragment key={cadastro.id}>
-                        <tr className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-4 px-4">
-                            <div className="flex items-center space-x-2">
-                              <button
-                                onClick={() => toggleExpanded(cadastro.id)}
-                                className="text-gray-400 hover:text-gray-600"
+
+                  {/* Informações do Card */}
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Apelido</label>
+                      <div className="mt-1">
+                        <span className="text-sm font-medium text-gray-900">
+                          {cadastro.nomeFantasia || '-'}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Documento</label>
+                      <div className="mt-1">
+                        <span className="text-sm font-medium text-gray-900 font-mono">
+                          {cadastro.cpfCnpj || '-'}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Email</label>
+                      <div className="mt-1">
+                        <span className="text-sm text-gray-500">
+                          {cadastro.email || '-'}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Telefone</label>
+                      <div className="mt-1">
+                        <span className="text-sm text-gray-500">
+                          {cadastro.telefone || '-'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tipos de Cliente */}
+                  {cadastro.tiposCliente && (
+                    <div className="mb-4">
+                      <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Tipos</label>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {Object.entries(cadastro.tiposCliente)
+                          .filter(([_, value]) => value)
+                          .map(([key, _]) => {
+                            const tipos = {
+                              cliente: { label: 'Cliente', color: 'bg-blue-100 text-blue-800' },
+                              vendedor: { label: 'Vendedor', color: 'bg-green-100 text-green-800' },
+                              fornecedor: { label: 'Fornecedor', color: 'bg-orange-100 text-orange-800' },
+                              funcionario: { label: 'Funcionário', color: 'bg-purple-100 text-purple-800' },
+                              transportadora: { label: 'Transportadora', color: 'bg-yellow-100 text-yellow-800' },
+                              prestadorServico: { label: 'Prestador', color: 'bg-pink-100 text-pink-800' }
+                            };
+                            const tipo = tipos[key as keyof typeof tipos];
+                            return (
+                              <span
+                                key={key}
+                                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${tipo.color}`}
                               >
-                                {isExpanded ? (
-                                  <ChevronDown className="w-4 h-4" />
-                                ) : (
-                                  <ChevronRight className="w-4 h-4" />
-                                )}
-                              </button>
-                              <span className="font-medium text-gray-900">
-                                {cadastro.nomeRazaoSocial || 'Nome não informado'}
+                                {tipo.label}
                               </span>
-                            </div>
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className="text-sm text-gray-900">
-                              {cadastro.codigo || 'Sem código'}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className="text-sm text-gray-900">
-                              {cadastro.nomeFantasia || '-'}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className="text-sm text-gray-900">
-                              {cadastro.tipoPessoa === 'Pessoa Física' ? 'PF' : 'PJ'}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className="text-sm text-gray-900">
-                              {cadastro.cpfCnpj || '-'}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className="text-sm text-gray-900">
-                              {cadastro.email || '-'}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className="text-sm text-gray-900">
-                              {cadastro.telefone || '-'}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4">
-                            <div className="flex items-center space-x-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEdit(cadastro.id)}
-                                className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                              >
-                                <Edit className="w-4 h-4" />
-                                <span className="ml-1">Editar</span>
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDelete(cadastro.id, cadastro.nomeRazaoSocial || 'Cadastro')}
-                                className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                <span className="ml-1">Excluir</span>
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Ações do Card */}
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => handleEdit(cadastro.id)}
+                      size="sm"
+                      className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 px-3 py-2 rounded-xl font-medium text-xs"
+                    >
+                      <Edit className="w-3 h-3 mr-1" />
+                      Editar
+                    </Button>
+                    <Button
+                      onClick={() => handleDelete(cadastro.id, cadastro.nomeRazaoSocial || 'Cadastro')}
+                      size="sm"
+                      className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 px-3 py-2 rounded-xl font-medium text-xs"
+                    >
+                      <Trash2 className="w-3 h-3 mr-1" />
+                      Excluir
+                    </Button>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          ) : (
+            /* Table View */
+            <div className="overflow-hidden">
+              {/* Tabela Desktop - Ajustada para md+ */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                    <tr>
+                      <th className="px-3 lg:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        <div className="flex items-center space-x-2">
+                          <Users className="w-4 h-4" />
+                          <span className="hidden lg:inline">NOME/RAZÃO SOCIAL</span>
+                          <span className="lg:hidden">NOME</span>
+                        </div>
+                      </th>
+                      <th className="px-3 lg:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        <span className="hidden lg:inline">TIPO DO CADASTRO</span>
+                        <span className="lg:hidden">TIPO</span>
+                      </th>
+                      <th className="px-3 lg:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        APELIDO
+                      </th>
+                      <th className="px-3 lg:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        <span className="hidden lg:inline">TIPO PESSOA</span>
+                        <span className="lg:hidden">PESSOA</span>
+                      </th>
+                      <th className="px-3 lg:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        DOCUMENTO
+                      </th>
+                      <th className="px-3 lg:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        EMAIL
+                      </th>
+                      <th className="px-3 lg:px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        TELEFONE
+                      </th>
+                      <th className="px-3 lg:px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        AÇÕES
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-100">
+                    {currentCadastros.map((cadastro, index) => {
+                      const isExpanded = expandedCadastros.has(cadastro.id);
+                      return (
+                        <React.Fragment key={cadastro.id}>
+                          <motion.tr 
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: index * 0.05 }}
+                            className="hover:bg-gradient-to-r hover:from-purple-50 hover:to-indigo-50 transition-all duration-200 group"
+                          >
+                            <td className="px-3 lg:px-6 py-4 lg:py-6">
+                              <div className="flex items-center">
+                                <button
+                                  onClick={() => toggleExpanded(cadastro.id)}
+                                  className="text-gray-400 hover:text-gray-600 mr-2 lg:mr-3 transition-colors"
+                                >
+                                  {isExpanded ? (
+                                    <ChevronDown className="w-4 h-4" />
+                                  ) : (
+                                    <ChevronRight className="w-4 h-4" />
+                                  )}
+                                </button>
+                                <div className="w-8 h-8 lg:w-12 lg:h-12 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center mr-2 lg:mr-4 shadow-lg group-hover:shadow-xl transition-all duration-200">
+                                  <Users className="w-4 h-4 lg:w-6 lg:h-6 text-white" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-sm lg:text-base font-semibold text-gray-900 group-hover:text-purple-700 transition-colors truncate">
+                                    {cadastro.nomeRazaoSocial || 'Nome não informado'}
+                                  </div>
+                                  <div className="text-xs lg:text-sm text-gray-500 flex items-center mt-1">
+                                    <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                                    <span className="hidden lg:inline">Cadastro ativo</span>
+                                    <span className="lg:hidden">Ativo</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-3 lg:px-6 py-4 lg:py-6">
+                              <div className="flex flex-wrap gap-1">
+                                {cadastro.tiposCliente ? (
+                                  Object.entries(cadastro.tiposCliente)
+                                    .filter(([_, value]) => value)
+                                    .map(([key, _]) => {
+                                      const tipos = {
+                                        cliente: { label: 'Cliente', color: 'bg-blue-100 text-blue-800' },
+                                        vendedor: { label: 'Vendedor', color: 'bg-green-100 text-green-800' },
+                                        fornecedor: { label: 'Fornecedor', color: 'bg-orange-100 text-orange-800' },
+                                        funcionario: { label: 'Funcionário', color: 'bg-purple-100 text-purple-800' },
+                                        transportadora: { label: 'Transportadora', color: 'bg-yellow-100 text-yellow-800' },
+                                        prestadorServico: { label: 'Prestador', color: 'bg-pink-100 text-pink-800' }
+                                      };
+                                      const tipo = tipos[key as keyof typeof tipos];
+                                      return (
+                                        <span
+                                          key={key}
+                                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${tipo.color}`}
+                                        >
+                                          {tipo.label}
+                                        </span>
+                                      );
+                                    })
+                                ) : (
+                                  <span className="text-xs lg:text-sm text-gray-500">Não definido</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-3 lg:px-6 py-4 lg:py-6">
+                              <span className="text-xs lg:text-sm font-medium text-gray-900">
+                                {cadastro.nomeFantasia || '-'}
+                              </span>
+                            </td>
+                            <td className="px-3 lg:px-6 py-4 lg:py-6">
+                              <span className="inline-flex items-center px-2 lg:px-4 py-1 lg:py-2 rounded-full text-xs lg:text-sm font-bold bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md">
+                                {cadastro.tipoPessoa === 'Pessoa Física' ? 'PF' : 'PJ'}
+                              </span>
+                            </td>
+                            <td className="px-3 lg:px-6 py-4 lg:py-6">
+                              <span className="text-xs lg:text-sm font-medium text-gray-900 font-mono">
+                                {cadastro.cpfCnpj || '-'}
+                              </span>
+                            </td>
+                            <td className="px-3 lg:px-6 py-4 lg:py-6">
+                              <span className="text-xs lg:text-sm text-gray-500">
+                                {cadastro.email || '-'}
+                              </span>
+                            </td>
+                            <td className="px-3 lg:px-6 py-4 lg:py-6">
+                              <span className="text-xs lg:text-sm text-gray-500">
+                                {cadastro.telefone || '-'}
+                              </span>
+                            </td>
+                            <td className="px-3 lg:px-6 py-4 lg:py-6 text-center">
+                              <div className="flex items-center justify-center space-x-1 lg:space-x-2">
+                                <motion.div
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                >
+                                  <Button
+                                    onClick={() => handleEdit(cadastro.id)}
+                                    size="sm"
+                                    className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 px-2 lg:px-4 py-1 lg:py-2 rounded-xl font-medium text-xs lg:text-sm"
+                                  >
+                                    <Edit className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
+                                    <span className="hidden lg:inline">Editar</span>
+                                  </Button>
+                                </motion.div>
+                                <motion.div
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                >
+                                  <Button
+                                    onClick={() => handleDelete(cadastro.id, cadastro.nomeRazaoSocial || 'Cadastro')}
+                                    size="sm"
+                                    className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 px-2 lg:px-4 py-1 lg:py-2 rounded-xl font-medium text-xs lg:text-sm"
+                                  >
+                                    <Trash2 className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
+                                    <span className="hidden lg:inline">Excluir</span>
+                                  </Button>
+                                </motion.div>
+                              </div>
+                            </td>
+                          </motion.tr>
                         
                         {/* Expanded Details */}
                         {isExpanded && (
-                          <tr className="bg-gray-50">
-                            <td colSpan={5} className="px-4 py-6">
-                              <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-                                {/* Header */}
-                                <div className="flex items-center space-x-3 mb-6">
-                                  <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
-                                    <UserIcon className="w-4 h-4 text-white" />
+                          <tr className="bg-gradient-to-r from-gray-50 to-gray-100">
+                            <td colSpan={8} className="px-0 py-0">
+                              <motion.div 
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.3, ease: "easeInOut" }}
+                                className="bg-white mx-4 my-4 rounded-2xl shadow-xl border border-gray-200 overflow-hidden"
+                              >
+                                {/* Modern Header with Gradient */}
+                                <div className="bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 px-8 py-6">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-4">
+                                      <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                                        <UserIcon className="w-6 h-6 text-white" />
                                   </div>
                                   <div>
-                                    <h4 className="text-lg font-semibold text-gray-900">Detalhes do Cadastro</h4>
+                                        <h4 className="text-2xl font-bold text-white">Detalhes Completos</h4>
+                                        <p className="text-purple-100 text-sm">Informações detalhadas do cadastro</p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                                      <span className="text-white/80 text-sm font-medium">Ativo</span>
+                                    </div>
                                   </div>
                                 </div>
 
-                                {/* General Details */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                                {/* Content Container */}
+                                <div className="p-8">
+                                  {/* General Information Cards */}
+                                  <div className="mb-8">
+                                    <div className="flex items-center space-x-3 mb-6">
+                                      <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
+                                        <FileText className="w-4 h-4 text-white" />
+                                      </div>
+                                      <h5 className="text-xl font-semibold text-gray-900">Informações Gerais</h5>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
+                                        <div className="flex items-center space-x-3 mb-3">
+                                          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                                            <Building2 className="w-4 h-4 text-white" />
+                                          </div>
+                                          <h6 className="font-semibold text-gray-900">Dados Principais</h6>
+                                        </div>
+                                        <div className="space-y-3">
                                   <div>
-                                    <label className="text-sm font-medium text-gray-500">Nome/Razão Social</label>
-                                    <p className="text-sm text-gray-900">{cadastro.nomeRazaoSocial || 'Não informado'}</p>
+                                            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nome/Razão Social</label>
+                                            <p className="text-sm font-medium text-gray-900 mt-1">{cadastro.nomeRazaoSocial || 'Não informado'}</p>
                                   </div>
                                   <div>
-                                    <label className="text-sm font-medium text-gray-500">Nome Fantasia</label>
-                                    <p className="text-sm text-gray-900">{cadastro.nomeFantasia || 'Não informado'}</p>
+                                            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nome Fantasia</label>
+                                            <p className="text-sm font-medium text-gray-900 mt-1">{cadastro.nomeFantasia || 'Não informado'}</p>
                                   </div>
                                   <div>
-                                    <label className="text-sm font-medium text-gray-500">Tipo de Pessoa</label>
-                                    <p className="text-sm text-gray-900">{cadastro.tipoPessoa || 'Não informado'}</p>
+                                            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Tipo de Pessoa</label>
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-1 ${
+                                              cadastro.tipoPessoa === 'Pessoa Física' 
+                                                ? 'bg-green-100 text-green-800' 
+                                                : 'bg-purple-100 text-purple-800'
+                                            }`}>
+                                              {cadastro.tipoPessoa || 'Não informado'}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-100">
+                                        <div className="flex items-center space-x-3 mb-3">
+                                          <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
+                                            <CreditCard className="w-4 h-4 text-white" />
+                                          </div>
+                                          <h6 className="font-semibold text-gray-900">Documentação</h6>
+                                  </div>
+                                        <div className="space-y-3">
+                                  <div>
+                                            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">CPF/CNPJ</label>
+                                            <p className="text-sm font-medium text-gray-900 mt-1 font-mono">{cadastro.cpfCnpj || 'Não informado'}</p>
                                   </div>
                                   <div>
-                                    <label className="text-sm font-medium text-gray-500">CPF/CNPJ</label>
-                                    <p className="text-sm text-gray-900">{cadastro.cpfCnpj || 'Não informado'}</p>
+                                            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Inscrição Estadual</label>
+                                            <p className="text-sm font-medium text-gray-900 mt-1">{cadastro.inscricaoEstadual || 'Não informado'}</p>
                                   </div>
                                   <div>
-                                    <label className="text-sm font-medium text-gray-500">Email</label>
-                                    <p className="text-sm text-gray-900">{cadastro.email || 'Não informado'}</p>
+                                            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Inscrição Municipal</label>
+                                            <p className="text-sm font-medium text-gray-900 mt-1">{cadastro.inscricaoMunicipal || 'Não informado'}</p>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-100">
+                                        <div className="flex items-center space-x-3 mb-3">
+                                          <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
+                                            <MessageSquare className="w-4 h-4 text-white" />
+                                          </div>
+                                          <h6 className="font-semibold text-gray-900">Contato</h6>
+                                  </div>
+                                        <div className="space-y-3">
+                                  <div>
+                                            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email</label>
+                                            <p className="text-sm font-medium text-gray-900 mt-1">{cadastro.email || 'Não informado'}</p>
                                   </div>
                                   <div>
-                                    <label className="text-sm font-medium text-gray-500">Telefone</label>
-                                    <p className="text-sm text-gray-900">{cadastro.telefone || 'Não informado'}</p>
+                                            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Telefone</label>
+                                            <p className="text-sm font-medium text-gray-900 mt-1">{cadastro.telefone || 'Não informado'}</p>
                                   </div>
                                   <div>
-                                    <label className="text-sm font-medium text-gray-500">Inscrição Estadual</label>
-                                    <p className="text-sm text-gray-900">{cadastro.inscricaoEstadual || 'Não informado'}</p>
+                                            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">SUFRAMA</label>
+                                            <p className="text-sm font-medium text-gray-900 mt-1">{cadastro.suframa || 'Não informado'}</p>
+                                          </div>
                                   </div>
-                                  <div>
-                                    <label className="text-sm font-medium text-gray-500">Inscrição Municipal</label>
-                                    <p className="text-sm text-gray-900">{cadastro.inscricaoMunicipal || 'Não informado'}</p>
-                                  </div>
-                                  <div>
-                                    <label className="text-sm font-medium text-gray-500">SUFRAMA</label>
-                                    <p className="text-sm text-gray-900">{cadastro.suframa || 'Não informado'}</p>
-                                  </div>
-                                  <div className="md:col-span-2 lg:col-span-3">
-                                    <label className="text-sm font-medium text-gray-500">Observações</label>
-                                    <p className="text-sm text-gray-900">{cadastro.observacoes || 'Nenhuma observação'}</p>
                                   </div>
                                 </div>
 
-                                {/* Addresses */}
+                                    {/* Observações */}
+                                    {cadastro.observacoes && (
+                                      <div className="mt-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-6 border border-amber-100">
+                                        <div className="flex items-center space-x-3 mb-3">
+                                          <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center">
+                                            <FileText className="w-4 h-4 text-white" />
+                                          </div>
+                                          <h6 className="font-semibold text-gray-900">Observações</h6>
+                                        </div>
+                                        <p className="text-sm text-gray-700 leading-relaxed">{cadastro.observacoes}</p>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Addresses Section */}
                                 {cadastro.enderecos && cadastro.enderecos.length > 0 && (
                                   <div className="mb-8">
-                                    <div className="flex items-center space-x-3 mb-4">
-                                      <div className="w-6 h-6 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
-                                        <MapPin className="w-3 h-3 text-white" />
+                                      <div className="flex items-center space-x-3 mb-6">
+                                        <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
+                                          <MapPin className="w-4 h-4 text-white" />
+                                        </div>
+                                        <h5 className="text-xl font-semibold text-gray-900">Endereços</h5>
+                                        <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                                          {cadastro.enderecos.length} {cadastro.enderecos.length === 1 ? 'endereço' : 'endereços'}
+                                        </span>
                                       </div>
-                                      <h5 className="text-md font-semibold text-gray-900">Endereços</h5>
+                                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        {cadastro.enderecos.map((endereco: any, index: number) => (
+                                          <div key={index} className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200 hover:shadow-md transition-shadow duration-200">
+                                            <div className="flex items-center justify-between mb-4">
+                                              <div className="flex items-center space-x-2">
+                                                <div className="w-6 h-6 bg-green-500 rounded-lg flex items-center justify-center">
+                                                  <MapPin className="w-3 h-3 text-white" />
+                                                </div>
+                                                <h6 className="font-semibold text-gray-900">{endereco.tipo || 'Endereço'}</h6>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                      {cadastro.enderecos.map((endereco: any, index: number) => (
-                                        <div key={index} className="bg-gray-50 rounded-lg p-4">
-                                          <div className="grid grid-cols-2 gap-2 text-sm">
-                                            <div>
-                                              <label className="text-xs font-medium text-gray-500">Tipo</label>
-                                              <p className="text-gray-900">{endereco.tipo || 'Não informado'}</p>
+                                              {endereco.principal && (
+                                                <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
+                                                  Principal
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3 text-sm">
+                                              <div>
+                                                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">CEP</label>
+                                                <p className="text-gray-900 font-mono mt-1">{endereco.cep || 'Não informado'}</p>
                                             </div>
                                             <div>
-                                              <label className="text-xs font-medium text-gray-500">CEP</label>
-                                              <p className="text-gray-900">{endereco.cep || 'Não informado'}</p>
+                                                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Número</label>
+                                                <p className="text-gray-900 mt-1">{endereco.numero || 'Não informado'}</p>
                                             </div>
                                             <div className="col-span-2">
-                                              <label className="text-xs font-medium text-gray-500">Logradouro</label>
-                                              <p className="text-gray-900">{endereco.logradouro || 'Não informado'}</p>
+                                                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Logradouro</label>
+                                                <p className="text-gray-900 mt-1">{endereco.logradouro || 'Não informado'}</p>
                                             </div>
                                             <div>
-                                              <label className="text-xs font-medium text-gray-500">Número</label>
-                                              <p className="text-gray-900">{endereco.numero || 'Não informado'}</p>
+                                                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Bairro</label>
+                                                <p className="text-gray-900 mt-1">{endereco.bairro || 'Não informado'}</p>
                                             </div>
                                             <div>
-                                              <label className="text-xs font-medium text-gray-500">Bairro</label>
-                                              <p className="text-gray-900">{endereco.bairro || 'Não informado'}</p>
+                                                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Cidade</label>
+                                                <p className="text-gray-900 mt-1">{endereco.cidade || 'Não informado'}</p>
                                             </div>
                                             <div>
-                                              <label className="text-xs font-medium text-gray-500">Cidade</label>
-                                              <p className="text-gray-900">{endereco.cidade || 'Não informado'}</p>
-                                            </div>
-                                            <div>
-                                              <label className="text-xs font-medium text-gray-500">Estado</label>
-                                              <p className="text-gray-900">{endereco.estado || 'Não informado'}</p>
+                                                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Estado</label>
+                                                <p className="text-gray-900 mt-1">{endereco.estado || 'Não informado'}</p>
                                             </div>
                                           </div>
                                         </div>
@@ -518,42 +904,54 @@ export default function CadastrosPage() {
                                   </div>
                                 )}
 
-                                {/* Contacts */}
+                                  {/* Contacts Section */}
                                 {cadastro.contatos && cadastro.contatos.length > 0 && (
                                   <div>
-                                    <div className="flex items-center space-x-3 mb-4">
-                                      <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
-                                        <Users className="w-3 h-3 text-white" />
+                                      <div className="flex items-center space-x-3 mb-6">
+                                        <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
+                                          <Users className="w-4 h-4 text-white" />
+                                        </div>
+                                        <h5 className="text-xl font-semibold text-gray-900">Contatos</h5>
+                                        <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                                          {cadastro.contatos.length} {cadastro.contatos.length === 1 ? 'contato' : 'contatos'}
+                                        </span>
                                       </div>
-                                      <h5 className="text-md font-semibold text-gray-900">Contatos</h5>
+                                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        {cadastro.contatos.map((contato: any, index: number) => (
+                                          <div key={index} className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-6 border border-blue-200 hover:shadow-md transition-shadow duration-200">
+                                            <div className="flex items-center justify-between mb-4">
+                                              <div className="flex items-center space-x-2">
+                                                <div className="w-6 h-6 bg-blue-500 rounded-lg flex items-center justify-center">
+                                                  <Users className="w-3 h-3 text-white" />
+                                                </div>
+                                                <h6 className="font-semibold text-gray-900">{contato.pessoaContato || 'Contato'}</h6>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                      {cadastro.contatos.map((contato: any, index: number) => (
-                                        <div key={index} className="bg-gray-50 rounded-lg p-4">
-                                          <div className="grid grid-cols-2 gap-2 text-sm">
+                                              {contato.principal && (
+                                                <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
+                                                  Principal
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3 text-sm">
                                             <div>
-                                              <label className="text-xs font-medium text-gray-500">Pessoa de Contato</label>
-                                              <p className="text-gray-900">{contato.pessoaContato || 'Não informado'}</p>
+                                                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Cargo</label>
+                                                <p className="text-gray-900 mt-1">{contato.cargo || 'Não informado'}</p>
                                             </div>
                                             <div>
-                                              <label className="text-xs font-medium text-gray-500">Cargo</label>
-                                              <p className="text-gray-900">{contato.cargo || 'Não informado'}</p>
+                                                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email</label>
+                                                <p className="text-gray-900 mt-1">{contato.email || 'Não informado'}</p>
                                             </div>
                                             <div>
-                                              <label className="text-xs font-medium text-gray-500">Email</label>
-                                              <p className="text-gray-900">{contato.email || 'Não informado'}</p>
+                                                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Telefone Comercial</label>
+                                                <p className="text-gray-900 mt-1">{contato.telefoneComercial || 'Não informado'}</p>
                                             </div>
                                             <div>
-                                              <label className="text-xs font-medium text-gray-500">Telefone Comercial</label>
-                                              <p className="text-gray-900">{contato.telefoneComercial || 'Não informado'}</p>
-                                            </div>
-                                            <div>
-                                              <label className="text-xs font-medium text-gray-500">Celular</label>
-                                              <p className="text-gray-900">{contato.celular || 'Não informado'}</p>
-                                            </div>
-                                            <div>
-                                              <label className="text-xs font-medium text-gray-500">Celular de Contato</label>
-                                              <p className="text-gray-900">{contato.celularContato || 'Não informado'}</p>
+                                                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Celular</label>
+                                                <p className="text-gray-900 mt-1">{contato.celular || 'Não informado'}</p>
+                                              </div>
+                                              <div className="col-span-2">
+                                                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Celular de Contato</label>
+                                                <p className="text-gray-900 mt-1">{contato.celularContato || 'Não informado'}</p>
                                             </div>
                                           </div>
                                         </div>
@@ -562,30 +960,159 @@ export default function CadastrosPage() {
                                   </div>
                                 )}
                               </div>
+                              </motion.div>
                             </td>
                           </tr>
                         )}
-                      </React.Fragment>
-                    );
-                  })}
-                    </tbody>
-                  </table>
-                </div>
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Cards Mobile */}
+              <div className="md:hidden space-y-4 p-4">
+                {currentCadastros.map((cadastro, index) => (
+                  <motion.div
+                    key={cadastro.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                    className="bg-white rounded-2xl shadow-lg border border-gray-200 p-4 hover:shadow-xl transition-all duration-200"
+                  >
+                    {/* Header do Card */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center flex-1 min-w-0">
+                        <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center mr-3 shadow-lg flex-shrink-0">
+                          <Users className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-base font-semibold text-gray-900 truncate">{cadastro.nomeRazaoSocial || 'Nome não informado'}</h3>
+                          <p className="text-xs text-gray-500 flex items-center mt-1">
+                            <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                            {cadastro.tipoPessoa === 'Pessoa Física' ? 'PF' : 'PJ'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-1 ml-2">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md">
+                          {cadastro.tipoPessoa === 'Pessoa Física' ? 'PF' : 'PJ'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Informações do Card */}
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Apelido</label>
+                        <div className="mt-1">
+                          <span className="text-xs font-medium text-gray-900">
+                            {cadastro.nomeFantasia || '-'}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Documento</label>
+                        <div className="mt-1">
+                          <span className="text-xs font-medium text-gray-900 font-mono">
+                            {cadastro.cpfCnpj || '-'}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Email</label>
+                        <div className="mt-1">
+                          <span className="text-xs text-gray-500">
+                            {cadastro.email || '-'}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Telefone</label>
+                        <div className="mt-1">
+                          <span className="text-xs text-gray-500">
+                            {cadastro.telefone || '-'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tipos de Cliente */}
+                    {cadastro.tiposCliente && (
+                      <div className="mb-3">
+                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Tipos</label>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {Object.entries(cadastro.tiposCliente)
+                            .filter(([_, value]) => value)
+                            .map(([key, _]) => {
+                              const tipos = {
+                                cliente: { label: 'Cliente', color: 'bg-blue-100 text-blue-800' },
+                                vendedor: { label: 'Vendedor', color: 'bg-green-100 text-green-800' },
+                                fornecedor: { label: 'Fornecedor', color: 'bg-orange-100 text-orange-800' },
+                                funcionario: { label: 'Funcionário', color: 'bg-purple-100 text-purple-800' },
+                                transportadora: { label: 'Transportadora', color: 'bg-yellow-100 text-yellow-800' },
+                                prestadorServico: { label: 'Prestador', color: 'bg-pink-100 text-pink-800' }
+                              };
+                              const tipo = tipos[key as keyof typeof tipos];
+                              return (
+                                <span
+                                  key={key}
+                                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${tipo.color}`}
+                                >
+                                  {tipo.label}
+                                </span>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Ações do Card */}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => handleEdit(cadastro.id)}
+                          size="sm"
+                          className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 px-3 py-2 rounded-xl font-medium text-xs"
+                        >
+                          <Edit className="w-3 h-3 mr-1" />
+                          Editar
+                        </Button>
+                        <Button
+                          onClick={() => handleDelete(cadastro.id, cadastro.nomeRazaoSocial || 'Cadastro')}
+                          size="sm"
+                          className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 px-3 py-2 rounded-xl font-medium text-xs"
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" />
+                          Excluir
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
           )}
-        </Card>
+        </motion.div>
 
         {/* Footer */}
-        <div className="bg-white border-t border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
             <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm text-gray-700">Total: {totalCadastros} clientes</span>
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-sm text-gray-700 font-medium">Total: {totalCadastros} cadastros</span>
             </div>
-            <div className="text-sm text-gray-500">
+            <div className="text-xs lg:text-sm text-gray-500">
               Última atualização: {new Date().toLocaleDateString('pt-BR')}, {new Date().toLocaleTimeString('pt-BR')}
             </div>
           </div>
-        </div>
+        </motion.div>
               </div>
 
       {/* AI Assistant Modal */}
@@ -596,11 +1123,24 @@ export default function CadastrosPage() {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Confirmar Exclusão
-            </h3>
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        >
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl"
+          >
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Confirmar Exclusão
+              </h3>
+            </div>
             <p className="text-gray-600 mb-6">
               Tem certeza que deseja excluir o cadastro <strong>"{deleteConfirm.name}"</strong>?
               {cadastros.find(c => c.id === deleteConfirm.id)?.enderecos?.length > 0 && (
@@ -609,27 +1149,28 @@ export default function CadastrosPage() {
                 </span>
               )}
             </p>
-            <div className="flex justify-end space-x-3">
+            <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
               <Button
                 variant="outline"
                 onClick={cancelDelete}
-                className="px-4 py-2"
+                className="px-4 py-2 border-gray-300 text-gray-700 hover:bg-gray-50"
               >
                 Cancelar
               </Button>
               <Button
                 onClick={confirmDelete}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white"
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
               >
+                <Trash2 className="w-4 h-4 mr-2" />
                 {cadastros.find(c => c.id === deleteConfirm.id)?.enderecos?.length > 0 ? (
                   'Inativar'
                 ) : (
                   'Excluir'
                 )}
               </Button>
-        </div>
-      </div>
-    </div>
+            </div>
+          </motion.div>
+        </motion.div>
       )}
     </Layout>
   );
