@@ -1,16 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { useCompanyLogo } from '@/hooks/useCompanyLogo';
+import { usePageContext } from '@/hooks/usePageContext';
 import Sidebar from './Sidebar';
 import UserMenu from './UserMenu';
-import { Bell, Search, Menu } from 'lucide-react';
+import PrazoPagamentoAI from './PrazoPagamentoAI';
+import { Bell, Search, Menu, Building2, Sparkles } from 'lucide-react';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user } = useAuth();
+  const { logo } = useCompanyLogo();
+  const pageContext = usePageContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isAIOpen, setIsAIOpen] = useState(false);
+
+  // Debug: Log da logo (apenas quando logo muda)
+  useEffect(() => {
+    console.log('🏢 Layout - Logo da empresa:', logo ? 'Presente' : 'Ausente');
+  }, [logo]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -41,6 +52,22 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
             
             <div className="flex items-center space-x-4">
+              {/* Company Logo */}
+              {logo && (
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 rounded-lg overflow-hidden shadow-sm border border-gray-200">
+                    <img
+                      src={logo}
+                      alt="Logo da empresa"
+                      className="w-full h-full object-contain bg-white"
+                    />
+                  </div>
+                  <span className="text-sm font-medium text-gray-700 hidden sm:block">
+                    {user?.companies?.[0]?.name || 'Empresa'}
+                  </span>
+                </div>
+              )}
+              
               {/* Notification Bell */}
               <button className="p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-md">
                 <Bell className="w-5 h-5" />
@@ -57,6 +84,26 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </div>
+
+      {/* AI Floating Button */}
+      <button
+        onClick={() => setIsAIOpen(true)}
+        className="fixed bottom-6 right-6 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white p-4 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 z-40 group"
+        title="Gerar Prazo de Pagamento com IA"
+      >
+        <Sparkles className="w-6 h-6 group-hover:scale-110 transition-transform duration-200" />
+      </button>
+
+      {/* AI Modal */}
+      <PrazoPagamentoAI
+        isOpen={isAIOpen}
+        onClose={() => setIsAIOpen(false)}
+        onSuccess={() => {
+          setIsAIOpen(false);
+          // Aqui você pode adicionar uma notificação de sucesso
+        }}
+        context={pageContext}
+      />
     </div>
   );
 }
