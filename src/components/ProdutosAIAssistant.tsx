@@ -63,9 +63,15 @@ export default function ProdutosAIAssistant({ isOpen, onClose }: ProdutosAIAssis
       let content = `Perfeito! Identifiquei e extraí os seguintes dados do produto:\n\n`;
       
       content += `**Nome do Produto:** ${processedData.nome}\n`;
-      content += `**Categoria:** ${processedData.categoria}\n`;
-      content += `**Marca:** ${processedData.marca}\n`;
-      content += `**Modelo:** ${processedData.modelo}\n`;
+      if (processedData.categoria) {
+        content += `**Categoria:** ${processedData.categoria}\n`;
+      }
+      if (processedData.marca) {
+        content += `**Marca:** ${processedData.marca}\n`;
+      }
+      if (processedData.modelo) {
+        content += `**Modelo:** ${processedData.modelo}\n`;
+      }
       content += `**Unidade de Medida:** ${processedData.unidadeMedida}\n\n`;
       
       // Mostrar dados extraídos se existirem
@@ -158,49 +164,96 @@ export default function ProdutosAIAssistant({ isOpen, onClose }: ProdutosAIAssis
   const extractFieldsFromText = (text: string) => {
     const lowerText = text.toLowerCase();
     
-    // Extrair nome do produto (remover verbos, artigos e palavras desnecessárias)
-    let nome = text
-      .replace(/\b(cadastre|cadastrar|crie|criar|inclua|incluir|adicione|adicionar|insira|inserir|registre|registrar|produto|item|artigo|mercadoria|bem)\b/gi, '')
-      .replace(/\b(o|a|os|as|um|uma|uns|umas)\b/gi, '')
-      .replace(/\b(da|do|das|dos|de|em|na|no|nas|nos|para|com|por|sobre|entre|através|mediante|que|qual|quem|onde|quando|como)\b/gi, '')
-      .replace(/\b(preço|preco|valor|custo|venda|marca|modelo|categoria|unidade|medida|peso|comprimento|largura|altura|material|cor|descrição|descricao|tipo|classe|grupo)\b/gi, '')
-      .replace(/\b\d+[.,]?\d*\s*(reais|r\$|rs|kg|g|cm|m|ml|l|un|pc|cx|dz|gr|metros|centimetros|quilogramas|gramas|litros|mililitros)\b/gi, '') // Remove valores e unidades
-      .replace(/\b\d{8,14}\b/g, '') // Remove códigos de barras
-      .replace(/\b(iphone|samsung|dell|nike|adidas|apple|sony|lg|motorola|xiaomi|huawei)\b/gi, '') // Remove marcas conhecidas do nome
-      .replace(/\s+/g, ' ')
-      .trim();
+    // Extrair nome do produto de forma mais inteligente
+    let nome = text;
+    
+    // Remover comandos de cadastro
+    nome = nome.replace(/\b(cadastre|cadastrar|crie|criar|inclua|incluir|adicione|adicionar|insira|inserir|registre|registrar|produto|item|artigo|mercadoria|bem)\b/gi, '');
+    
+    // Remover artigos e preposições
+    nome = nome.replace(/\b(o|a|os|as|um|uma|uns|umas)\b/gi, '');
+    nome = nome.replace(/\b(da|do|das|dos|de|em|na|no|nas|nos|para|com|por|sobre|entre|através|mediante|que|qual|quem|onde|quando|como)\b/gi, '');
+    
+    // Remover palavras técnicas que não fazem parte do nome
+    nome = nome.replace(/\b(preço|preco|valor|custo|venda|marca|modelo|categoria|unidade|medida|peso|comprimento|largura|altura|material|cor|descrição|descricao|tipo|classe|grupo)\b/gi, '');
+    
+    // Remover valores monetários e unidades
+    nome = nome.replace(/\b\d+[.,]?\d*\s*(reais|r\$|rs|kg|g|cm|m|ml|l|un|pc|cx|dz|gr|metros|centimetros|quilogramas|gramas|litros|mililitros|unidade|unidades)\b/gi, '');
+    
+    // Remover valores monetários isolados
+    nome = nome.replace(/\b\d+[.,]?\d*\b/g, '');
+    
+    // Remover unidades isoladas que sobraram
+    nome = nome.replace(/\b(un|kg|g|l|ml|m|cm|pc|cx|dz|gr)\b/gi, '');
+    
+    // Remover hífens e traços desnecessários
+    nome = nome.replace(/^[\s\-]+|[\s\-]+$/g, '');
+    nome = nome.replace(/\s*-\s*/g, ' ');
+    
+    // Remover códigos de barras
+    nome = nome.replace(/\b\d{8,14}\b/g, '');
+    
+    // Remover NCM e CEST
+    nome = nome.replace(/\b(ncm|cest)[\s:]*\d+\b/gi, '');
+    
+    // Limpar espaços extras
+    nome = nome.replace(/\s+/g, ' ').trim();
+    
+    // Se o nome ficou muito curto ou vazio, tentar extrair de forma diferente
+    if (nome.length < 3) {
+      // Tentar extrair apenas a parte principal do produto
+      const palavras = text.split(/\s+/);
+      const palavrasImportantes = palavras.filter(palavra => 
+        palavra.length > 2 && 
+        !/\b(cadastre|cadastrar|crie|criar|inclua|incluir|adicione|adicionar|insira|inserir|registre|registrar|produto|item|artigo|mercadoria|bem|preço|preco|valor|custo|venda|marca|modelo|categoria|unidade|medida|peso|comprimento|largura|altura|material|cor|descrição|descricao|tipo|classe|grupo|com|por|para|de|da|do|das|dos|em|na|no|nas|nos|o|a|os|as|um|uma|uns|umas)\b/gi.test(palavra) &&
+        !/^\d+[.,]?\d*$/.test(palavra) && // Não é número
+        !/^\d{8,14}$/.test(palavra) // Não é código de barras
+      );
+      nome = palavrasImportantes.join(' ');
+    }
+    
+    // Se ainda estiver vazio, usar o texto original limpo
+    if (!nome || nome.length < 2) {
+      nome = text.replace(/\b(cadastre|cadastrar|crie|criar|inclua|incluir|adicione|adicionar|insira|inserir|registre|registrar|produto|item|artigo|mercadoria|bem)\b/gi, '').trim();
+    }
 
     // Extrair preços com melhor reconhecimento
-    const precoCustoMatch = text.match(/\b(?:custo|preço\s*custo|preco\s*custo|valor\s*custo|preço\s*de\s*custo|preco\s*de\s*custo)[\s:]*r?\$?\s*(\d+[.,]?\d*)/i);
-    const precoCusto = precoCustoMatch ? precoCustoMatch[1].replace(',', '.') : null;
+    let precoCusto = null;
+    let precoVenda = null;
     
-    const precoVendaMatch = text.match(/\b(?:venda|preço\s*venda|preco\s*venda|valor\s*venda|preço\s*de\s*venda|preco\s*de\s*venda|valor\s*de\s*venda|preço|preco|valor)[\s:]*r?\$?\s*(\d+[.,]?\d*)/i);
-    const precoVenda = precoVendaMatch ? precoVendaMatch[1].replace(',', '.') : null;
+    // Primeiro, tentar extrair preço de venda (mais comum)
+    const precoVendaMatch = text.match(/\b(?:venda|preço\s*venda|preco\s*venda|valor\s*venda|preço\s*de\s*venda|preco\s*de\s*venda|valor\s*de\s*venda|preço|preco|valor|por|r\$)[\s:]*r?\$?\s*(\d+[.,]?\d*)/i);
+    if (precoVendaMatch) {
+      precoVenda = precoVendaMatch[1].replace(',', '.');
+    }
+    
+    // Se não encontrou preço de venda, tentar qualquer valor mencionado
+    if (!precoVenda) {
+      const valorMatch = text.match(/\b(?:r\$|rs|reais?)[\s:]*(\d+[.,]?\d*)/i);
+      if (valorMatch) {
+        precoVenda = valorMatch[1].replace(',', '.');
+      }
+    }
+    
+    // Se ainda não encontrou, tentar qualquer número que pareça preço
+    if (!precoVenda) {
+      const numeroMatch = text.match(/\b(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)\b/);
+      if (numeroMatch) {
+        precoVenda = numeroMatch[1].replace(/\./g, '').replace(',', '.');
+      }
+    }
+    
+    // Extrair preço de custo
+    const precoCustoMatch = text.match(/\b(?:custo|preço\s*custo|preco\s*custo|valor\s*custo|preço\s*de\s*custo|preco\s*de\s*custo)[\s:]*r?\$?\s*(\d+[.,]?\d*)/i);
+    if (precoCustoMatch) {
+      precoCusto = precoCustoMatch[1].replace(',', '.');
+    }
 
-    // Extrair marca (primeiro tenta extrair explicitamente, depois detecta marcas conhecidas)
+    // Extrair marca - apenas se explicitamente mencionada
     let marca = null;
     const marcaMatch = text.match(/\b(?:marca|brand)[\s:]*([a-záàâãéèêíìîóòôõúùûç\s]+)/i);
     if (marcaMatch) {
       marca = marcaMatch[1].trim();
-    } else {
-      // Detectar marcas conhecidas no texto
-      const marcasConhecidas = [
-        'samsung', 'apple', 'iphone', 'ipad', 'macbook', 'imac', 'airpods',
-        'lg', 'sony', 'nike', 'adidas', 'puma', 'reebok', 'converse',
-        'coca-cola', 'coca cola', 'pepsi', 'nestle', 'unilever', 'procter', 'gamble',
-        'intel', 'amd', 'nvidia', 'microsoft', 'google', 'amazon', 'xiaomi', 'huawei',
-        'motorola', 'nokia', 'blackberry', 'dell', 'hp', 'lenovo', 'asus', 'acer',
-        'canon', 'nikon', 'panasonic', 'philips', 'bosch', 'whirlpool', 'electrolux',
-        'volkswagen', 'ford', 'chevrolet', 'fiat', 'toyota', 'honda', 'hyundai',
-        'bmw', 'mercedes', 'audi', 'ferrari', 'lamborghini', 'porsche'
-      ];
-      
-      for (const marcaConhecida of marcasConhecidas) {
-        if (lowerText.includes(marcaConhecida)) {
-          marca = marcaConhecida.charAt(0).toUpperCase() + marcaConhecida.slice(1);
-          break;
-        }
-      }
     }
 
     // Extrair modelo
@@ -215,9 +268,12 @@ export default function ProdutosAIAssistant({ isOpen, onClose }: ProdutosAIAssis
     const codigoBarrasMatch = text.match(/\b(?:código|codigo|barras|ean|upc)[\s:]*(\d{8,14})\b/i);
     const codigoBarras = codigoBarrasMatch ? codigoBarrasMatch[1] : null;
 
-    // Extrair NCM
+    // Extrair NCM - apenas se explicitamente mencionado
+    let ncm = null;
     const ncmMatch = text.match(/\b(?:ncm)[\s:]*(\d{8})\b/i);
-    const ncm = ncmMatch ? ncmMatch[1] : null;
+    if (ncmMatch) {
+      ncm = ncmMatch[1];
+    }
 
     // Extrair CEST
     const cestMatch = text.match(/\b(?:cest)[\s:]*(\d{7})\b/i);
@@ -225,6 +281,8 @@ export default function ProdutosAIAssistant({ isOpen, onClose }: ProdutosAIAssis
 
     // Extrair unidade de medida com melhor reconhecimento
     let unidadeMedida = 'UN';
+    
+    // Primeiro, tentar extrair unidade explicitamente mencionada
     const unidadeMatch = text.match(/\b(?:unidade|medida|un)[\s:]*([a-záàâãéèêíìîóòôõúùûç0-9\s\(\)]+)/i);
     if (unidadeMatch) {
       const unidade = unidadeMatch[1].toUpperCase();
@@ -240,18 +298,33 @@ export default function ProdutosAIAssistant({ isOpen, onClose }: ProdutosAIAssis
       else if (unidade.includes('PC') || unidade.includes('PEÇA') || unidade.includes('PEÇAS')) unidadeMedida = 'PC';
       else if (unidade.includes('DZ') || unidade.includes('DÚZIA') || unidade.includes('DUZIA')) unidadeMedida = 'DZ';
       else if (unidade.includes('GR') || unidade.includes('GROSA') || unidade.includes('GROSAS')) unidadeMedida = 'GR';
+      else if (unidade.includes('UN') || unidade.includes('UNIDADE') || unidade.includes('UNIDADES')) unidadeMedida = 'UN';
     } else {
-      // Detectar unidade por palavras-chave no texto
-      if (lowerText.includes('quilograma') || lowerText.includes('quilo') || lowerText.includes('kg')) unidadeMedida = 'KG';
-      else if (lowerText.includes('grama') || lowerText.includes('gramas') || lowerText.includes('g ')) unidadeMedida = 'G';
-      else if (lowerText.includes('litro') || lowerText.includes('litros') || lowerText.includes('l ')) unidadeMedida = 'L';
-      else if (lowerText.includes('mililitro') || lowerText.includes('ml')) unidadeMedida = 'ML';
-      else if (lowerText.includes('metro') || lowerText.includes('metros') || lowerText.includes('m ')) unidadeMedida = 'M';
-      else if (lowerText.includes('centimetro') || lowerText.includes('cm')) unidadeMedida = 'CM';
-      else if (lowerText.includes('caixa') || lowerText.includes('cx')) unidadeMedida = 'CX';
-      else if (lowerText.includes('peça') || lowerText.includes('peca') || lowerText.includes('pc')) unidadeMedida = 'PC';
-      else if (lowerText.includes('dúzia') || lowerText.includes('duzia') || lowerText.includes('dz')) unidadeMedida = 'DZ';
-      else if (lowerText.includes('grosa') || lowerText.includes('gr')) unidadeMedida = 'GR';
+      // Detectar unidade por palavras-chave no texto (mais inteligente)
+      // Priorizar detecção de "UN" quando mencionado explicitamente
+      if (lowerText.includes('unidade') || lowerText.includes('unidades') || lowerText.includes('un ')) {
+        unidadeMedida = 'UN';
+      } else if (lowerText.includes('quilograma') || lowerText.includes('quilo') || lowerText.includes('kg')) {
+        unidadeMedida = 'KG';
+      } else if (lowerText.includes('grama') || lowerText.includes('gramas') || lowerText.includes('g ')) {
+        unidadeMedida = 'G';
+      } else if (lowerText.includes('litro') || lowerText.includes('litros') || lowerText.includes('l ')) {
+        unidadeMedida = 'L';
+      } else if (lowerText.includes('mililitro') || lowerText.includes('ml')) {
+        unidadeMedida = 'ML';
+      } else if (lowerText.includes('metro') || lowerText.includes('metros') || lowerText.includes('m ')) {
+        unidadeMedida = 'M';
+      } else if (lowerText.includes('centimetro') || lowerText.includes('cm')) {
+        unidadeMedida = 'CM';
+      } else if (lowerText.includes('caixa') || lowerText.includes('cx')) {
+        unidadeMedida = 'CX';
+      } else if (lowerText.includes('peça') || lowerText.includes('peca') || lowerText.includes('pc')) {
+        unidadeMedida = 'PC';
+      } else if (lowerText.includes('dúzia') || lowerText.includes('duzia') || lowerText.includes('dz')) {
+        unidadeMedida = 'DZ';
+      } else if (lowerText.includes('grosa') || lowerText.includes('gr')) {
+        unidadeMedida = 'GR';
+      }
     }
 
     // Extrair especificações técnicas
@@ -283,131 +356,15 @@ export default function ProdutosAIAssistant({ isOpen, onClose }: ProdutosAIAssis
     const descricaoMatch = text.match(/\b(?:descrição|descricao|description)[\s:]*([^.]*)/i);
     const descricao = descricaoMatch ? descricaoMatch[1].trim() : null;
 
-    // Detectar categoria baseada em palavras-chave mais inteligente
-    let categoriaDetectada = categoria;
-    if (!categoriaDetectada) {
-      // Eletrônicos e Tecnologia
-      if (lowerText.includes('eletrônico') || lowerText.includes('eletronico') || lowerText.includes('celular') || 
-          lowerText.includes('smartphone') || lowerText.includes('iphone') || lowerText.includes('samsung') ||
-          lowerText.includes('computador') || lowerText.includes('notebook') || lowerText.includes('laptop') ||
-          lowerText.includes('tablet') || lowerText.includes('ipad') || lowerText.includes('monitor') ||
-          lowerText.includes('teclado') || lowerText.includes('mouse') || lowerText.includes('fone') ||
-          lowerText.includes('headphone') || lowerText.includes('câmera') || lowerText.includes('camera') ||
-          lowerText.includes('tv') || lowerText.includes('televisão') || lowerText.includes('televisao')) {
-        categoriaDetectada = 'Eletrônicos';
-      }
-      // Vestuário e Moda
-      else if (lowerText.includes('roupa') || lowerText.includes('vestuário') || lowerText.includes('vestuario') || 
-               lowerText.includes('camiseta') || lowerText.includes('calça') || lowerText.includes('calca') ||
-               lowerText.includes('camisa') || lowerText.includes('blusa') || lowerText.includes('vestido') ||
-               lowerText.includes('sapato') || lowerText.includes('tênis') || lowerText.includes('tenis') ||
-               lowerText.includes('bota') || lowerText.includes('sandália') || lowerText.includes('sandalia') ||
-               lowerText.includes('bolsa') || lowerText.includes('mochila') || lowerText.includes('cinto') ||
-               lowerText.includes('relógio') || lowerText.includes('relogio') || lowerText.includes('óculos') ||
-               lowerText.includes('oculos') || lowerText.includes('joia') || lowerText.includes('joia')) {
-        categoriaDetectada = 'Vestuário';
-      }
-      // Casa e Decoração
-      else if (lowerText.includes('casa') || lowerText.includes('decoração') || lowerText.includes('decoracao') || 
-               lowerText.includes('móvel') || lowerText.includes('moveis') || lowerText.includes('mesa') ||
-               lowerText.includes('cadeira') || lowerText.includes('sofá') || lowerText.includes('sofa') ||
-               lowerText.includes('cama') || lowerText.includes('armário') || lowerText.includes('armario') ||
-               lowerText.includes('estante') || lowerText.includes('prateleira') || lowerText.includes('quadro') ||
-               lowerText.includes('vaso') || lowerText.includes('luminária') || lowerText.includes('luminaria') ||
-               lowerText.includes('cortina') || lowerText.includes('tapete') || lowerText.includes('almofada')) {
-        categoriaDetectada = 'Casa e Decoração';
-      }
-      // Esportes e Fitness
-      else if (lowerText.includes('esporte') || lowerText.includes('fitness') || lowerText.includes('academia') || 
-               lowerText.includes('corrida') || lowerText.includes('caminhada') || lowerText.includes('bicicleta') ||
-               lowerText.includes('bike') || lowerText.includes('futebol') || lowerText.includes('basquete') ||
-               lowerText.includes('tênis') || lowerText.includes('tenis') || lowerText.includes('natação') ||
-               lowerText.includes('natacao') || lowerText.includes('musculação') || lowerText.includes('musculacao') ||
-               lowerText.includes('yoga') || lowerText.includes('pilates') || lowerText.includes('crossfit')) {
-        categoriaDetectada = 'Esportes';
-      }
-      // Livros e Papelaria
-      else if (lowerText.includes('livro') || lowerText.includes('papelaria') || lowerText.includes('escritório') || 
-               lowerText.includes('escritorio') || lowerText.includes('caneta') || lowerText.includes('lápis') ||
-               lowerText.includes('lapis') || lowerText.includes('caderno') || lowerText.includes('bloco') ||
-               lowerText.includes('papel') || lowerText.includes('impressora') || lowerText.includes('cartucho') ||
-               lowerText.includes('mochila') || lowerText.includes('estojo') || lowerText.includes('régua') ||
-               lowerText.includes('regua') || lowerText.includes('calculadora') || lowerText.includes('agenda')) {
-        categoriaDetectada = 'Livros e Papelaria';
-      }
-      // Beleza e Cuidados
-      else if (lowerText.includes('beleza') || lowerText.includes('cosmético') || lowerText.includes('cosmetico') || 
-               lowerText.includes('perfume') || lowerText.includes('shampoo') || lowerText.includes('condicionador') ||
-               lowerText.includes('sabonete') || lowerText.includes('creme') || lowerText.includes('loção') ||
-               lowerText.includes('lacao') || lowerText.includes('batom') || lowerText.includes('sombra') ||
-               lowerText.includes('base') || lowerText.includes('pó') || lowerText.includes('po') ||
-               lowerText.includes('esmalte') || lowerText.includes('pincel') || lowerText.includes('espelho')) {
-        categoriaDetectada = 'Beleza e Cuidados';
-      }
-      // Brinquedos e Jogos
-      else if (lowerText.includes('brinquedo') || lowerText.includes('jogo') || lowerText.includes('infantil') || 
-               lowerText.includes('boneca') || lowerText.includes('carrinho') || lowerText.includes('lego') ||
-               lowerText.includes('puzzle') || lowerText.includes('quebra-cabeça') || lowerText.includes('quebracabeca') ||
-               lowerText.includes('videogame') || lowerText.includes('console') || lowerText.includes('playstation') ||
-               lowerText.includes('xbox') || lowerText.includes('nintendo') || lowerText.includes('tabuleiro')) {
-        categoriaDetectada = 'Brinquedos e Jogos';
-      }
-      // Automotivo
-      else if (lowerText.includes('automotivo') || lowerText.includes('carro') || lowerText.includes('moto') || 
-               lowerText.includes('peça') || lowerText.includes('peca') || lowerText.includes('pneu') ||
-               lowerText.includes('óleo') || lowerText.includes('oleo') || lowerText.includes('bateria') ||
-               lowerText.includes('filtro') || lowerText.includes('vela') || lowerText.includes('correia') ||
-               lowerText.includes('freio') || lowerText.includes('amortecedor') || lowerText.includes('escapamento') ||
-               lowerText.includes('volante') || lowerText.includes('banco') || lowerText.includes('cinto')) {
-        categoriaDetectada = 'Automotivo';
-      }
-      // Ferramentas e Construção
-      else if (lowerText.includes('ferramenta') || lowerText.includes('construção') || lowerText.includes('construcao') || 
-               lowerText.includes('ferro') || lowerText.includes('madeira') || lowerText.includes('cimento') ||
-               lowerText.includes('concreto') || lowerText.includes('tijolo') || lowerText.includes('areia') ||
-               lowerText.includes('pedra') || lowerText.includes('martelo') || lowerText.includes('chave') ||
-               lowerText.includes('furadeira') || lowerText.includes('parafuso') || lowerText.includes('prego') ||
-               lowerText.includes('tinta') || lowerText.includes('pincel') || lowerText.includes('rolo')) {
-        categoriaDetectada = 'Ferramentas e Construção';
-      }
-      // Alimentos e Bebidas
-      else if (lowerText.includes('alimento') || lowerText.includes('comida') || lowerText.includes('bebida') || 
-               lowerText.includes('café') || lowerText.includes('cafe') || lowerText.includes('açúcar') ||
-               lowerText.includes('acucar') || lowerText.includes('sal') || lowerText.includes('óleo') ||
-               lowerText.includes('oleo') || lowerText.includes('arroz') || lowerText.includes('feijão') ||
-               lowerText.includes('feijao') || lowerText.includes('macarrão') || lowerText.includes('macarrao') ||
-               lowerText.includes('carne') || lowerText.includes('frango') || lowerText.includes('peixe') ||
-               lowerText.includes('leite') || lowerText.includes('queijo') || lowerText.includes('pão') ||
-               lowerText.includes('pao') || lowerText.includes('bolo') || lowerText.includes('doce')) {
-        categoriaDetectada = 'Alimentos e Bebidas';
-      }
-      // Saúde e Medicamentos
-      else if (lowerText.includes('medicamento') || lowerText.includes('remédio') || lowerText.includes('remedio') || 
-               lowerText.includes('vitamina') || lowerText.includes('suplemento') || lowerText.includes('curativo') ||
-               lowerText.includes('bandagem') || lowerText.includes('termômetro') || lowerText.includes('termometro') ||
-               lowerText.includes('máscara') || lowerText.includes('mascara') || lowerText.includes('álcool') ||
-               lowerText.includes('alcool') || lowerText.includes('seringa') || lowerText.includes('agulha')) {
-        categoriaDetectada = 'Saúde e Medicamentos';
-      }
-      // Pet Shop
-      else if (lowerText.includes('pet') || lowerText.includes('cachorro') || lowerText.includes('gato') || 
-               lowerText.includes('ração') || lowerText.includes('racao') || lowerText.includes('brinquedo') ||
-               lowerText.includes('coleira') || lowerText.includes('guia') || lowerText.includes('casinha') ||
-               lowerText.includes('bebedouro') || lowerText.includes('comedouro') || lowerText.includes('areia') ||
-               lowerText.includes('shampoo') || lowerText.includes('medicamento') || lowerText.includes('vacina')) {
-        categoriaDetectada = 'Pet Shop';
-      }
-      else {
-        categoriaDetectada = 'Geral';
-      }
-    }
+    // Usar categoria apenas se explicitamente mencionada
+    let categoriaDetectada = categoria || '';
 
     // Marca já foi detectada na seção anterior
     let marcaDetectada = marca;
 
     return {
       nome: nome || 'Produto não identificado',
-      categoria: categoriaDetectada || 'Geral',
+      categoria: categoriaDetectada || '',
       marca: marcaDetectada || '',
       modelo: modelo || '',
       unidadeMedida,
@@ -417,7 +374,7 @@ export default function ProdutosAIAssistant({ isOpen, onClose }: ProdutosAIAssis
       codigoBarras: codigoBarras || '',
       ncm: ncm || '',
       cest: cest || '',
-      origem: '0', // Nacional
+      origem: '', // Apenas se mencionado
       especificacoes: Object.keys(especificacoes).length > 0 ? especificacoes : null
     };
   };
