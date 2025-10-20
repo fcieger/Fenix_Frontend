@@ -14,7 +14,11 @@ import {
   X,
   LogOut,
   User as UserIcon,
-  Building2
+  Building2,
+  Receipt,
+  ChevronDown,
+  ChevronRight,
+  ShoppingCart
 } from 'lucide-react';
 
 // Menu centralizado - ÚNICA FONTE DA VERDADE
@@ -22,9 +26,35 @@ const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: Home, href: '/dashboard' },
   { id: 'cadastros', label: 'Cadastros', icon: Users, href: '/cadastros' },
   { id: 'produtos', label: 'Produtos', icon: Package, href: '/produtos' },
+  { 
+    id: 'vendas', 
+    label: 'Vendas', 
+    icon: ShoppingCart, 
+    href: '/vendas',
+    submenu: [
+      { id: 'pedido-venda', label: 'Pedido de Venda', href: '/vendas' }
+    ]
+  },
+  { 
+    id: 'impostos', 
+    label: 'Impostos', 
+    icon: Receipt, 
+    href: '/impostos',
+    submenu: [
+      { id: 'natureza-operacao', label: 'Naturezas de Operação', href: '/impostos/natureza-operacao' }
+    ]
+  },
   { id: 'assistentes', label: 'Assistentes IA', icon: Bot, href: '/assistentes', badge: 'IA' },
   { id: 'relatorios', label: 'Relatórios', icon: BarChart3, href: '/relatorios' },
-  { id: 'configuracoes', label: 'Configurações', icon: Settings, href: '/configuracoes' },
+  { 
+    id: 'configuracoes', 
+    label: 'Configurações', 
+    icon: Settings, 
+    href: '/configuracoes',
+    submenu: [
+      { id: 'prazos-pagamento', label: 'Prazos de Pagamento', href: '/configuracoes/prazos-pagamento' }
+    ]
+  },
 ];
 
 export default function Sidebar() {
@@ -32,9 +62,24 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
 
   const getActiveItem = () => {
-    return menuItems.find(item => pathname.startsWith(item.href))?.id;
+    // Verificar se algum item do menu está ativo
+    for (const item of menuItems) {
+      if (pathname.startsWith(item.href)) {
+        return item.id;
+      }
+      // Verificar submenus
+      if (item.submenu) {
+        for (const subItem of item.submenu) {
+          if (pathname.startsWith(subItem.href)) {
+            return subItem.id;
+          }
+        }
+      }
+    }
+    return null;
   };
 
   const handleNavigation = (href: string) => {
@@ -45,6 +90,16 @@ export default function Sidebar() {
   const handleLogout = () => {
     logout();
     setSidebarOpen(false);
+  };
+
+  const toggleSubmenu = (menuId: string) => {
+    const newExpanded = new Set(expandedMenus);
+    if (newExpanded.has(menuId)) {
+      newExpanded.delete(menuId);
+    } else {
+      newExpanded.add(menuId);
+    }
+    setExpandedMenus(newExpanded);
   };
 
   const activeItem = getActiveItem();
@@ -92,25 +147,65 @@ export default function Sidebar() {
                 {menuItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = activeItem === item.id;
+                  const hasSubmenu = item.submenu && item.submenu.length > 0;
+                  const isExpanded = expandedMenus.has(item.id);
                   
                   return (
-                    <button
-                      key={item.id}
-                      onClick={() => handleNavigation(item.href)}
-                      className={`${
-                        isActive
-                          ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                      } group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full text-left`}
-                    >
-                      <Icon className="mr-3 h-5 w-5 flex-shrink-0" />
-                      {item.label}
-                      {item.badge && (
-                        <span className="ml-auto bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
-                          {item.badge}
-                        </span>
+                    <div key={item.id}>
+                      <button
+                        onClick={() => {
+                          if (hasSubmenu) {
+                            toggleSubmenu(item.id);
+                          } else {
+                            handleNavigation(item.href);
+                          }
+                        }}
+                        className={`${
+                          isActive
+                            ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white'
+                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        } group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full text-left`}
+                      >
+                        <Icon className="mr-3 h-5 w-5 flex-shrink-0" />
+                        {item.label}
+                        {item.badge && (
+                          <span className="ml-auto bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                            {item.badge}
+                          </span>
+                        )}
+                        {hasSubmenu && (
+                          <span className="ml-auto">
+                            {isExpanded ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </span>
+                        )}
+                      </button>
+                      
+                      {/* Submenu */}
+                      {hasSubmenu && isExpanded && (
+                        <div className="ml-4 mt-1 space-y-1">
+                          {item.submenu.map((subItem) => {
+                            const isSubActive = activeItem === subItem.id;
+                            return (
+                              <button
+                                key={subItem.id}
+                                onClick={() => handleNavigation(subItem.href)}
+                                className={`${
+                                  isSubActive
+                                    ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
+                                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                                } group flex items-center px-2 py-1.5 text-sm font-medium rounded-md w-full text-left`}
+                              >
+                                <span className="ml-4">{subItem.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
                       )}
-                    </button>
+                    </div>
                   );
                 })}
               </nav>
@@ -153,25 +248,65 @@ export default function Sidebar() {
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeItem === item.id;
+                const hasSubmenu = item.submenu && item.submenu.length > 0;
+                const isExpanded = expandedMenus.has(item.id);
                 
                 return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleNavigation(item.href)}
-                    className={`${
-                      isActive
-                        ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                    } group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full text-left`}
-                  >
-                    <Icon className="mr-3 h-5 w-5 flex-shrink-0" />
-                    {item.label}
-                    {item.badge && (
-                      <span className="ml-auto bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
-                        {item.badge}
-                      </span>
+                  <div key={item.id}>
+                    <button
+                      onClick={() => {
+                        if (hasSubmenu) {
+                          toggleSubmenu(item.id);
+                        } else {
+                          handleNavigation(item.href);
+                        }
+                      }}
+                      className={`${
+                        isActive
+                          ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      } group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full text-left`}
+                    >
+                      <Icon className="mr-3 h-5 w-5 flex-shrink-0" />
+                      {item.label}
+                      {item.badge && (
+                        <span className="ml-auto bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                          {item.badge}
+                        </span>
+                      )}
+                      {hasSubmenu && (
+                        <span className="ml-auto">
+                          {isExpanded ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                        </span>
+                      )}
+                    </button>
+                    
+                    {/* Submenu */}
+                    {hasSubmenu && isExpanded && (
+                      <div className="ml-4 mt-1 space-y-1">
+                        {item.submenu.map((subItem) => {
+                          const isSubActive = activeItem === subItem.id;
+                          return (
+                            <button
+                              key={subItem.id}
+                              onClick={() => handleNavigation(subItem.href)}
+                              className={`${
+                                isSubActive
+                                  ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
+                                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                              } group flex items-center px-2 py-1.5 text-sm font-medium rounded-md w-full text-left`}
+                            >
+                              <span className="ml-4">{subItem.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </nav>
