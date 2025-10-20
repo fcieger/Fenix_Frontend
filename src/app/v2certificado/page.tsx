@@ -1,8 +1,18 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
-import { Upload, Shield, FileText, Lock, CheckCircle, AlertCircle, X } from 'lucide-react';
+import Layout from '@/components/Layout';
+import { Upload, Shield, FileText, Lock, CheckCircle, AlertCircle, X, Trash2, Plus } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 interface FileInfo {
   nome: string;
@@ -24,7 +34,8 @@ interface Certificado {
 }
 
 export default function CertificadoPage() {
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const [step, setStep] = useState<'upload' | 'password' | 'success'>('upload');
   const [file, setFile] = useState<File | null>(null);
   const [fileInfo, setFileInfo] = useState<FileInfo | null>(null);
@@ -36,6 +47,27 @@ export default function CertificadoPage() {
   const [certificado, setCertificado] = useState<Certificado | null>(null);
   const [certificados, setCertificados] = useState<Certificado[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+          <p className="text-purple-600 mt-4 font-medium">Carregando certificados...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !user) {
+    return null;
+  }
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -174,13 +206,13 @@ export default function CertificadoPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <Layout>
+      <div className="p-6">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Shield className="h-6 w-6 text-blue-600" />
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <Shield className="h-6 w-6 text-purple-600" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Certificado Digital A1</h1>
@@ -238,213 +270,265 @@ export default function CertificadoPage() {
 
         {/* Step 1: Upload */}
         {step === 'upload' && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Selecione o arquivo do certificado</h2>
-            
-            <div className="space-y-4">
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pfx,.p12"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex flex-col items-center space-y-2 text-gray-600 hover:text-blue-600"
-                >
-                  <FileText className="h-12 w-12" />
-                  <span className="text-lg font-medium">Clique para selecionar o arquivo</span>
-                  <span className="text-sm">Formatos aceitos: .pfx, .p12 (máximo 10MB)</span>
-                </button>
-              </div>
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Upload className="h-5 w-5 text-purple-600" />
+                Selecione o arquivo do certificado
+              </CardTitle>
+              <CardDescription>
+                Formatos aceitos: .pfx, .p12 (máximo 10MB)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-purple-400 transition-colors">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pfx,.p12"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex flex-col items-center space-y-2 text-gray-600 hover:text-purple-600"
+                  >
+                    <FileText className="h-12 w-12" />
+                    <span className="text-lg font-medium">Clique para selecionar o arquivo</span>
+                    <span className="text-sm">Formatos aceitos: .pfx, .p12 (máximo 10MB)</span>
+                  </button>
+                </div>
 
-              {file && (
-                <div className="bg-gray-50 rounded-lg p-4">
+                {file && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center space-x-3">
+                      <CheckCircle className="h-8 w-8 text-green-600" />
+                      <div className="flex-1">
+                        <p className="font-medium text-green-900">{file.name}</p>
+                        <p className="text-sm text-green-700">
+                          {(file.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <Button
+                  onClick={handleUpload}
+                  disabled={!file || loading}
+                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                >
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      <span>Enviando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      <span>Enviar Arquivo</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step 2: Password */}
+        {step === 'password' && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="h-5 w-5 text-blue-600" />
+                Informe a senha do certificado
+              </CardTitle>
+              <CardDescription>
+                O arquivo foi carregado com sucesso. Agora digite a senha para processá-lo.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {fileInfo && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                   <div className="flex items-center space-x-3">
                     <FileText className="h-8 w-8 text-blue-600" />
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">{file.name}</p>
-                      <p className="text-sm text-gray-600">
-                        {(file.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
+                    <div>
+                      <p className="font-medium text-blue-900">{fileInfo.nome}</p>
+                      <p className="text-sm text-blue-700">{fileInfo.tamanho} • {fileInfo.tipo}</p>
                     </div>
                   </div>
                 </div>
               )}
 
-              <button
-                onClick={handleUpload}
-                disabled={!file || loading}
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-              >
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Enviando...</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4" />
-                    <span>Enviar Arquivo</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        )}
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="password">Senha do Certificado</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Digite a senha do certificado"
+                    className="mt-1"
+                  />
+                </div>
 
-        {/* Step 2: Password */}
-        {step === 'password' && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Informe a senha do certificado</h2>
-            
-            {fileInfo && (
-              <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                <div className="flex items-center space-x-3">
-                  <FileText className="h-8 w-8 text-blue-600" />
-                  <div>
-                    <p className="font-medium text-gray-900">{fileInfo.nome}</p>
-                    <p className="text-sm text-gray-600">{fileInfo.tamanho} • {fileInfo.tipo}</p>
-                  </div>
+                <div className="flex space-x-3">
+                  <Button
+                    onClick={resetForm}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Voltar
+                  </Button>
+                  <Button
+                    onClick={handleSubmitPassword}
+                    disabled={!password || loading}
+                    className="flex-1 bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        <span>Processando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="h-4 w-4 mr-2" />
+                        <span>Processar Certificado</span>
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
-            )}
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Senha do Certificado
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Digite a senha do certificado"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div className="flex space-x-3">
-                <button
-                  onClick={resetForm}
-                  className="flex-1 bg-gray-200 text-gray-800 py-3 px-4 rounded-lg font-medium hover:bg-gray-300"
-                >
-                  Voltar
-                </button>
-                <button
-                  onClick={handleSubmitPassword}
-                  disabled={!password || loading}
-                  className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-                >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Processando...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="h-4 w-4" />
-                      <span>Processar Certificado</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Step 3: Success */}
         {step === 'success' && certificado && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="text-center mb-6">
-              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle className="h-8 w-8 text-green-600" />
+          <Card className="mb-6">
+            <CardHeader>
+              <div className="text-center">
+                <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                  <CheckCircle className="h-8 w-8 text-green-600" />
+                </div>
+                <CardTitle className="text-xl">Certificado Processado!</CardTitle>
+                <CardDescription>Seu certificado A1 foi salvo com sucesso.</CardDescription>
               </div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Certificado Processado!</h2>
-              <p className="text-gray-600">Seu certificado A1 foi salvo com sucesso.</p>
-            </div>
-
-            <div className="bg-gray-50 rounded-lg p-4 mb-6">
-              <h3 className="font-medium text-gray-900 mb-3">Informações do Certificado</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Empresa:</span>
-                  <span className="font-medium">{certificado.nomeRazaoSocial}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">CNPJ:</span>
-                  <span className="font-medium">{certificado.cnpj}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Validade:</span>
-                  <span className="font-medium">{formatDate(certificado.validade)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Tipo:</span>
-                  <span className="font-medium">{certificado.tipo}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Status:</span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(certificado.status)}`}>
-                    {certificado.status}
-                  </span>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                <h3 className="font-medium text-green-900 mb-3">Informações do Certificado</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-green-700">Empresa:</span>
+                    <span className="font-medium text-green-900">{certificado.nomeRazaoSocial}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-green-700">CNPJ:</span>
+                    <span className="font-medium text-green-900">{certificado.cnpj}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-green-700">Validade:</span>
+                    <span className="font-medium text-green-900">{formatDate(certificado.validade)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-green-700">Tipo:</span>
+                    <span className="font-medium text-green-900">{certificado.tipo}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-green-700">Status:</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(certificado.status)}`}>
+                      {certificado.status}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <button
-              onClick={resetForm}
-              className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700"
-            >
-              Enviar Outro Certificado
-            </button>
-          </div>
+              <Button
+                onClick={resetForm}
+                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Enviar Outro Certificado
+              </Button>
+            </CardContent>
+          </Card>
         )}
 
         {/* Meus Certificados */}
-        <div className="mt-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Meus Certificados</h2>
-            <button
-              onClick={loadCertificados}
-              className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-            >
-              Atualizar
-            </button>
-          </div>
-
-          {certificados.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-              <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">Nenhum certificado encontrado</p>
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-purple-600" />
+                Meus Certificados
+              </CardTitle>
+              <Button
+                onClick={loadCertificados}
+                variant="outline"
+                size="sm"
+              >
+                Atualizar
+              </Button>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {certificados.map((cert) => (
-                <div key={cert.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <Shield className="h-8 w-8 text-blue-600" />
-                      <div>
-                        <p className="font-medium text-gray-900">{cert.nomeRazaoSocial}</p>
-                        <p className="text-sm text-gray-600">{cert.cnpj}</p>
+          </CardHeader>
+          <CardContent>
+            {certificados.length === 0 ? (
+              <div className="text-center py-8">
+                <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">Nenhum certificado encontrado</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {certificados.map((cert) => (
+                  <div key={cert.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <Shield className="h-8 w-8 text-purple-600" />
+                        <div>
+                          <p className="font-medium text-gray-900">{cert.nomeRazaoSocial}</p>
+                          <p className="text-sm text-gray-600">{cert.cnpj}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <div className="text-right">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(cert.status)}`}>
+                            {cert.status}
+                          </span>
+                          <p className="text-sm text-gray-600 mt-1">{formatDate(cert.dataUpload)}</p>
+                        </div>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta ação não pode ser desfeita. Isso removerá permanentemente o certificado de {cert.nomeRazaoSocial}.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(cert.id)}>
+                                Deletar
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(cert.status)}`}>
-                        {cert.status}
-                      </span>
-                      <p className="text-sm text-gray-600 mt-1">{formatDate(cert.dataUpload)}</p>
-                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
-    </div>
+    </Layout>
   );
 }
