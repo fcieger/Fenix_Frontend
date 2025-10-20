@@ -21,7 +21,7 @@ export default function CadastrosAIAssistant({ isOpen, onClose }: CadastrosAIAss
     {
       id: '1',
       type: 'ai',
-      content: 'Olá! Sou seu Assistente de IA de Cadastros. Descreva o cliente, fornecedor ou pessoa que você gostaria de cadastrar e eu vou ajudá-lo a gerar todos os dados necessários.',
+      content: 'Olá! Sou seu Assistente de IA de Cadastros. Descreva o cadastro que você gostaria de criar e eu vou ajudá-lo a gerar todos os dados necessários.',
       timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -347,7 +347,7 @@ export default function CadastrosAIAssistant({ isOpen, onClose }: CadastrosAIAss
     try {
       console.log('🔗 Consultando API CNPJ para CNPJ:', cnpj);
       
-      // Usar a mesma API que funciona na tela de novos clientes
+      // Usar a mesma API que funciona na tela de novos cadastros
       const response = await fetch(`https://open.cnpja.com/office/${cnpj}`, {
         headers: {
           'Content-Type': 'application/json'
@@ -363,7 +363,7 @@ export default function CadastrosAIAssistant({ isOpen, onClose }: CadastrosAIAss
       const data = await response.json();
       console.log('✅ Dados recebidos da API CNPJ:', data);
       
-      // Extrair dados no mesmo formato usado na tela de novos clientes
+      // Extrair dados no mesmo formato usado na tela de novos cadastros
       return {
         nome: data.company.name,
         nomeFantasia: data.alias,
@@ -400,18 +400,25 @@ export default function CadastrosAIAssistant({ isOpen, onClose }: CadastrosAIAss
         nomeRazaoSocial: data.userInput,
         tipoPessoa: data.tipoPessoa as "Pessoa Física" | "Pessoa Jurídica",
         nomeFantasia: extractedData.nomeFantasia || (data.tipoPessoa === 'Pessoa Jurídica' ? data.userInput : ''),
-        cpfCnpj: extractedData.cnpj || extractedData.cpf || '',
-        inscricaoEstadual: extractedData.inscricaoEstadual || '',
-        inscricaoMunicipal: extractedData.inscricaoMunicipal || '',
-        email: extractedData.email || '',
-        telefoneComercial: extractedData.telefone || '',
-        endereco: extractedData.endereco || '',
-        numero: extractedData.numero || '',
-        complemento: '',
-        bairro: extractedData.bairro || '',
-        cidade: extractedData.cidade || '',
-        estado: extractedData.estado || '',
-        cep: extractedData.cep || '',
+        // Corrigir: Separar CPF e CNPJ baseado no tipo de pessoa
+        cpf: data.tipoPessoa === 'Pessoa Física' ? (extractedData.cpf || '') : undefined,
+        cnpj: data.tipoPessoa === 'Pessoa Jurídica' ? (extractedData.cnpj || '') : undefined,
+        ie: extractedData.inscricaoEstadual || undefined,
+        im: extractedData.inscricaoMunicipal || undefined,
+        email: extractedData.email || undefined,
+        telefoneComercial: extractedData.telefone || undefined,
+        // Corrigir: Estruturar endereço como array de objetos
+        enderecos: (extractedData.endereco || extractedData.logradouro) ? [{
+          tipo: 'Comercial',
+          logradouro: extractedData.endereco || extractedData.logradouro || '',
+          numero: extractedData.numero || 'S/N',
+          complemento: extractedData.complemento || '',
+          bairro: extractedData.bairro || '',
+          cidade: extractedData.cidade || '',
+          estado: extractedData.estado || '',
+          cep: extractedData.cep || '',
+          principal: true
+        }] : [],
         observacoes: `Cadastrado via IA: ${data.originalInput}`,
         tiposCliente: data.tiposCliente
       };
