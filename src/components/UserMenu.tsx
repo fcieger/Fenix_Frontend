@@ -31,6 +31,16 @@ export default function UserMenu() {
   const [copied, setCopied] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // Debug: Log dos dados do usuário (apenas quando user muda)
+  useEffect(() => {
+    console.log('👤 UserMenu - Dados do usuário:', {
+      name: user?.name,
+      email: user?.email,
+      id: user?.id,
+      hasUser: !!user
+    });
+  }, [user]);
+
   // Fechar menu ao clicar fora
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -86,16 +96,6 @@ export default function UserMenu() {
           title: 'Meus usuários',
           href: '/empresa/usuarios',
           icon: Users
-        },
-        {
-          title: 'Meus parceiros',
-          href: '/empresa/parceiros',
-          icon: Handshake
-        },
-        {
-          title: 'Falar com meus parceiros',
-          href: '/empresa/contato-parceiros',
-          icon: MessageSquare
         }
       ]
     },
