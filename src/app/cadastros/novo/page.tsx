@@ -180,6 +180,73 @@ export default function NovoClientePage() {
     return () => clearTimeout(timeoutId);
   }, [formData.cnpj, formData.tipoPessoa]);
 
+  // Detectar modo de edição e preencher dados
+  useEffect(() => {
+    const editParam = searchParams.get('edit');
+    const idParam = searchParams.get('id');
+    const dataParam = searchParams.get('data');
+    const returnUrl = searchParams.get('returnUrl');
+    
+    if (editParam === 'true' && idParam && dataParam) {
+      try {
+        const cadastroData = JSON.parse(dataParam);
+        setIsEditMode(true);
+        setEditId(idParam);
+        
+        // Preencher os dados do formulário
+        setFormData({
+          nomeRazaoSocial: cadastroData.nomeRazaoSocial || '',
+          nomeFantasia: cadastroData.nomeFantasia || '',
+          tipoPessoa: cadastroData.tipoPessoa || 'Pessoa Física',
+          cpf: cadastroData.cpf || '',
+          cnpj: cadastroData.cnpj || '',
+          tiposCliente: cadastroData.tiposCliente || {
+            cliente: false,
+            vendedor: false,
+            fornecedor: false,
+            funcionario: false,
+            transportadora: false,
+            prestadorServico: false
+          },
+          email: cadastroData.email || '',
+          contatos: cadastroData.contatos || [{
+            email: cadastroData.email || '',
+            pessoaContato: cadastroData.pessoaContato || '',
+            telefoneComercial: cadastroData.telefoneComercial || '',
+            celular: cadastroData.celular || '',
+            cargo: cadastroData.cargo || '',
+            celularContato: cadastroData.celularContato || '',
+            principal: true
+          }],
+          optanteSimples: cadastroData.optanteSimples || false,
+          orgaoPublico: cadastroData.orgaoPublico || false,
+          ie: cadastroData.ie || '',
+          im: cadastroData.im || '',
+          suframa: cadastroData.suframa || '',
+          enderecos: cadastroData.enderecos || [{
+            tipo: 'Comercial',
+            logradouro: '',
+            numero: '',
+            bairro: '',
+            cidade: '',
+            estado: '',
+            cep: '',
+            principal: true
+          }],
+          observacoes: cadastroData.observacoes || ''
+        });
+        
+        // Atualizar contador de contatos
+        if (cadastroData.contatos && cadastroData.contatos.length > 1) {
+          setContactCount(cadastroData.contatos.length);
+        }
+      } catch (error) {
+        console.error('Erro ao parsear dados de edição:', error);
+        setError('Erro ao carregar dados para edição');
+      }
+    }
+  }, [searchParams]);
+
   // RETURNS CONDICIONAIS DEVEM VIR DEPOIS DE TODOS OS HOOKS
   // Mostrar loading enquanto verifica autenticação
   if (authLoading) {
@@ -364,72 +431,6 @@ export default function NovoClientePage() {
     }
   };
 
-  // Detectar modo de edição e preencher dados
-  useEffect(() => {
-    const editParam = searchParams.get('edit');
-    const idParam = searchParams.get('id');
-    const dataParam = searchParams.get('data');
-    
-    if (editParam === 'true' && idParam && dataParam) {
-      try {
-        const cadastroData = JSON.parse(dataParam);
-        setIsEditMode(true);
-        setEditId(idParam);
-        
-        // Preencher os dados do formulário
-        setFormData({
-          nomeRazaoSocial: cadastroData.nomeRazaoSocial || '',
-          nomeFantasia: cadastroData.nomeFantasia || '',
-          tipoPessoa: cadastroData.tipoPessoa || 'Pessoa Física',
-          cpf: cadastroData.cpf || '',
-          cnpj: cadastroData.cnpj || '',
-          tiposCliente: cadastroData.tiposCliente || {
-            cliente: false,
-            vendedor: false,
-            fornecedor: false,
-            funcionario: false,
-            transportadora: false,
-            prestadorServico: false
-          },
-          email: cadastroData.email || '',
-          contatos: cadastroData.contatos || [{
-            email: cadastroData.email || '',
-            pessoaContato: cadastroData.pessoaContato || '',
-            telefoneComercial: cadastroData.telefoneComercial || '',
-            celular: cadastroData.celular || '',
-            cargo: cadastroData.cargo || '',
-            celularContato: cadastroData.celularContato || '',
-            principal: true
-          }],
-          optanteSimples: cadastroData.optanteSimples || false,
-          orgaoPublico: cadastroData.orgaoPublico || false,
-          ie: cadastroData.ie || '',
-          im: cadastroData.im || '',
-          suframa: cadastroData.suframa || '',
-          enderecos: cadastroData.enderecos || [{
-            tipo: 'Comercial',
-            logradouro: '',
-            numero: '',
-            bairro: '',
-            cidade: '',
-            estado: '',
-            cep: '',
-            principal: true
-          }],
-          observacoes: cadastroData.observacoes || ''
-        });
-        
-        // Atualizar contador de contatos
-        if (cadastroData.contatos && cadastroData.contatos.length > 1) {
-          setContactCount(cadastroData.contatos.length);
-      }
-    } catch (error) {
-        console.error('Erro ao parsear dados de edição:', error);
-        setError('Erro ao carregar dados para edição');
-      }
-    }
-  }, [searchParams]);
-
   // Gerar código automaticamente ao carregar a página
   // (useEffect movido para cima, após todos os hooks)
   // (função searchCnpj movida para cima, antes dos useEffect)
@@ -465,8 +466,17 @@ export default function NovoClientePage() {
 
       await apiService.updateCadastro(editId, updateData, token);
       
-      // Redirecionar de volta para a listagem
-      router.push('/cadastros');
+      // Verificar se foi aberto em nova janela (tem returnUrl)
+      const returnUrl = searchParams.get('returnUrl');
+      if (returnUrl && window.opener) {
+        // Notificar a janela pai que a edição foi concluída
+        window.opener.postMessage({ type: 'cadastroUpdated', id: editId }, window.location.origin);
+        // Fechar a janela
+        window.close();
+      } else {
+        // Redirecionar de volta para a listagem
+        router.push('/cadastros');
+      }
     } catch (error: any) {
       console.error('Erro ao atualizar cadastro:', error);
       setError(error.message || 'Erro ao atualizar cadastro');
@@ -573,12 +583,23 @@ export default function NovoClientePage() {
         cpf: formData.tipoPessoa === 'Pessoa Física' ? formData.cpf.replace(/\D/g, '') : undefined,
         cnpj: formData.tipoPessoa === 'Pessoa Jurídica' ? formData.cnpj.replace(/\D/g, '') : undefined,
         tiposCliente: formData.tiposCliente,
-        email: formData.email?.trim() || undefined,
+        // Manter campos individuais para compatibilidade (primeiro contato)
+        email: formData.contatos[0]?.email?.trim() || formData.email?.trim() || undefined,
         pessoaContato: formData.contatos[0]?.pessoaContato?.trim() || undefined,
         telefoneComercial: formData.contatos[0]?.telefoneComercial?.replace(/\D/g, '') || undefined,
         celular: formData.contatos[0]?.celular?.replace(/\D/g, '') || undefined,
         cargo: formData.contatos[0]?.cargo?.trim() || undefined,
         celularContato: formData.contatos[0]?.celularContato?.replace(/\D/g, '') || undefined,
+        // Enviar contatos múltiplos
+        contatos: formData.contatos.map(contato => ({
+          email: contato.email?.trim() || undefined,
+          pessoaContato: contato.pessoaContato?.trim() || undefined,
+          telefoneComercial: contato.telefoneComercial?.replace(/\D/g, '') || undefined,
+          celular: contato.celular?.replace(/\D/g, '') || undefined,
+          cargo: contato.cargo?.trim() || undefined,
+          celularContato: contato.celularContato?.replace(/\D/g, '') || undefined,
+          principal: contato.principal || false
+        })),
         optanteSimples: formData.optanteSimples,
         orgaoPublico: formData.orgaoPublico,
         ie: formData.ie?.replace(/\D/g, '') || undefined,
@@ -616,6 +637,9 @@ export default function NovoClientePage() {
       console.log('Tipo de tipoPessoa:', typeof cadastroData.tipoPessoa);
       console.log('Valor de nomeRazaoSocial:', cadastroData.nomeRazaoSocial);
       console.log('Valor de tipoPessoa:', cadastroData.tipoPessoa);
+      console.log('=== ENDEREÇOS ===');
+      console.log('Quantidade de endereços:', cadastroData.enderecos?.length || 0);
+      console.log('Endereços:', JSON.stringify(cadastroData.enderecos, null, 2));
       
       await apiService.createCadastro(cadastroData, token);
       
@@ -1237,6 +1261,16 @@ export default function NovoClientePage() {
                               // Consultar CEP automaticamente quando tiver 8 dígitos
                               if (e.target.value.replace(/\D/g, '').length === 8) {
                                 searchCep(formattedCep, index);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              // Prevenir submit do form quando pressionar Enter no CEP
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const cleanCep = endereco.cep.replace(/\D/g, '');
+                                if (cleanCep.length === 8) {
+                                  searchCep(endereco.cep, index);
+                                }
                               }
                             }}
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
