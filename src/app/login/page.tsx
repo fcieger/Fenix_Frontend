@@ -15,8 +15,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    email: 'admin@fenix.com',
-    password: 'password'
+    email: 'teste@ieger.com.br',
+    password: '123456'
   });
   const [success, setSuccess] = useState(false);
 
