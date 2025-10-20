@@ -1,6 +1,6 @@
 import { API_CONFIG } from '@/config/api'
 
-const API_BASE_URL = API_CONFIG.BASE_URL
+const BASE_URL = API_CONFIG.BASE_URL || 'http://localhost:3001'
 
 export interface RegisterData {
   user: {
@@ -41,6 +41,27 @@ export interface ApiError {
   statusCode: number
 }
 
+export interface NaturezaOperacaoData {
+  nome: string
+  cfop: string
+  tipo?: 'compras' | 'vendas' | 'servicos' | 'cupom_fiscal' | 'ecommerce' | 'devolucao_vendas' | 'devolucao_compras' | 'outras_movimentacoes'
+  movimentaEstoque?: boolean
+  habilitado?: boolean
+  considerarOperacaoComoFaturamento?: boolean
+  destacarTotalImpostosIBPT?: boolean
+  gerarContasReceberPagar?: boolean
+  tipoDataContasReceberPagar?: 'data_emissao' | 'data_vencimento'
+  informacoesAdicionaisFisco?: string
+  informacoesAdicionaisContribuinte?: string
+}
+
+export interface NaturezaOperacao extends NaturezaOperacaoData {
+  id: string
+  companyId: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface CadastroData {
   nomeRazaoSocial: string
   nomeFantasia?: string
@@ -61,6 +82,15 @@ export interface CadastroData {
   celular?: string
   cargo?: string
   celularContato?: string
+  contatos?: Array<{
+    email?: string
+    pessoaContato?: string
+    telefoneComercial?: string
+    celular?: string
+    cargo?: string
+    celularContato?: string
+    principal?: boolean
+  }>
   optanteSimples?: boolean
   orgaoPublico?: boolean
   ie?: string
@@ -157,27 +187,118 @@ export interface ProdutoData {
   updatedAt?: string
 }
 
+export interface PrazoPagamentoData {
+  id?: string
+  nome: string
+  descricao?: string
+  tipo: 'dias' | 'parcelas' | 'personalizado'
+  configuracoes: {
+    // Para tipo 'dias'
+    dias?: number
+    percentualEntrada?: number
+    percentualRestante?: number
+    
+    // Para tipo 'parcelas'
+    numeroParcelas?: number
+    intervaloDias?: number
+    percentualEntrada?: number
+    percentualParcelas?: number
+    
+    // Para tipo 'personalizado'
+    parcelas?: Array<{
+      numero: number
+      dias: number
+      percentual: number
+      descricao?: string
+    }>
+  }
+  ativo: boolean
+  padrao: boolean
+  observacoes?: string
+  companyId?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface PrazoPagamento extends PrazoPagamentoData {
+  id: string
+}
+
 class ApiService {
+  private baseURL = BASE_URL;
+
+  private getToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('fenix_token');
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const url = `${API_BASE_URL}${endpoint}`
+    // Sistema mock para funcionar sem backend
+    if (endpoint.includes('/auth/login')) {
+      // Simular delay de rede
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // Dados mock para login
+      return {
+        access_token: 'mock-token-' + Date.now(),
+        user: {
+          id: '1',
+          email: 'admin@fenix.com',
+          name: 'Administrador',
+          phone: '(11) 99999-9999',
+          companies: [{
+            id: '1',
+            name: 'Fenix Consultoria',
+            cnpj: '12.345.678/0001-90'
+          }]
+        }
+      } as T
+    }
+
+    if (endpoint.includes('/auth/register')) {
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      return {
+        access_token: 'mock-token-' + Date.now(),
+        user: {
+          id: '2',
+          email: 'novo@usuario.com',
+          name: 'Novo Usuário',
+          phone: '(11) 88888-8888',
+          companies: [{
+            id: '2',
+            name: 'Nova Empresa',
+            cnpj: '98.765.432/0001-10'
+          }]
+        }
+      } as T
+    }
+
+    // Removido mock para cadastros - agora usa backend real
+
+    // Removido mock para produtos - agora usa backend real
+
+    // Para outras requisições, fazer chamada real para o backend
+    const url = `${BASE_URL}${endpoint}`
+    const token = this.getToken();
     
     const config: RequestInit = {
+      ...options,
       headers: {
         'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
         ...options.headers,
       },
-      ...options,
     }
 
     try {
       const response = await fetch(url, config)
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({
-          message: 'Erro na requisição',
+          message: 'Erro desconhecido',
           statusCode: response.status,
         }))
         throw new Error(errorData.message || `Erro ${response.status}`)
@@ -185,10 +306,8 @@ class ApiService {
 
       return await response.json()
     } catch (error) {
-      if (error instanceof Error) {
-        throw error
-      }
-      throw new Error('Erro de conexão com a API')
+      console.error('Error making request:', error)
+      throw error
     }
   }
 
@@ -200,19 +319,38 @@ class ApiService {
   }
 
   async login(data: LoginData): Promise<AuthResponse> {
-    return this.request<AuthResponse>('/api/auth/login', {
+    // Fazer chamada direta para o backend real
+    const response = await fetch(`${BASE_URL}/api/auth/login`, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(data),
     })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.message || `Erro ${response.status}`)
+    }
+
+    return response.json()
   }
 
   async getProfile(token: string): Promise<AuthResponse['user']> {
-    return this.request<AuthResponse['user']>('/api/users/profile', {
+    // Usar a API do frontend que já está configurada para o backend
+    const response = await fetch('/api/users/profile', {
       method: 'GET',
       headers: {
-        Authorization: `Bearer ${token}`,
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
       },
     })
+
+    if (!response.ok) {
+      throw new Error(`Erro ${response.status}: ${response.statusText}`)
+    }
+
+    return response.json()
   }
 
   async validateToken(token: string): Promise<{ valid: boolean }> {
@@ -238,12 +376,9 @@ class ApiService {
     })
   }
 
-  async getCadastros(token: string): Promise<any[]> {
+  async getCadastros(): Promise<any[]> {
     return this.request<any[]>('/api/cadastros', {
       method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
     })
   }
 
@@ -303,9 +438,12 @@ class ApiService {
     }
   }
 
-  async getProdutos(token: string): Promise<ProdutoData[]> {
+  async getProdutos(): Promise<ProdutoData[]> {
     try {
-      console.log('🔄 API getProdutos iniciado:', { token: token ? 'presente' : 'ausente' });
+      console.log('🔄 API getProdutos iniciado');
+      const token = this.getToken();
+      console.log('🔑 Token para produtos:', token ? 'presente' : 'ausente');
+      
       const result = await this.request<ProdutoData[]>('/api/produtos', {
         method: 'GET',
         headers: {
@@ -369,6 +507,452 @@ class ApiService {
       return result;
     } catch (error) {
       console.error('❌ API deleteProduto erro:', error);
+      throw error;
+    }
+  }
+
+  // ===== EMPRESAS =====
+  async getCompany(id: string, token: string): Promise<any> {
+    try {
+      console.log('🔄 API getCompany iniciado:', { id, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<any>(`/api/companies/${id}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API getCompany sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API getCompany erro:', error);
+      throw error;
+    }
+  }
+
+  async updateCompany(id: string, companyData: any, token: string): Promise<any> {
+    try {
+      console.log('🔄 API updateCompany iniciado:', { id, companyData, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<any>(`/api/companies/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(companyData),
+      });
+      console.log('✅ API updateCompany sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API updateCompany erro:', error);
+      throw error;
+    }
+  }
+
+  // ===== NATUREZA DE OPERAÇÃO =====
+  async getNaturezasOperacao(): Promise<NaturezaOperacao[]> {
+    try {
+      console.log('🔄 API getNaturezasOperacao iniciado');
+      const result = await this.request<NaturezaOperacao[]>(`/api/natureza-operacao`, {
+        method: 'GET',
+      });
+      console.log('✅ API getNaturezasOperacao sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API getNaturezasOperacao erro:', error);
+      throw error;
+    }
+  }
+
+  async createNaturezaOperacao(naturezaData: NaturezaOperacaoData, token: string): Promise<NaturezaOperacao> {
+    try {
+      console.log('🔄 API createNaturezaOperacao iniciado:', { naturezaData, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<NaturezaOperacao>(`/api/natureza-operacao`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(naturezaData),
+      });
+      console.log('✅ API createNaturezaOperacao sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API createNaturezaOperacao erro:', error);
+      throw error;
+    }
+  }
+
+  async updateNaturezaOperacao(id: string, naturezaData: Partial<NaturezaOperacaoData>, token: string): Promise<NaturezaOperacao> {
+    try {
+      console.log('🔄 API updateNaturezaOperacao iniciado:', { id, naturezaData, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<NaturezaOperacao>(`/api/natureza-operacao/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(naturezaData),
+      });
+      console.log('✅ API updateNaturezaOperacao sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API updateNaturezaOperacao erro:', error);
+      throw error;
+    }
+  }
+
+  async deleteNaturezaOperacao(id: string, token: string): Promise<void> {
+    try {
+      console.log('🔄 API deleteNaturezaOperacao iniciado:', { id, token: token ? 'presente' : 'ausente' });
+      await this.request<void>(`/api/natureza-operacao/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API deleteNaturezaOperacao sucesso');
+    } catch (error) {
+      console.error('❌ API deleteNaturezaOperacao erro:', error);
+      throw error;
+    }
+  }
+
+  async getConfiguracaoEstados(naturezaId: string, token: string): Promise<any[]> {
+    try {
+      console.log('🔄 API getConfiguracaoEstados iniciado:', { naturezaId, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<any[]>(`/api/natureza-operacao/${naturezaId}/configuracao-estados`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API getConfiguracaoEstados sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API getConfiguracaoEstados erro:', error);
+      throw error;
+    }
+  }
+
+  async saveConfiguracaoEstados(naturezaId: string, configuracoes: any[], token: string): Promise<void> {
+    try {
+      console.log('🔄 API saveConfiguracaoEstados iniciado:', { naturezaId, configuracoes, token: token ? 'presente' : 'ausente' });
+      console.log('🔗 URL completa:', `${this.baseURL}/api/natureza-operacao/${naturezaId}/configuracao-estados`);
+      console.log('🔑 Token:', token);
+      console.log('📦 Dados sendo enviados:', JSON.stringify(configuracoes, null, 2));
+      console.log('🌐 Base URL:', this.baseURL);
+      
+      // Verificar se o token está válido
+      if (!token) {
+        throw new Error('Token de autenticação não fornecido');
+      }
+      
+      // Verificar se há configurações para salvar
+      if (!configuracoes || configuracoes.length === 0) {
+        throw new Error('Nenhuma configuração fornecida para salvar');
+      }
+      
+      // Testar conectividade com o backend primeiro
+      try {
+        const healthCheck = await fetch(`${this.baseURL}/health`, { method: 'GET' });
+        console.log('🏥 Health check status:', healthCheck.status);
+      } catch (healthError) {
+        console.log('⚠️ Health check falhou, mas continuando...', healthError);
+      }
+      
+      const response = await fetch(`${this.baseURL}/api/natureza-operacao/${naturezaId}/configuracao-estados`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(configuracoes),
+      });
+
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response statusText:', response.statusText);
+      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        // Tentar obter o texto da resposta primeiro
+        const responseText = await response.text();
+        console.log('📡 Response text (raw):', responseText);
+        console.log('📡 Response text length:', responseText.length);
+        
+        let errorData = {};
+        try {
+          if (responseText && responseText.trim()) {
+            errorData = JSON.parse(responseText);
+            console.log('📡 Response parsed as JSON:', errorData);
+          } else {
+            console.log('📡 Response is empty or whitespace only');
+            errorData = { message: `Erro ${response.status}: ${response.statusText}` };
+          }
+        } catch (parseError) {
+          console.log('📡 Erro ao fazer parse do JSON:', parseError);
+          console.log('📡 Tentando parse como texto simples');
+          errorData = { 
+            message: responseText || `Erro ${response.status}: ${response.statusText}`,
+            rawResponse: responseText
+          };
+        }
+        
+        console.error('❌ Erro na resposta:', {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries()),
+          body: errorData,
+          url: `${this.baseURL}/api/natureza-operacao/${naturezaId}/configuracao-estados`
+        });
+        
+        throw new Error(errorData.message || `Erro ${response.status}: ${response.statusText}`);
+      }
+
+      // Verificar se há conteúdo na resposta antes de tentar fazer parse JSON
+      const text = await response.text();
+      if (text) {
+        try {
+          return JSON.parse(text);
+        } catch {
+          // Se não conseguir fazer parse, retorna undefined (resposta vazia é OK)
+          return;
+        }
+      }
+      
+      console.log('✅ API saveConfiguracaoEstados sucesso');
+    } catch (error) {
+      console.error('❌ API saveConfiguracaoEstados erro:', error);
+      throw error;
+    }
+  }
+
+  async getNaturezaOperacao(id: string, token: string): Promise<NaturezaOperacao> {
+    try {
+      console.log('🔄 API getNaturezaOperacao iniciado:', { id, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<NaturezaOperacao>(`/api/natureza-operacao/${id}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API getNaturezaOperacao sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API getNaturezaOperacao erro:', error);
+      throw error;
+    }
+  }
+
+  // ===== PEDIDOS DE VENDA =====
+  async createPedidoVenda(pedidoData: any, token: string): Promise<any> {
+    try {
+      console.log('🔄 API createPedidoVenda iniciado:', { pedidoData, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<any>('/api/pedidos-venda', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(pedidoData),
+      });
+      console.log('✅ API createPedidoVenda sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API createPedidoVenda erro:', error);
+      throw error;
+    }
+  }
+
+  async getPedidosVenda(token: string, page: number = 1, limit: number = 10): Promise<any> {
+    try {
+      console.log('🔄 API getPedidosVenda iniciado:', { token: token ? 'presente' : 'ausente', page, limit });
+      const result = await this.request<any>(`/api/pedidos-venda?page=${page}&limit=${limit}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API getPedidosVenda sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API getPedidosVenda erro:', error);
+      throw error;
+    }
+  }
+
+  async getPedidoVenda(id: string, token: string): Promise<any> {
+    try {
+      console.log('🔄 API getPedidoVenda iniciado:', { id, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<any>(`/api/pedidos-venda/${id}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API getPedidoVenda sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API getPedidoVenda erro:', error);
+      throw error;
+    }
+  }
+
+  // ===== IMPOSTOS =====
+  async calcularImpostos(payload: any, token: string): Promise<any> {
+    try {
+      return await this.request<any>(`/api/impostos/calcular`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      })
+    } catch (error) {
+      console.error('❌ API calcularImpostos erro:', error)
+      throw error
+    }
+  }
+
+  async updatePedidoVenda(id: string, pedidoData: any, token: string): Promise<any> {
+    try {
+      console.log('🔄 API updatePedidoVenda iniciado:', { id, pedidoData, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<any>(`/api/pedidos-venda/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(pedidoData),
+      });
+      console.log('✅ API updatePedidoVenda sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API updatePedidoVenda erro:', error);
+      throw error;
+    }
+  }
+
+  async deletePedidoVenda(id: string, token: string): Promise<void> {
+    try {
+      console.log('🔄 API deletePedidoVenda iniciado:', { id, token: token ? 'presente' : 'ausente' });
+      await this.request<void>(`/api/pedidos-venda/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API deletePedidoVenda sucesso');
+    } catch (error) {
+      console.error('❌ API deletePedidoVenda erro:', error);
+      throw error;
+    }
+  }
+
+  // ===== PRAZOS DE PAGAMENTO =====
+  async getPrazosPagamento(token: string, page: number = 1, limit: number = 10): Promise<any> {
+    try {
+      console.log('🔄 API getPrazosPagamento iniciado:', { token: token ? 'presente' : 'ausente', page, limit });
+      const result = await this.request<any>(`/api/prazos-pagamento?page=${page}&limit=${limit}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API getPrazosPagamento sucesso:', result);
+      console.log('✅ API getPrazosPagamento data:', result?.data);
+      console.log('✅ API getPrazosPagamento total:', result?.total);
+      return result;
+    } catch (error) {
+      console.error('❌ API getPrazosPagamento erro:', error);
+      throw error;
+    }
+  }
+
+  async getPrazoPagamento(id: string, token: string): Promise<any> {
+    try {
+      console.log('🔄 API getPrazoPagamento iniciado:', { id, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<any>(`/api/prazos-pagamento/${id}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API getPrazoPagamento sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API getPrazoPagamento erro:', error);
+      throw error;
+    }
+  }
+
+  async createPrazoPagamento(data: PrazoPagamentoData, token: string): Promise<any> {
+    try {
+      console.log('🔄 API createPrazoPagamento iniciado:', { data, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<any>('/api/prazos-pagamento', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+      console.log('✅ API createPrazoPagamento sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API createPrazoPagamento erro:', error);
+      throw error;
+    }
+  }
+
+  async updatePrazoPagamento(id: string, data: PrazoPagamentoData, token: string): Promise<any> {
+    try {
+      console.log('🔄 API updatePrazoPagamento iniciado:', { id, data, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<any>(`/api/prazos-pagamento/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+      console.log('✅ API updatePrazoPagamento sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API updatePrazoPagamento erro:', error);
+      throw error;
+    }
+  }
+
+  async deletePrazoPagamento(id: string, token: string): Promise<void> {
+    try {
+      console.log('🔄 API deletePrazoPagamento iniciado:', { id, token: token ? 'presente' : 'ausente' });
+      await this.request<void>(`/api/prazos-pagamento/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API deletePrazoPagamento sucesso');
+    } catch (error) {
+      console.error('❌ API deletePrazoPagamento erro:', error);
+      throw error;
+    }
+  }
+
+  async setPrazoPadrao(id: string, token: string): Promise<any> {
+    try {
+      console.log('🔄 API setPrazoPadrao iniciado:', { id, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<any>(`/api/prazos-pagamento/${id}/padrao`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API setPrazoPadrao sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API setPrazoPadrao erro:', error);
       throw error;
     }
   }
