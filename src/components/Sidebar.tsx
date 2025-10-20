@@ -45,7 +45,7 @@ const menuItems = [
       { id: 'natureza-operacao', label: 'Naturezas de Operação', href: '/impostos/natureza-operacao' }
     ]
   },
-  { id: 'v2certificado', label: 'Certificado A1', icon: Shield, href: '/v2certificado' },
+  { id: 'v2certificado', label: 'Certificado Novo', icon: Shield, href: '/v2certificado' },
   { id: 'assistentes', label: 'Assistentes IA', icon: Bot, href: '/assistentes', badge: 'IA' },
   { id: 'relatorios', label: 'Relatórios', icon: BarChart3, href: '/relatorios' },
   { 
