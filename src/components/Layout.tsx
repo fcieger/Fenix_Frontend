@@ -7,8 +7,7 @@ import { useCompanyLogo } from '@/hooks/useCompanyLogo';
 import { usePageContext } from '@/hooks/usePageContext';
 import Sidebar from './Sidebar';
 import UserMenu from './UserMenu';
-import PrazoPagamentoAI from './PrazoPagamentoAI';
-import { Bell, Search, Menu, Building2, Sparkles } from 'lucide-react';
+import { Bell, Search, Menu, Building2 } from 'lucide-react';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -16,7 +15,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { logo } = useCompanyLogo();
   const pageContext = usePageContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isAIOpen, setIsAIOpen] = useState(false);
 
   // Debug: Log da logo (apenas quando logo muda)
   useEffect(() => {
@@ -85,25 +83,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* AI Floating Button */}
-      <button
-        onClick={() => setIsAIOpen(true)}
-        className="fixed bottom-6 right-6 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white p-4 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 z-40 group"
-        title="Gerar Prazo de Pagamento com IA"
-      >
-        <Sparkles className="w-6 h-6 group-hover:scale-110 transition-transform duration-200" />
-      </button>
-
-      {/* AI Modal */}
-      <PrazoPagamentoAI
-        isOpen={isAIOpen}
-        onClose={() => setIsAIOpen(false)}
-        onSuccess={() => {
-          setIsAIOpen(false);
-          // Aqui você pode adicionar uma notificação de sucesso
-        }}
-        context={pageContext}
-      />
     </div>
   );
 }
