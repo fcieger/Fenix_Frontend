@@ -19,7 +19,8 @@ import {
   ChevronDown,
   ChevronRight,
   ShoppingCart,
-  Shield
+  Shield,
+  FileText
 } from 'lucide-react';
 
 // Menu centralizado - ÚNICA FONTE DA VERDADE
@@ -45,7 +46,7 @@ const menuItems = [
       { id: 'natureza-operacao', label: 'Naturezas de Operação', href: '/impostos/natureza-operacao' }
     ]
   },
-  { id: 'v2certificado', label: 'Certificado Novo', icon: Shield, href: '/v2certificado' },
+  { id: 'nfe', label: 'Notas Fiscais', icon: FileText, href: '/nfe' },
   { id: 'assistentes', label: 'Assistentes IA', icon: Bot, href: '/assistentes', badge: 'IA' },
   { id: 'relatorios', label: 'Relatórios', icon: BarChart3, href: '/relatorios' },
   { 
