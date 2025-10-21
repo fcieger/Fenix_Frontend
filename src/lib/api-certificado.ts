@@ -20,9 +20,10 @@ export interface CertificadoInfo {
 
 export class CertificadoService {
   private static getAuthHeaders() {
-    const token = localStorage.getItem('auth-token');
+    const token = localStorage.getItem('fenix_token') || localStorage.getItem('auth-token') || localStorage.getItem('token');
     return {
       'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
     };
   }
 
@@ -32,14 +33,17 @@ export class CertificadoService {
       formData.append('arquivo', data.arquivo);
       formData.append('senha', data.senha);
 
+      const token = localStorage.getItem('fenix_token') || localStorage.getItem('auth-token') || localStorage.getItem('token');
       const response = await fetch(`${BASE_URL}/api/certificado/upload`, {
         method: 'POST',
-        headers: this.getAuthHeaders(),
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
         body: formData,
       });
 
       if (response.status === 401) {
-        throw new Error('API de certificados não implementada ainda');
+        throw new Error('Não autorizado. Faça login novamente.');
       }
 
       if (!response.ok) {
@@ -47,18 +51,34 @@ export class CertificadoService {
         throw new Error(error.message || 'Erro ao enviar certificado');
       }
 
-      return response.json();
+      const result = await response.json();
+      return {
+        id: result.id,
+        nome: result.nome,
+        cnpj: result.cnpj,
+        validade: result.validade,
+        tipo: result.tipo,
+        status: result.status,
+        dataUpload: result.dataUpload,
+        ultimaVerificacao: result.ultimaVerificacao
+      };
     } catch (error) {
-      console.warn('API de certificados não disponível:', error);
-      throw new Error('API de certificados não implementada ainda');
+      console.error('Erro ao fazer upload do certificado:', error);
+      throw error;
     }
   }
 
   static async getCertificado(): Promise<CertificadoInfo | null> {
     try {
+      const token = localStorage.getItem('fenix_token') || localStorage.getItem('auth-token') || localStorage.getItem('token');
+      console.log('🔑 Token para certificado:', token ? token.substring(0, 20) + '...' : 'Nenhum token encontrado');
+      
       const response = await fetch(`${BASE_URL}/api/certificado`, {
         method: 'GET',
-        headers: this.getAuthHeaders(),
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       });
 
       if (response.status === 404) {
@@ -66,8 +86,7 @@ export class CertificadoService {
       }
 
       if (response.status === 401) {
-        // API não implementada ainda, retorna null silenciosamente
-        return null;
+        throw new Error('Não autorizado. Faça login novamente.');
       }
 
       if (!response.ok) {
@@ -75,10 +94,25 @@ export class CertificadoService {
         throw new Error(error.message || 'Erro ao carregar certificado');
       }
 
-      return response.json();
+      // Verificar se a resposta está vazia
+      const contentLength = response.headers.get('content-length');
+      if (contentLength === '0' || !response.body) {
+        return null;
+      }
+
+      const result = await response.json();
+      return {
+        id: result.id,
+        nome: result.nome,
+        cnpj: result.cnpj,
+        validade: result.validade,
+        tipo: result.tipo,
+        status: result.status,
+        dataUpload: result.dataUpload,
+        ultimaVerificacao: result.ultimaVerificacao
+      };
     } catch (error) {
-      // Se der erro de rede ou API não existir, retorna null silenciosamente
-      console.warn('API de certificados não disponível:', error);
+      console.error('Erro ao carregar certificado:', error);
       return null;
     }
   }
@@ -91,7 +125,11 @@ export class CertificadoService {
       });
 
       if (response.status === 401) {
-        throw new Error('API de certificados não implementada ainda');
+        throw new Error('Não autorizado. Faça login novamente.');
+      }
+
+      if (response.status === 404) {
+        throw new Error('Certificado não encontrado');
       }
 
       if (!response.ok) {
@@ -99,8 +137,8 @@ export class CertificadoService {
         throw new Error(error.message || 'Erro ao remover certificado');
       }
     } catch (error) {
-      console.warn('API de certificados não disponível:', error);
-      throw new Error('API de certificados não implementada ainda');
+      console.error('Erro ao remover certificado:', error);
+      throw error;
     }
   }
 
@@ -112,7 +150,11 @@ export class CertificadoService {
       });
 
       if (response.status === 401) {
-        throw new Error('API de certificados não implementada ainda');
+        throw new Error('Não autorizado. Faça login novamente.');
+      }
+
+      if (response.status === 404) {
+        throw new Error('Certificado não encontrado');
       }
 
       if (!response.ok) {
@@ -120,10 +162,20 @@ export class CertificadoService {
         throw new Error(error.message || 'Erro ao verificar certificado');
       }
 
-      return response.json();
+      const result = await response.json();
+      return {
+        id: result.id,
+        nome: result.nome,
+        cnpj: result.cnpj,
+        validade: result.validade,
+        tipo: result.tipo,
+        status: result.status,
+        dataUpload: result.dataUpload,
+        ultimaVerificacao: result.ultimaVerificacao
+      };
     } catch (error) {
-      console.warn('API de certificados não disponível:', error);
-      throw new Error('API de certificados não implementada ainda');
+      console.error('Erro ao verificar certificado:', error);
+      throw error;
     }
   }
 }
