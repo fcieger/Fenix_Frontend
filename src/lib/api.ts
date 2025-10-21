@@ -62,6 +62,53 @@ export interface NaturezaOperacao extends NaturezaOperacaoData {
   updatedAt: string
 }
 
+export interface ConfiguracaoNfeData {
+  descricaoModelo: string
+  tipoModelo: 'nfe-produto' | 'nfse-servico' | 'nf-entrada' | 'nfce-consumidor' | 'mdfe'
+  modelo: string
+  serie: string
+  numeroAtual: number
+  ambiente: 'producao' | 'homologacao'
+  rpsNaturezaOperacao?: string
+  rpsRegimeTributario?: string
+  rpsRegimeEspecialTributacao?: string
+  rpsNumeroLoteAtual?: number
+  rpsSerieLoteAtual?: number
+  rpsLoginPrefeitura?: string
+  rpsSenhaPrefeitura?: string
+  rpsAliquotaISS?: number
+  rpsEnviarNotificacaoCliente?: boolean
+  rpsReceberNotificacao?: boolean
+  rpsEmailNotificacao?: string
+  nfceIdToken?: string
+  nfceCscToken?: string
+}
+
+export interface ConfiguracaoNfeResponse {
+  id: string
+  companyId: string
+  descricaoModelo: string
+  tipoModelo: string
+  modelo: string
+  serie: string
+  numeroAtual: number
+  ambiente: string
+  ativo: boolean
+  rpsNaturezaOperacao?: string
+  rpsRegimeTributario?: string
+  rpsRegimeEspecialTributacao?: string
+  rpsNumeroLoteAtual: number
+  rpsSerieLoteAtual: number
+  rpsLoginPrefeitura?: string
+  rpsAliquotaISS: string
+  rpsEnviarNotificacaoCliente: boolean
+  rpsReceberNotificacao: boolean
+  rpsEmailNotificacao?: string
+  nfceIdToken?: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface CadastroData {
   nomeRazaoSocial: string
   nomeFantasia?: string
@@ -201,7 +248,6 @@ export interface PrazoPagamentoData {
     // Para tipo 'parcelas'
     numeroParcelas?: number
     intervaloDias?: number
-    percentualEntrada?: number
     percentualParcelas?: number
     
     // Para tipo 'personalizado'
@@ -705,7 +751,7 @@ class ApiService {
           url: `${this.baseURL}/api/natureza-operacao/${naturezaId}/configuracao-estados`
         });
         
-        throw new Error(errorData.message || `Erro ${response.status}: ${response.statusText}`);
+        throw new Error((errorData as any).message || `Erro ${response.status}: ${response.statusText}`);
       }
 
       // Verificar se há conteúdo na resposta antes de tentar fazer parse JSON
@@ -953,6 +999,247 @@ class ApiService {
       return result;
     } catch (error) {
       console.error('❌ API setPrazoPadrao erro:', error);
+      throw error;
+    }
+  }
+
+  // Configurações NFe
+  async getConfiguracoesNfe(token: string, apenasAtivas: boolean = false): Promise<ConfiguracaoNfeResponse[]> {
+    try {
+      console.log('🔄 API getConfiguracoesNfe iniciado:', { token: token ? 'presente' : 'ausente', apenasAtivas });
+      const result = await this.request<ConfiguracaoNfeResponse[]>(`/api/configuracao-nfe?apenasAtivas=${apenasAtivas}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API getConfiguracoesNfe sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API getConfiguracoesNfe erro:', error);
+      throw error;
+    }
+  }
+
+  async createConfiguracaoNfe(data: ConfiguracaoNfeData, token: string): Promise<ConfiguracaoNfeResponse> {
+    try {
+      console.log('🔄 API createConfiguracaoNfe iniciado:', { data, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<ConfiguracaoNfeResponse>('/api/configuracao-nfe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+      console.log('✅ API createConfiguracaoNfe sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API createConfiguracaoNfe erro:', error);
+      throw error;
+    }
+  }
+
+  async getConfiguracaoNfe(id: string, token: string): Promise<ConfiguracaoNfeResponse> {
+    try {
+      console.log('🔄 API getConfiguracaoNfe iniciado:', { id, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<ConfiguracaoNfeResponse>(`/api/configuracao-nfe/${id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API getConfiguracaoNfe sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API getConfiguracaoNfe erro:', error);
+      throw error;
+    }
+  }
+
+  async updateConfiguracaoNfe(id: string, data: Partial<ConfiguracaoNfeData>, token: string): Promise<ConfiguracaoNfeResponse> {
+    try {
+      console.log('🔄 API updateConfiguracaoNfe iniciado:', { id, data, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<ConfiguracaoNfeResponse>(`/api/configuracao-nfe/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+      console.log('✅ API updateConfiguracaoNfe sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API updateConfiguracaoNfe erro:', error);
+      throw error;
+    }
+  }
+
+  async deleteConfiguracaoNfe(id: string, token: string): Promise<void> {
+    try {
+      console.log('🔄 API deleteConfiguracaoNfe iniciado:', { id, token: token ? 'presente' : 'ausente' });
+      await this.request<void>(`/api/configuracao-nfe/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API deleteConfiguracaoNfe sucesso');
+    } catch (error) {
+      console.error('❌ API deleteConfiguracaoNfe erro:', error);
+      throw error;
+    }
+  }
+
+  async getProximoNumeroNfe(configuracaoId: string, token: string): Promise<{ numeroAtual: number }> {
+    try {
+      console.log('🔄 API getProximoNumeroNfe iniciado:', { configuracaoId, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<{ numeroAtual: number }>(`/api/configuracao-nfe/${configuracaoId}/incrementar`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API getProximoNumeroNfe sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API getProximoNumeroNfe erro:', error);
+      throw error;
+    }
+  }
+
+  // ===== MÉTODOS NFE =====
+
+  /**
+   * Buscar todas as NFes
+   */
+  async getNfes(token: string, status?: string): Promise<any[]> {
+    try {
+      console.log('🔄 API getNfes iniciado:', { token: token ? 'presente' : 'ausente', status });
+      const url = status ? `/api/nfe?status=${status}` : '/api/nfe';
+      const result = await this.request<any[]>(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API getNfes sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API getNfes erro:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Buscar NFe por ID
+   */
+  async getNfe(id: string, token: string): Promise<any> {
+    try {
+      console.log('🔄 API getNfe iniciado:', { id, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<any>(`/api/nfe/${id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API getNfe sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API getNfe erro:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Criar nova NFe
+   */
+  async createNfe(data: any, token: string): Promise<any> {
+    try {
+      console.log('🔄 API createNfe iniciado:', { data, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<any>('/api/nfe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+      console.log('✅ API createNfe sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API createNfe erro:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Atualizar NFe
+   */
+  async updateNfe(id: string, data: any, token: string): Promise<any> {
+    try {
+      console.log('🔄 API updateNfe iniciado:', { id, data, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<any>(`/api/nfe/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+      console.log('✅ API updateNfe sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API updateNfe erro:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Excluir NFe
+   */
+  async deleteNfe(id: string, token: string): Promise<void> {
+    try {
+      console.log('🔄 API deleteNfe iniciado:', { id, token: token ? 'presente' : 'ausente' });
+      await this.request<void>(`/api/nfe/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API deleteNfe sucesso');
+    } catch (error) {
+      console.error('❌ API deleteNfe erro:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Calcular impostos da NFe
+   */
+  async calcularImpostosNfe(data: any, token: string): Promise<any> {
+    try {
+      console.log('🔄 API calcularImpostosNfe iniciado:', { data, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<any>('/api/nfe/calcular-impostos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+      console.log('✅ API calcularImpostosNfe sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API calcularImpostosNfe erro:', error);
       throw error;
     }
   }

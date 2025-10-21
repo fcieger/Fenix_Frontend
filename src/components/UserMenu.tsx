@@ -104,13 +104,8 @@ export default function UserMenu() {
       icon: Settings,
       children: [
         {
-          title: 'Certificado Novo',
-          href: '/v2certificado',
-          icon: Shield
-        },
-        {
           title: 'Configurações de notas fiscais',
-          href: '/configuracoes/notas-fiscais',
+          href: '/configuracoes/nfe',
           icon: FileSpreadsheet
         },
         {
