@@ -54,17 +54,17 @@ export class CertificadoUtils {
    * Valida a senha do certificado (simulação)
    */
   static validatePassword(password: string): { isValid: boolean; error?: string } {
-    if (!password || password.length < 4) {
+    if (!password || password.trim().length === 0) {
       return {
         isValid: false,
-        error: 'Senha deve ter pelo menos 4 caracteres'
+        error: 'Digite a senha do certificado'
       };
     }
 
-    if (password.length > 50) {
+    if (password.length < 1) {
       return {
         isValid: false,
-        error: 'Senha muito longa. Máximo 50 caracteres'
+        error: 'Senha não pode estar vazia'
       };
     }
 
@@ -116,12 +116,11 @@ export class CertificadoUtils {
    */
   private static async simulateCertificadoValidation(): Promise<void> {
     // Simular tempo de processamento
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Simular chance de erro (5% de chance)
-    if (Math.random() < 0.05) {
-      throw new Error('Certificado inválido ou senha incorreta');
-    }
+    // Sempre validar com sucesso para teste
+    // Em produção, aqui seria feita a validação real do certificado
+    return;
   }
 
   /**
