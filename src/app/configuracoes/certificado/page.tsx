@@ -35,6 +35,7 @@ export default function CertificadoDigitalPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // Redirecionar se não autenticado
   useEffect(() => {
@@ -43,12 +44,12 @@ export default function CertificadoDigitalPage() {
     }
   }, [isAuthenticated, isLoading, router]);
 
-  // Carregar certificado existente (comentado para evitar erro 401)
-  // useEffect(() => {
-  //   if (isAuthenticated && user) {
-  //     loadCertificado();
-  //   }
-  // }, [isAuthenticated, user]);
+  // Carregar certificado existente
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      loadCertificado();
+    }
+  }, [isAuthenticated, user]);
 
   const loadCertificado = async () => {
     try {
@@ -56,24 +57,52 @@ export default function CertificadoDigitalPage() {
       setCertificado(response);
     } catch (error) {
       console.error('Erro ao carregar certificado:', error);
-      // Simulação para demonstração quando a API não estiver implementada
-      const mockCertificado: CertificadoInfo = {
-        id: '1',
-        nome: 'EMPRESA EXEMPLO LTDA',
-        cnpj: '12.345.678/0001-90',
-        validade: '2025-12-31',
-        tipo: 'A1',
-        status: 'ativo',
-        dataUpload: '2024-10-19',
-        ultimaVerificacao: '2024-10-19'
-      };
-      setCertificado(mockCertificado);
+      setCertificado(null);
     }
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    // Primeiro: validar apenas o arquivo (sem senha)
+    setIsUploading(true);
+    setError('');
+
+    try {
+      console.log('🔍 Debug - Iniciando validação do arquivo:', { 
+        fileName: file.name, 
+        fileSize: file.size
+      });
+
+      // Validar apenas o arquivo (sem senha)
+      const fileValidation = CertificadoUtils.validateFile(file);
+      
+      if (!fileValidation.isValid) {
+        console.log('❌ Debug - Validação do arquivo falhou:', fileValidation.error);
+        setError(fileValidation.error || 'Erro ao validar arquivo');
+        return;
+      }
+
+      console.log('✅ Debug - Arquivo válido, aguardando senha...');
+      
+      // Armazenar o arquivo para validação posterior
+      setSelectedFile(file);
+      setSuccess('Arquivo selecionado com sucesso! Agora digite a senha do certificado.');
+      
+    } catch (error: any) {
+      console.error('❌ Debug - Erro ao validar arquivo:', error);
+      setError(error.message || 'Erro ao validar arquivo. Verifique o console para mais detalhes.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handlePasswordSubmit = async () => {
+    if (!selectedFile) {
+      setError('Selecione um arquivo primeiro');
+      return;
+    }
 
     if (!password) {
       setError('Digite a senha do certificado');
@@ -84,40 +113,51 @@ export default function CertificadoDigitalPage() {
     setError('');
 
     try {
+      console.log('🔍 Debug - Iniciando validação completa:', { 
+        fileName: selectedFile.name, 
+        fileSize: selectedFile.size, 
+        passwordLength: password.length 
+      });
+
       // Validar e processar certificado no frontend
-      const validationResult = await CertificadoUtils.validateCertificado(file, password);
+      const validationResult = await CertificadoUtils.validateCertificado(selectedFile, password);
+      
+      console.log('🔍 Debug - Resultado da validação:', validationResult);
       
       if (!validationResult.isValid) {
+        console.log('❌ Debug - Validação falhou:', validationResult.error);
         setError(validationResult.error || 'Erro ao validar certificado');
         return;
       }
 
       if (!validationResult.info) {
+        console.log('❌ Debug - Sem informações do certificado');
         setError('Erro ao extrair informações do certificado');
         return;
       }
 
-      // Tentar fazer upload para o backend
-      try {
-        const response = await CertificadoService.uploadCertificado({
-          arquivo: file,
-          senha: password
-        });
-        setCertificado(response);
-        setSuccess('Certificado validado e enviado com sucesso!');
-      } catch (error) {
-        // Se a API não estiver implementada, usar dados processados localmente
-        console.warn('API não implementada, usando dados processados localmente:', error);
-        setCertificado(validationResult.info);
-        setSuccess('Certificado validado com sucesso! (Dados processados localmente)');
-      }
+      console.log('✅ Debug - Validação bem-sucedida, tentando upload...');
+
+      // Fazer upload para o backend
+      const response = await CertificadoService.uploadCertificado({
+        arquivo: selectedFile,
+        senha: password
+      });
+      setCertificado(response);
+      setSuccess('Certificado validado e enviado com sucesso!');
+      console.log('✅ Debug - Upload para backend bem-sucedido');
       
+      // Limpar estado
       setPassword('');
+      setSelectedFile(null);
       
-      // Limpar input
-      event.target.value = '';
-    } catch (error) {
-      setError('Erro ao processar certificado. Tente novamente.');
+      // Limpar input de arquivo
+      const fileInput = document.getElementById('certificado-file') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+      
+    } catch (error: any) {
+      console.error('❌ Debug - Erro geral:', error);
+      setError(error.message || 'Erro inesperado ao processar certificado. Verifique o console para mais detalhes.');
     } finally {
       setIsUploading(false);
     }
@@ -133,9 +173,8 @@ export default function CertificadoDigitalPage() {
       setCertificado(null);
       setSuccess('Certificado removido com sucesso!');
     } catch (error) {
-      console.warn('API não implementada, simulando remoção:', error);
-      setCertificado(null);
-      setSuccess('Certificado removido com sucesso! (Simulação - API não implementada)');
+      console.error('Erro ao remover certificado:', error);
+      setError('Erro ao remover certificado. Tente novamente.');
     }
   };
 
@@ -145,8 +184,8 @@ export default function CertificadoDigitalPage() {
       setCertificado(response);
       setSuccess('Certificado verificado com sucesso!');
     } catch (error) {
-      console.warn('API não implementada, simulando verificação:', error);
-      setSuccess('Certificado verificado com sucesso! (Simulação - API não implementada)');
+      console.error('Erro ao verificar certificado:', error);
+      setError('Erro ao verificar certificado. Tente novamente.');
     }
   };
 
@@ -237,10 +276,19 @@ export default function CertificadoDigitalPage() {
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center space-x-3 shadow-sm"
+            className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between shadow-sm"
           >
-            <AlertCircle className="h-5 w-5 text-red-600" />
-            <span className="text-red-800 font-medium">{error}</span>
+            <div className="flex items-center space-x-3">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              <span className="text-red-800 font-medium">{error}</span>
+            </div>
+            <button
+              onClick={() => setError('')}
+              className="text-red-400 hover:text-red-600 transition-colors p-1"
+              title="Fechar erro"
+            >
+              <AlertCircle className="h-4 w-4" />
+            </button>
           </motion.div>
         )}
 
@@ -305,56 +353,145 @@ export default function CertificadoDigitalPage() {
                 </div>
               </div>
 
-              {/* Password Field */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Senha do Certificado
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 pr-12 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                    placeholder="Digite a senha do certificado"
-                    disabled={isUploading}
-                  />
-                  <button
-                    type="button"
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center hover:bg-gray-50 rounded-r-xl transition-colors duration-200"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-                    )}
-                  </button>
+              {/* Arquivo Selecionado */}
+              {selectedFile && (
+                <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                      <FileText className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-green-900">{selectedFile.name}</p>
+                      <p className="text-xs text-green-600">
+                        {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedFile(null);
+                        setPassword('');
+                        const fileInput = document.getElementById('certificado-file') as HTMLInputElement;
+                        if (fileInput) fileInput.value = '';
+                      }}
+                      className="text-green-400 hover:text-green-600 transition-colors p-1"
+                      title="Remover arquivo"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
-                <div className="mt-2 flex items-center space-x-2 text-xs text-gray-500">
-                  <Lock className="h-3 w-3" />
-                  <span>Senha será enviada de forma segura</span>
+              )}
+
+              {/* Password Field - Só aparece se arquivo foi selecionado */}
+              {selectedFile && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Senha do Certificado
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full px-4 pr-12 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                      placeholder="Digite a senha do certificado"
+                      disabled={isUploading}
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center hover:bg-gray-50 rounded-r-xl transition-colors duration-200"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                      )}
+                    </button>
+                  </div>
+                  <div className="mt-2 flex items-center space-x-2 text-xs text-gray-500">
+                    <Lock className="h-3 w-3" />
+                    <span>Senha será enviada de forma segura</span>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Upload Button */}
-              <button
-                onClick={() => document.getElementById('certificado-file')?.click()}
-                disabled={isUploading || !password}
-                className="w-full bg-gradient-to-r from-purple-600 to-violet-600 text-white py-3 px-6 rounded-xl hover:from-purple-700 hover:to-violet-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
-              >
-                {isUploading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Validando certificado...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Validar e Enviar Certificado
-                  </>
-                )}
-              </button>
+              {!selectedFile ? (
+                <button
+                  onClick={() => document.getElementById('certificado-file')?.click()}
+                  disabled={isUploading}
+                  className="w-full bg-gradient-to-r from-purple-600 to-violet-600 text-white py-3 px-6 rounded-xl hover:from-purple-700 hover:to-violet-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
+                >
+                  {isUploading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Validando arquivo...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Selecionar Arquivo
+                    </>
+                  )}
+                </button>
+              ) : (
+                <button
+                  onClick={handlePasswordSubmit}
+                  disabled={isUploading || !password}
+                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 px-6 rounded-xl hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
+                >
+                  {isUploading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Validando certificado...
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="h-4 w-4 mr-2" />
+                      Validar e Enviar Certificado
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* Debug Buttons - Remover em produção */}
+              <div className="space-y-2">
+                <button
+                  onClick={() => {
+                    setError('');
+                    setSuccess('Teste: Simulando certificado válido');
+                    setCertificado({
+                      id: 'test-' + Date.now(),
+                      nome: 'EMPRESA TESTE LTDA',
+                      cnpj: '12.345.678/0001-90',
+                      validade: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                      tipo: 'A1',
+                      status: 'ativo',
+                      dataUpload: new Date().toISOString().split('T')[0],
+                      ultimaVerificacao: new Date().toISOString().split('T')[0]
+                    });
+                  }}
+                  className="w-full bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 text-sm font-medium transition-all duration-200"
+                >
+                  🧪 Teste (Simular Certificado)
+                </button>
+                
+                <button
+                  onClick={() => {
+                    setError('');
+                    setSuccess('');
+                    setCertificado(null);
+                    setPassword('');
+                    setSelectedFile(null);
+                    const fileInput = document.getElementById('certificado-file') as HTMLInputElement;
+                    if (fileInput) fileInput.value = '';
+                  }}
+                  className="w-full bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 text-sm font-medium transition-all duration-200"
+                >
+                  🗑️ Limpar Tudo
+                </button>
+              </div>
             </div>
           </motion.div>
 
