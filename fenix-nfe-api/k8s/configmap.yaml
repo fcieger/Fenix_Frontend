@@ -1,0 +1,382 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fenix-nfe-config
+  namespace: fenix-nfe
+  labels:
+    app: nfe-api
+    component: config
+data:
+  # Spring Profiles
+  SPRING_PROFILES_ACTIVE: "production"
+  
+  # Server Configuration
+  SERVER_PORT: "8080"
+  MANAGEMENT_SERVER_PORT: "8081"
+  
+  # Database Configuration
+  DB_HOST: "postgres-service"
+  DB_PORT: "5432"
+  DB_NAME: "fenix_nfe"
+  DB_USERNAME: "fenix_user"
+  
+  # RabbitMQ Configuration
+  RABBITMQ_HOST: "rabbitmq-service"
+  RABBITMQ_PORT: "5672"
+  RABBITMQ_USERNAME: "fenix_user"
+  RABBITMQ_VHOST: "/"
+  
+  # Redis Configuration
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  
+  # Logging Configuration
+  LOGGING_LEVEL_ROOT: "INFO"
+  LOGGING_LEVEL_BR_COM_FENIX_NFE: "DEBUG"
+  LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: "WARN"
+  LOGGING_LEVEL_ORG_HIBERNATE: "WARN"
+  
+  # Management Endpoints
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,metrics,prometheus"
+  MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: "always"
+  MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
+  
+  # SEFAZ Configuration
+  SEFAZ_TIMEOUT: "30000"
+  SEFAZ_RETRY_ATTEMPTS: "3"
+  SEFAZ_RETRY_DELAY: "5000"
+  
+  # Performance Configuration
+  THREAD_POOL_CORE_SIZE: "10"
+  THREAD_POOL_MAX_SIZE: "50"
+  THREAD_POOL_QUEUE_CAPACITY: "1000"
+  
+  # Cache Configuration
+  CACHE_TTL_SECONDS: "3600"
+  CACHE_MAX_SIZE: "10000"
+  CACHE_EVICTION_POLICY: "LRU"
+  
+  # Queue Configuration
+  QUEUE_RETRY_ATTEMPTS: "3"
+  QUEUE_RETRY_DELAY: "5000"
+  QUEUE_DLQ_TTL: "86400000"
+  QUEUE_PRIORITY_ENABLED: "true"
+  
+  # Certificate Configuration
+  CERTIFICATE_PATH: "/app/certificates"
+  CERTIFICATE_BACKUP_ENABLED: "true"
+  CERTIFICATE_BACKUP_SCHEDULE: "0 1 * * *"
+  
+  # CORS Configuration
+  CORS_ALLOWED_ORIGINS: "https://*.fenix.com.br,https://*.icertus.com.br"
+  CORS_ALLOWED_METHODS: "GET,POST,PUT,DELETE,OPTIONS,PATCH"
+  CORS_ALLOWED_HEADERS: "*"
+  CORS_ALLOW_CREDENTIALS: "true"
+  
+  # Backup Configuration
+  BACKUP_ENABLED: "true"
+  BACKUP_SCHEDULE: "0 2 * * *"
+  BACKUP_RETENTION_DAYS: "30"
+  BACKUP_PATH: "/app/backups"
+  
+  # Alert Configuration
+  ALERT_EMAIL_ENABLED: "true"
+  ALERT_EMAIL_FROM: "alerts@fenix.com.br"
+  ALERT_EMAIL_TO: "admin@fenix.com.br,devops@fenix.com.br"
+  ALERT_SLACK_ENABLED: "false"
+  
+  # Development/Debug
+  DEBUG_ENABLED: "false"
+  PROFILING_ENABLED: "false"
+  TRACE_ENABLED: "false"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fenix-nfe-logging
+  namespace: fenix-nfe
+  labels:
+    app: nfe-api
+    component: logging
+data:
+  logback-spring.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <configuration>
+      <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+      
+      <springProfile name="!production">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+          <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+          </encoder>
+        </appender>
+        <root level="INFO">
+          <appender-ref ref="CONSOLE"/>
+        </root>
+      </springProfile>
+      
+      <springProfile name="production">
+        <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+          <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+              <timestamp/>
+              <logLevel/>
+              <loggerName/>
+              <message/>
+              <mdc/>
+              <stackTrace/>
+            </providers>
+          </encoder>
+        </appender>
+        
+        <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+          <file>/app/logs/nfe-api.log</file>
+          <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>/app/logs/nfe-api.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+          </rollingPolicy>
+          <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+              <timestamp/>
+              <logLevel/>
+              <loggerName/>
+              <message/>
+              <mdc/>
+              <stackTrace/>
+            </providers>
+          </encoder>
+        </appender>
+        
+        <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+          <file>/app/logs/nfe-api-error.log</file>
+          <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+          </filter>
+          <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>/app/logs/nfe-api-error.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>90</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+          </rollingPolicy>
+          <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+              <timestamp/>
+              <logLevel/>
+              <loggerName/>
+              <message/>
+              <mdc/>
+              <stackTrace/>
+            </providers>
+          </encoder>
+        </appender>
+        
+        <root level="INFO">
+          <appender-ref ref="JSON"/>
+          <appender-ref ref="FILE"/>
+          <appender-ref ref="ERROR_FILE"/>
+        </root>
+      </springProfile>
+    </configuration>
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fenix-nfe-nginx
+  namespace: fenix-nfe
+  labels:
+    app: nfe-api
+    component: nginx
+data:
+  nginx.conf: |
+    user nginx;
+    worker_processes auto;
+    error_log /var/log/nginx/error.log warn;
+    pid /var/run/nginx.pid;
+
+    events {
+        worker_connections 1024;
+        use epoll;
+        multi_accept on;
+    }
+
+    http {
+        include /etc/nginx/mime.types;
+        default_type application/octet-stream;
+
+        # Logging
+        log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                        '$status $body_bytes_sent "$http_referer" '
+                        '"$http_user_agent" "$http_x_forwarded_for" '
+                        'rt=$request_time uct="$upstream_connect_time" '
+                        'uht="$upstream_header_time" urt="$upstream_response_time"';
+
+        access_log /var/log/nginx/access.log main;
+
+        # Performance
+        sendfile on;
+        tcp_nopush on;
+        tcp_nodelay on;
+        keepalive_timeout 65;
+        types_hash_max_size 2048;
+        client_max_body_size 10M;
+
+        # Gzip compression
+        gzip on;
+        gzip_vary on;
+        gzip_min_length 1024;
+        gzip_proxied any;
+        gzip_comp_level 6;
+        gzip_types
+            text/plain
+            text/css
+            text/xml
+            text/javascript
+            application/json
+            application/javascript
+            application/xml+rss
+            application/atom+xml
+            image/svg+xml;
+
+        # Rate limiting
+        limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+        limit_req_zone $binary_remote_addr zone=login:10m rate=5r/m;
+
+        # Upstream para NFe API
+        upstream nfe_api {
+            least_conn;
+            server fenix-nfe-api:8080 max_fails=3 fail_timeout=30s;
+            keepalive 32;
+        }
+
+        # Upstream para Management API
+        upstream nfe_management {
+            least_conn;
+            server fenix-nfe-api:8081 max_fails=3 fail_timeout=30s;
+            keepalive 16;
+        }
+
+        # Servidor principal
+        server {
+            listen 80;
+            server_name _;
+            
+            # Security headers
+            add_header X-Frame-Options DENY;
+            add_header X-Content-Type-Options nosniff;
+            add_header X-XSS-Protection "1; mode=block";
+            add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+            add_header Referrer-Policy "strict-origin-when-cross-origin";
+
+            # Health check endpoint
+            location /health {
+                access_log off;
+                proxy_pass http://nfe_management/actuator/health;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            # Management endpoints (restrito)
+            location /actuator/ {
+                # Restringir acesso por IP
+                allow 10.0.0.0/8;
+                allow 172.16.0.0/12;
+                allow 192.168.0.0/16;
+                deny all;
+
+                proxy_pass http://nfe_management;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                
+                # Timeouts
+                proxy_connect_timeout 5s;
+                proxy_send_timeout 10s;
+                proxy_read_timeout 10s;
+            }
+
+            # API endpoints
+            location /api/ {
+                # Rate limiting
+                limit_req zone=api burst=20 nodelay;
+                
+                # CORS headers
+                add_header Access-Control-Allow-Origin $http_origin always;
+                add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH" always;
+                add_header Access-Control-Allow-Headers "Authorization, Content-Type, X-Company-CNPJ, X-Request-ID" always;
+                add_header Access-Control-Allow-Credentials true always;
+
+                # Handle preflight requests
+                if ($request_method = 'OPTIONS') {
+                    add_header Access-Control-Allow-Origin $http_origin;
+                    add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH";
+                    add_header Access-Control-Allow-Headers "Authorization, Content-Type, X-Company-CNPJ, X-Request-ID";
+                    add_header Access-Control-Allow-Credentials true;
+                    add_header Content-Length 0;
+                    add_header Content-Type text/plain;
+                    return 204;
+                }
+
+                proxy_pass http://nfe_api;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                
+                # Timeouts
+                proxy_connect_timeout 5s;
+                proxy_send_timeout 30s;
+                proxy_read_timeout 30s;
+                
+                # Buffer settings
+                proxy_buffering on;
+                proxy_buffer_size 4k;
+                proxy_buffers 8 4k;
+            }
+
+            # Login endpoint com rate limiting mais restritivo
+            location /api/auth/login {
+                limit_req zone=login burst=5 nodelay;
+                
+                proxy_pass http://nfe_api;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            # Swagger UI (restrito)
+            location /swagger-ui/ {
+                # Restringir acesso por IP
+                allow 10.0.0.0/8;
+                allow 172.16.0.0/12;
+                allow 192.168.0.0/16;
+                deny all;
+
+                proxy_pass http://nfe_api;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            # Root redirect
+            location / {
+                return 301 /swagger-ui/;
+            }
+
+            # Error pages
+            error_page 404 /404.html;
+            error_page 500 502 503 504 /50x.html;
+            
+            location = /50x.html {
+                root /usr/share/nginx/html;
+            }
+        }
+    }

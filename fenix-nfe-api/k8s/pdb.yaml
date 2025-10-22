@@ -1,0 +1,27 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: fenix-nfe-api-pdb
+  namespace: fenix-nfe
+  labels:
+    app: nfe-api
+    version: v1.0.0
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: nfe-api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: fenix-nfe-api-pdb-max
+  namespace: fenix-nfe
+  labels:
+    app: nfe-api
+    version: v1.0.0
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: nfe-api
