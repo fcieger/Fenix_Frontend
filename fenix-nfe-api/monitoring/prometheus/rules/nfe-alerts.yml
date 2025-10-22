@@ -1,0 +1,147 @@
+groups:
+  - name: nfe-api-alerts
+    rules:
+      # High Error Rate
+      - alert: HighErrorRate
+        expr: rate(http_server_requests_seconds_count{application="fenix-nfe-api",status=~"5.."}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+          service: nfe-api
+        annotations:
+          summary: "High error rate detected"
+          description: "NFe API error rate is {{ $value }} errors per second for the last 5 minutes"
+
+      # High Response Time
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{application="fenix-nfe-api"}[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: nfe-api
+        annotations:
+          summary: "High response time detected"
+          description: "NFe API 95th percentile response time is {{ $value }}s"
+
+      # High Memory Usage
+      - alert: HighMemoryUsage
+        expr: (jvm_memory_used_bytes{application="fenix-nfe-api",area="heap"} / jvm_memory_max_bytes{application="fenix-nfe-api",area="heap"}) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: nfe-api
+        annotations:
+          summary: "High memory usage detected"
+          description: "NFe API heap memory usage is {{ $value | humanizePercentage }}"
+
+      # High CPU Usage
+      - alert: HighCPUUsage
+        expr: system_cpu_usage{application="fenix-nfe-api"} > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: nfe-api
+        annotations:
+          summary: "High CPU usage detected"
+          description: "NFe API CPU usage is {{ $value | humanizePercentage }}"
+
+      # Queue Backlog
+      - alert: QueueBacklog
+        expr: rabbitmq_queue_messages{queue=~"nfe.*"} > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: nfe-api
+        annotations:
+          summary: "Queue backlog detected"
+          description: "Queue {{ $labels.queue }} has {{ $value }} messages"
+
+      # Dead Letter Queue
+      - alert: DeadLetterQueue
+        expr: rabbitmq_queue_messages{queue="nfe.dlq"} > 0
+        for: 1m
+        labels:
+          severity: critical
+          service: nfe-api
+        annotations:
+          summary: "Messages in Dead Letter Queue"
+          description: "Dead Letter Queue has {{ $value }} messages"
+
+      # Low Success Rate
+      - alert: LowSuccessRate
+        expr: rate(nfe_authorized_total[5m]) / rate(nfe_emitted_total[5m]) < 0.8
+        for: 10m
+        labels:
+          severity: warning
+          service: nfe-api
+        annotations:
+          summary: "Low NFe success rate"
+          description: "NFe authorization success rate is {{ $value | humanizePercentage }}"
+
+      # SEFAZ Errors
+      - alert: SefazErrors
+        expr: rate(nfe_errors_total{error_type="sefaz"}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          service: nfe-api
+        annotations:
+          summary: "High SEFAZ error rate"
+          description: "SEFAZ error rate is {{ $value }} errors per second"
+
+      # Certificate Errors
+      - alert: CertificateErrors
+        expr: rate(nfe_errors_total{error_type="certificate"}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: nfe-api
+        annotations:
+          summary: "High certificate error rate"
+          description: "Certificate error rate is {{ $value }} errors per second"
+
+      # Application Down
+      - alert: ApplicationDown
+        expr: up{job="fenix-nfe-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: nfe-api
+        annotations:
+          summary: "NFe API is down"
+          description: "NFe API has been down for more than 1 minute"
+
+  - name: infrastructure-alerts
+    rules:
+      # RabbitMQ Down
+      - alert: RabbitMQDown
+        expr: up{job="rabbitmq"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: rabbitmq
+        annotations:
+          summary: "RabbitMQ is down"
+          description: "RabbitMQ has been down for more than 1 minute"
+
+      # PostgreSQL Down
+      - alert: PostgreSQLDown
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: postgres
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL has been down for more than 1 minute"
+
+      # Redis Down
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: warning
+          service: redis
+        annotations:
+          summary: "Redis is down"
+          description: "Redis has been down for more than 1 minute"
