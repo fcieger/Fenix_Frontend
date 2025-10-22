@@ -1,0 +1,138 @@
+# Configuração para ambiente de desenvolvimento
+spring:
+  profiles:
+    active: dev
+
+# Configuração do banco de dados - Desenvolvimento
+  datasource:
+    url: jdbc:postgresql://localhost:5432/nfe_dev
+    username: nfe_user
+    password: nfe_password
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+# Configuração JPA - Desenvolvimento
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          time_zone: UTC
+
+# Configuração Flyway - Desenvolvimento
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    validate-on-migrate: true
+
+# Configuração Redis - Desenvolvimento
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: 
+      database: 0
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+
+# Configuração RabbitMQ - Desenvolvimento
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+    connection-timeout: 30000
+    listener:
+      simple:
+        concurrency: 2
+        max-concurrency: 5
+        prefetch: 1
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1000
+          multiplier: 2
+          max-interval: 10000
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+      receive-timeout: 30000
+      reply-timeout: 30000
+
+# Configuração de logging - Desenvolvimento
+logging:
+  level:
+    br.com.fenix.nfe: DEBUG
+    org.springframework.amqp: DEBUG
+    org.springframework.cache: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+# Configuração NFe - Desenvolvimento
+nfe:
+  ambiente:
+    padrao: HOMOLOGACAO
+  estado:
+    padrao: PR
+  certificado:
+    caminho-padrao: /certificados/
+  fila:
+    concurrency:
+      emitir-alta: 2
+      emitir-normal: 3
+      emitir-baixa: 1
+      consulta: 5
+      eventos: 2
+      inutilizacao: 1
+    timeout:
+      emitir: 120000
+      consulta: 30000
+      evento: 60000
+      inutilizacao: 180000
+    retry:
+      max-tentativas: 3
+      delay-inicial: 5000
+      multiplicador: 2
+      max-delay: 60000
+    dlq:
+      enabled: true
+      ttl: 3600000  # 1 hora
+  cache:
+    ttl:
+      configuracao: 1800  # 30 minutos
+      status: 300         # 5 minutos
+      consulta: 600       # 10 minutos
+    keys:
+      configuracao: "nfe:config:{empresa_id}"
+      status: "nfe:status:{chave_acesso}"
+      consulta: "nfe:consulta:{chave_acesso}"
+
+# Configuração de segurança - Desenvolvimento
+security:
+  jwt:
+    secret: dev-secret-key-change-in-production
+    expiration: 86400000  # 24 horas
+  cors:
+    allowed-origins: "*"
+    allowed-methods: "GET,POST,PUT,DELETE,OPTIONS"
+    allowed-headers: "*"
+    allow-credentials: true
+
+
