@@ -1,0 +1,568 @@
+# Default values for fenix-nfe-api
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Global configuration
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+
+# Image configuration
+image:
+  repository: fenix-nfe-api
+  tag: "latest"
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+# Image pull secrets
+imagePullSecrets: []
+
+# Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 1001
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8080
+  managementPort: 8081
+  annotations: {}
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "5"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://*.fenix.com.br,https://*.icertus.com.br"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET,POST,PUT,DELETE,OPTIONS,PATCH"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "Authorization,Content-Type,X-Company-CNPJ,X-Request-ID"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: nfe-api.fenix.com.br
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: fenix-nfe-tls
+      hosts:
+        - nfe-api.fenix.com.br
+        - api.fenix.com.br
+
+# Management ingress configuration
+managementIngress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+    nginx.ingress.kubernetes.io/rate-limit: "10"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: management.fenix.com.br
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: fenix-nfe-management-tls
+      hosts:
+        - management.fenix.com.br
+
+# Load balancer configuration
+loadBalancer:
+  enabled: false
+  type: LoadBalancer
+  port: 80
+  httpsPort: 443
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "tcp"
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+    service.beta.kubernetes.io/aws-load-balancer-connection-draining-enabled: "true"
+    service.beta.kubernetes.io/aws-load-balancer-connection-draining-timeout: "60"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-healthy-threshold: "2"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-unhealthy-threshold: "2"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-timeout: "5"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-interval: "30"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-path: "/actuator/health"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-port: "8081"
+  loadBalancerSourceRanges:
+    - 0.0.0.0/0
+
+# Resource configuration
+resources:
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+  requests:
+    cpu: 250m
+    memory: 512Mi
+
+# Autoscaling configuration
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+      - type: Pods
+        value: 2
+        periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+      - type: Pods
+        value: 4
+        periodSeconds: 60
+      selectPolicy: Max
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+  maxUnavailable: 1
+
+# Network policy
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: fenix-nfe
+        - podSelector:
+            matchLabels:
+              app: nginx-ingress
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8081
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: fenix-nfe
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 5672
+        - protocol: TCP
+          port: 6379
+        - protocol: TCP
+          port: 9090
+        - protocol: TCP
+          port: 3000
+        - protocol: TCP
+          port: 9093
+        - protocol: TCP
+          port: 16668
+        - protocol: TCP
+          port: 9200
+        - protocol: TCP
+          port: 5601
+
+# Pod security policy
+podSecurityPolicy:
+  enabled: true
+  annotations:
+    seccomp.security.alpha.kubernetes.io/allowedProfileNames: 'docker/default'
+    seccomp.security.alpha.kubernetes.io/defaultProfileName: 'docker/default'
+    apparmor.security.beta.kubernetes.io/allowedProfileNames: 'runtime/default'
+    apparmor.security.beta.kubernetes.io/defaultProfileName: 'runtime/default'
+
+# Health checks
+healthCheck:
+  livenessProbe:
+    httpGet:
+      path: /actuator/health/liveness
+      port: 8081
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /actuator/health/readiness
+      port: 8081
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  startupProbe:
+    httpGet:
+      path: /actuator/health
+      port: 8081
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+
+# Environment variables
+env:
+  SPRING_PROFILES_ACTIVE: "production"
+  SERVER_PORT: "8080"
+  MANAGEMENT_SERVER_PORT: "8081"
+  LOGGING_LEVEL_ROOT: "INFO"
+  LOGGING_LEVEL_BR_COM_FENIX_NFE: "DEBUG"
+  LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: "WARN"
+  LOGGING_LEVEL_ORG_HIBERNATE: "WARN"
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,metrics,prometheus"
+  MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: "always"
+  MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
+  SEFAZ_TIMEOUT: "30000"
+  SEFAZ_RETRY_ATTEMPTS: "3"
+  SEFAZ_RETRY_DELAY: "5000"
+  THREAD_POOL_CORE_SIZE: "10"
+  THREAD_POOL_MAX_SIZE: "50"
+  THREAD_POOL_QUEUE_CAPACITY: "1000"
+  CACHE_TTL_SECONDS: "3600"
+  CACHE_MAX_SIZE: "10000"
+  CACHE_EVICTION_POLICY: "LRU"
+  QUEUE_RETRY_ATTEMPTS: "3"
+  QUEUE_RETRY_DELAY: "5000"
+  QUEUE_DLQ_TTL: "86400000"
+  QUEUE_PRIORITY_ENABLED: "true"
+  CERTIFICATE_PATH: "/app/certificates"
+  CERTIFICATE_BACKUP_ENABLED: "true"
+  CERTIFICATE_BACKUP_SCHEDULE: "0 1 * * *"
+  CORS_ALLOWED_ORIGINS: "https://*.fenix.com.br,https://*.icertus.com.br"
+  CORS_ALLOWED_METHODS: "GET,POST,PUT,DELETE,OPTIONS,PATCH"
+  CORS_ALLOWED_HEADERS: "*"
+  CORS_ALLOW_CREDENTIALS: "true"
+  BACKUP_ENABLED: "true"
+  BACKUP_SCHEDULE: "0 2 * * *"
+  BACKUP_RETENTION_DAYS: "30"
+  BACKUP_PATH: "/app/backups"
+  ALERT_EMAIL_ENABLED: "true"
+  ALERT_EMAIL_FROM: "alerts@fenix.com.br"
+  ALERT_EMAIL_TO: "admin@fenix.com.br,devops@fenix.com.br"
+  ALERT_SLACK_ENABLED: "false"
+  DEBUG_ENABLED: "false"
+  PROFILING_ENABLED: "false"
+  TRACE_ENABLED: "false"
+
+# Secrets configuration
+secrets:
+  create: true
+  data:
+    db-password: "postgres_password"
+    rabbitmq-password: "rabbitmq_password"
+    redis-password: "redis_password"
+    jwt-secret: "your_very_long_and_secure_jwt_secret_key_here_minimum_256_bits"
+    jwt-refresh-secret: "your_very_long_and_secure_jwt_refresh_secret_key_here_minimum_256_bits"
+    sefaz-certificate: ""
+    sefaz-certificate-password: "sefaz_certificate_password"
+    email-password: "email_password"
+    slack-webhook-url: "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+    backup-encryption-key: "backup_encryption_key_1234567890"
+    monitoring-token: "monitoring_token_1234567890"
+
+# ConfigMap configuration
+configMap:
+  create: true
+  data:
+    SPRING_PROFILES_ACTIVE: "production"
+    SERVER_PORT: "8080"
+    MANAGEMENT_SERVER_PORT: "8081"
+    DB_HOST: "postgres-service"
+    DB_PORT: "5432"
+    DB_NAME: "fenix_nfe"
+    DB_USERNAME: "fenix_user"
+    RABBITMQ_HOST: "rabbitmq-service"
+    RABBITMQ_PORT: "5672"
+    RABBITMQ_USERNAME: "fenix_user"
+    RABBITMQ_VHOST: "/"
+    REDIS_HOST: "redis-service"
+    REDIS_PORT: "6379"
+    LOGGING_LEVEL_ROOT: "INFO"
+    LOGGING_LEVEL_BR_COM_FENIX_NFE: "DEBUG"
+    LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: "WARN"
+    LOGGING_LEVEL_ORG_HIBERNATE: "WARN"
+    MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,metrics,prometheus"
+    MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: "always"
+    MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
+    SEFAZ_TIMEOUT: "30000"
+    SEFAZ_RETRY_ATTEMPTS: "3"
+    SEFAZ_RETRY_DELAY: "5000"
+    THREAD_POOL_CORE_SIZE: "10"
+    THREAD_POOL_MAX_SIZE: "50"
+    THREAD_POOL_QUEUE_CAPACITY: "1000"
+    CACHE_TTL_SECONDS: "3600"
+    CACHE_MAX_SIZE: "10000"
+    CACHE_EVICTION_POLICY: "LRU"
+    QUEUE_RETRY_ATTEMPTS: "3"
+    QUEUE_RETRY_DELAY: "5000"
+    QUEUE_DLQ_TTL: "86400000"
+    QUEUE_PRIORITY_ENABLED: "true"
+    CERTIFICATE_PATH: "/app/certificates"
+    CERTIFICATE_BACKUP_ENABLED: "true"
+    CERTIFICATE_BACKUP_SCHEDULE: "0 1 * * *"
+    CORS_ALLOWED_ORIGINS: "https://*.fenix.com.br,https://*.icertus.com.br"
+    CORS_ALLOWED_METHODS: "GET,POST,PUT,DELETE,OPTIONS,PATCH"
+    CORS_ALLOWED_HEADERS: "*"
+    CORS_ALLOW_CREDENTIALS: "true"
+    BACKUP_ENABLED: "true"
+    BACKUP_SCHEDULE: "0 2 * * *"
+    BACKUP_RETENTION_DAYS: "30"
+    BACKUP_PATH: "/app/backups"
+    ALERT_EMAIL_ENABLED: "true"
+    ALERT_EMAIL_FROM: "alerts@fenix.com.br"
+    ALERT_EMAIL_TO: "admin@fenix.com.br,devops@fenix.com.br"
+    ALERT_SLACK_ENABLED: "false"
+    DEBUG_ENABLED: "false"
+    PROFILING_ENABLED: "false"
+    TRACE_ENABLED: "false"
+
+# Persistent volumes
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  annotations: {}
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app
+            operator: In
+            values:
+            - nfe-api
+        topologyKey: kubernetes.io/hostname
+
+# Topology spread constraints
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: DoNotSchedule
+    labelSelector:
+      matchLabels:
+        app: nfe-api
+
+# Pod annotations
+podAnnotations: {}
+
+# Pod labels
+podLabels: {}
+
+# Service annotations
+serviceAnnotations: {}
+
+# Service labels
+serviceLabels: {}
+
+# Deployment annotations
+deploymentAnnotations: {}
+
+# Deployment labels
+deploymentLabels: {}
+
+# Replica count
+replicaCount: 3
+
+# Update strategy
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 1
+
+# Termination grace period
+terminationGracePeriodSeconds: 30
+
+# Dependencies
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: "postgres_password"
+    username: "fenix_user"
+    password: "postgres_password"
+    database: "fenix_nfe"
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+
+rabbitmq:
+  enabled: true
+  auth:
+    username: "fenix_user"
+    password: "rabbitmq_password"
+  persistence:
+    enabled: true
+    size: 10Gi
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+
+redis:
+  enabled: true
+  auth:
+    enabled: true
+    password: "redis_password"
+  master:
+    persistence:
+      enabled: true
+      size: 5Gi
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+
+# Monitoring configuration
+monitoring:
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
+  grafana:
+    enabled: true
+    adminPassword: "admin"
+    persistence:
+      enabled: true
+      size: 5Gi
+  alertmanager:
+    enabled: true
+    config:
+      global:
+        smtp_smarthost: "smtp.gmail.com:587"
+        smtp_from: "alerts@fenix.com.br"
+      route:
+        group_by: ["alertname"]
+        group_wait: "10s"
+        group_interval: "10s"
+        repeat_interval: "1h"
+        receiver: "web.hook"
+      receivers:
+      - name: "web.hook"
+        email_configs:
+        - to: "admin@fenix.com.br"
+          subject: "Fenix NFe API Alert"
+          body: "Alert: {{ .GroupLabels.alertname }}\nDescription: {{ .Annotations.description }}"
+  jaeger:
+    enabled: true
+    collector:
+      resources:
+        limits:
+          cpu: 500m
+          memory: 1Gi
+        requests:
+          cpu: 100m
+          memory: 256Mi
+  elasticsearch:
+    enabled: true
+    master:
+      replicas: 1
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 2Gi
+        requests:
+          cpu: 250m
+          memory: 512Mi
+      persistence:
+        enabled: true
+        size: 10Gi
+  kibana:
+    enabled: true
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 100m
+          memory: 256Mi
+
+# Ingress configuration
+ingress:
+  nginx:
+    enabled: true
+    controller:
+      service:
+        type: LoadBalancer
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 1Gi
+        requests:
+          cpu: 250m
+          memory: 256Mi
+  certManager:
+    enabled: true
+    installCRDs: true
+    global:
+      leaderElection:
+        namespace: kube-system
