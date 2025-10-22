@@ -1,0 +1,93 @@
+# Multi-stage build para otimização
+FROM eclipse-temurin:17-jdk-alpine AS builder
+
+# Metadados da imagem
+LABEL maintainer="Fenix Team <dev@fenix.com.br>"
+LABEL description="Fenix NFe API - Production Ready"
+LABEL version="1.0.0"
+
+# Instalar dependências necessárias
+RUN apk add --no-cache \
+    curl \
+    tzdata \
+    && rm -rf /var/cache/apk/*
+
+# Configurar timezone
+ENV TZ=America/Sao_Paulo
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# Criar usuário não-root para segurança
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
+
+# Definir diretório de trabalho
+WORKDIR /app
+
+# Copiar arquivos de build
+COPY --chown=appuser:appgroup pom.xml .
+COPY --chown=appuser:appgroup src ./src
+
+# Build da aplicação
+RUN ./mvnw clean package -DskipTests -Pproduction
+
+# Stage de produção
+FROM eclipse-temurin:17-jre-alpine AS production
+
+# Metadados da imagem
+LABEL maintainer="Fenix Team <dev@fenix.com.br>"
+LABEL description="Fenix NFe API - Production Ready"
+LABEL version="1.0.0"
+
+# Instalar dependências necessárias
+RUN apk add --no-cache \
+    curl \
+    tzdata \
+    dumb-init \
+    && rm -rf /var/cache/apk/*
+
+# Configurar timezone
+ENV TZ=America/Sao_Paulo
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# Criar usuário não-root para segurança
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
+
+# Criar diretórios necessários
+RUN mkdir -p /app/logs /app/certificates /app/temp && \
+    chown -R appuser:appgroup /app
+
+# Definir diretório de trabalho
+WORKDIR /app
+
+# Copiar JAR da aplicação
+COPY --from=builder --chown=appuser:appgroup /app/target/fenix-nfe-api-*.jar app.jar
+
+# Copiar scripts de inicialização
+COPY --chown=appuser:appgroup docker/scripts/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Configurar variáveis de ambiente
+ENV JAVA_OPTS="-Xms512m -Xmx2048m -XX:+UseG1GC -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+ENV SPRING_PROFILES_ACTIVE=production
+ENV SERVER_PORT=8080
+ENV MANAGEMENT_SERVER_PORT=8081
+
+# Expor portas
+EXPOSE 8080 8081
+
+# Configurar health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8081/actuator/health || exit 1
+
+# Configurar volumes
+VOLUME ["/app/logs", "/app/certificates", "/app/temp"]
+
+# Mudar para usuário não-root
+USER appuser
+
+# Usar dumb-init para gerenciar processos
+ENTRYPOINT ["dumb-init", "--"]
+
+# Comando de inicialização
+CMD ["/entrypoint.sh"]
