@@ -90,8 +90,18 @@ export default function NFePage() {
   const [tipoModeloFilter, setTipoModeloFilter] = useState('ALL');
   const [dataInicialEnabled, setDataInicialEnabled] = useState(true);
   const [dataFinalEnabled, setDataFinalEnabled] = useState(true);
-  const [dataInicial, setDataInicial] = useState('2025-10-06');
-  const [dataFinal, setDataFinal] = useState('2025-10-20');
+  
+  // Configurar datas padrão: hoje como data final, ontem como data inicial
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  const formatDateForInput = (date: Date) => {
+    return date.toISOString().split('T')[0];
+  };
+  
+  const [dataInicial, setDataInicial] = useState(formatDateForInput(yesterday));
+  const [dataFinal, setDataFinal] = useState(formatDateForInput(today));
   const [selectAll, setSelectAll] = useState(false);
   const [selectedNFes, setSelectedNFes] = useState<string[]>([]);
   
@@ -606,37 +616,104 @@ export default function NFePage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-3 border border-gray-200">
                 <Checkbox 
                   id="dataInicial" 
                   checked={dataInicialEnabled}
-                  onCheckedChange={setDataInicialEnabled}
+                  onCheckedChange={(checked) => {
+                    setDataInicialEnabled(checked as boolean);
+                    if (checked) {
+                      // Se habilitar, definir como ontem se não estiver definida
+                      if (!dataInicial) {
+                        const yesterday = new Date();
+                        yesterday.setDate(yesterday.getDate() - 1);
+                        setDataInicial(formatDateForInput(yesterday));
+                      }
+                    }
+                  }}
+                  className=""
                 />
-                <Label htmlFor="dataInicial" className="text-sm">Data Inicial</Label>
+                <Label htmlFor="dataInicial" className="text-sm font-medium text-gray-700 cursor-pointer">
+                  Data Inicial
+                </Label>
                 <Input
                   type="date"
                   value={dataInicial}
-                  onChange={(e) => setDataInicial(e.target.value)}
+                  onChange={(e) => {
+                    setDataInicial(e.target.value);
+                    // Validar se data inicial não é maior que data final
+                    if (dataFinal && e.target.value > dataFinal) {
+                      setDataFinal(e.target.value);
+                    }
+                  }}
                   disabled={!dataInicialEnabled}
-                  className="w-32"
+                  className={`w-36 transition-all duration-200 ${
+                    dataInicialEnabled 
+                      ? 'bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500' 
+                      : 'bg-gray-100 border-gray-200 text-gray-400'
+                  }`}
+                  max={dataFinal || undefined}
                 />
               </div>
-              <div className="flex items-center gap-2">
+              
+              <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-3 border border-gray-200">
                 <Checkbox 
                   id="dataFinal" 
                   checked={dataFinalEnabled}
-                  onCheckedChange={setDataFinalEnabled}
+                  onCheckedChange={(checked) => {
+                    setDataFinalEnabled(checked as boolean);
+                    if (checked) {
+                      // Se habilitar, definir como hoje se não estiver definida
+                      if (!dataFinal) {
+                        setDataFinal(formatDateForInput(new Date()));
+                      }
+                    }
+                  }}
+                  className=""
                 />
-                <Label htmlFor="dataFinal" className="text-sm">Data Final</Label>
+                <Label htmlFor="dataFinal" className="text-sm font-medium text-gray-700 cursor-pointer">
+                  Data Final
+                </Label>
                 <Input
                   type="date"
                   value={dataFinal}
-                  onChange={(e) => setDataFinal(e.target.value)}
+                  onChange={(e) => {
+                    setDataFinal(e.target.value);
+                    // Validar se data final não é menor que data inicial
+                    if (dataInicial && e.target.value < dataInicial) {
+                      setDataInicial(e.target.value);
+                    }
+                  }}
                   disabled={!dataFinalEnabled}
-                  className="w-32"
+                  className={`w-36 transition-all duration-200 ${
+                    dataFinalEnabled 
+                      ? 'bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500' 
+                      : 'bg-gray-100 border-gray-200 text-gray-400'
+                  }`}
+                  min={dataInicial || undefined}
+                  max={formatDateForInput(new Date())}
                 />
               </div>
+              
+              {/* Botão para resetar filtros de data */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const today = new Date();
+                  const yesterday = new Date(today);
+                  yesterday.setDate(yesterday.getDate() - 1);
+                  setDataInicial(formatDateForInput(yesterday));
+                  setDataFinal(formatDateForInput(today));
+                  setDataInicialEnabled(true);
+                  setDataFinalEnabled(true);
+                }}
+                className="text-gray-600 hover:text-gray-800 border-gray-300 hover:border-gray-400"
+              >
+                <RefreshCw className="w-4 h-4 mr-1" />
+                Resetar
+              </Button>
             </div>
           </div>
         </motion.div>
