@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Package, Sparkles, X, FileText, DollarSign, Settings, ArrowLeft, Check, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { apiService, ProdutoData } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
 import ProdutosAIAssistant from '@/components/ProdutosAIAssistant';
 
-export default function NovoProdutoPage() {
+// Componente que usa useSearchParams
+function NovoProdutoForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, activeCompanyId } = useAuth();
@@ -1204,10 +1205,26 @@ export default function NovoProdutoPage() {
       </div>
 
       {/* IA Assistant Modal */}
-      <ProdutosAIAssistant 
-        isOpen={isAIAssistantOpen} 
+      <ProdutosAIAssistant
+        isOpen={isAIAssistantOpen}
         onClose={() => setIsAIAssistantOpen(false)} 
       />
     </div>
+  );
+}
+
+// Componente principal com Suspense
+export default function NovoProdutoPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando...</p>
+        </div>
+      </div>
+    }>
+      <NovoProdutoForm />
+    </Suspense>
   );
 }
