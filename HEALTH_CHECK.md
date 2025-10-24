@@ -17,7 +17,7 @@
 ```
 
 ### Frontend (Next.js)
-- **URL**: `https://fenix-frontend.vercel.app/api/health-check`
+- **URL**: `https://fenixfrontendatual.vercel.app/api/health-check`
 - **Método**: GET
 - **Resposta**:
 ```json
@@ -37,7 +37,7 @@
 ```bash
 NODE_ENV=production
 PORT=3001
-CORS_ORIGIN=https://fenix-frontend.vercel.app,http://localhost:3004
+CORS_ORIGIN=https://fenixfrontendatual.vercel.app,http://localhost:3004
 DATABASE_URL=postgresql://...
 REDIS_URL=redis://...
 ```
@@ -52,7 +52,7 @@ NEXT_PUBLIC_API_URL=https://fenix-backend.vercel.app
 ### 1. Configuração no Vercel
 1. Acesse o painel da Vercel
 2. Vá em **Settings → Monitoring**
-3. Adicione o endpoint: `https://fenix-frontend.vercel.app/api/health-check`
+3. Adicione o endpoint: `https://fenixfrontendatual.vercel.app/api/health-check`
 4. Configure para verificar a cada 5 minutos
 5. Alerte em caso de status diferente de 200
 
@@ -62,11 +62,11 @@ NEXT_PUBLIC_API_URL=https://fenix-backend.vercel.app
 curl -I https://fenix-backend.vercel.app/api/health
 
 # Testar frontend
-curl -I https://fenix-frontend.vercel.app/api/health-check
+curl -I https://fenixfrontendatual.vercel.app/api/health-check
 
 # Testar CORS
 curl -I -X OPTIONS https://fenix-backend.vercel.app/api/health \
-  -H "Origin: https://fenix-frontend.vercel.app" \
+  -H "Origin: https://fenixfrontendatual.vercel.app" \
   -H "Access-Control-Request-Method: GET"
 ```
 
