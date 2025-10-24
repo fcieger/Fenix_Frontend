@@ -1,6 +1,7 @@
 import { API_CONFIG } from '@/config/api'
 
-const BASE_URL = API_CONFIG.BASE_URL || 'http://localhost:3001'
+const BASE_URL = API_CONFIG.BASE_URL || 'http://localhost:3000'
+
 
 export interface RegisterData {
   user: {
@@ -10,8 +11,17 @@ export interface RegisterData {
     password: string
   }
   company: {
-    cnpj: string
     name: string
+    cnpj: string
+    founded?: string
+    nature?: string
+    size?: string
+    status?: string
+    address?: any
+    mainActivity?: string
+    phones?: any[]
+    emails?: any[]
+    members?: any[]
   }
 }
 
@@ -32,6 +42,7 @@ export interface AuthResponse {
       cnpj: string
       name: string
       token: string
+      simplesNacional?: boolean
     }>
   }
 }
@@ -282,45 +293,9 @@ class ApiService {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    // Sistema mock para funcionar sem backend
-    if (endpoint.includes('/auth/login')) {
-      // Simular delay de rede
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Dados mock para login
-      return {
-        access_token: 'mock-token-' + Date.now(),
-        user: {
-          id: '1',
-          email: 'admin@fenix.com',
-          name: 'Administrador',
-          phone: '(11) 99999-9999',
-          companies: [{
-            id: '1',
-            name: 'Fenix Consultoria',
-            cnpj: '12.345.678/0001-90'
-          }]
-        }
-      } as T
-    }
+    // Sistema mock removido - agora usa API real para todas as requisições
 
-    if (endpoint.includes('/auth/register')) {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      return {
-        access_token: 'mock-token-' + Date.now(),
-        user: {
-          id: '2',
-          email: 'novo@usuario.com',
-          name: 'Novo Usuário',
-          phone: '(11) 88888-8888',
-          companies: [{
-            id: '2',
-            name: 'Nova Empresa',
-            cnpj: '98.765.432/0001-10'
-          }]
-        }
-      } as T
-    }
+    // Sistema mock removido para register - agora usa API real
 
     // Removido mock para cadastros - agora usa backend real
 
@@ -358,15 +333,8 @@ class ApiService {
   }
 
   async register(data: RegisterData): Promise<AuthResponse> {
-    return this.request<AuthResponse>('/api/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
-  }
-
-  async login(data: LoginData): Promise<AuthResponse> {
-    // Fazer chamada direta para o backend real
-    const response = await fetch(`${BASE_URL}/api/auth/login`, {
+    // Fazer chamada direta para o backend real (igual ao login)
+    const response = await fetch(`${BASE_URL}/api/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -379,24 +347,51 @@ class ApiService {
       throw new Error(errorData.message || `Erro ${response.status}`)
     }
 
-    return response.json()
+    return await response.json()
+  }
+
+  async login(data: LoginData): Promise<AuthResponse> {
+    try {
+      const response = await fetch(`${BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || `Erro ${response.status}`)
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('Erro no login:', error);
+      throw error;
+    }
   }
 
   async getProfile(token: string): Promise<AuthResponse['user']> {
-    // Usar a API do frontend que já está configurada para o backend
-    const response = await fetch('/api/users/profile', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    })
+    try {
+      const response = await fetch(`${BASE_URL}/api/auth/profile`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
 
-    if (!response.ok) {
-      throw new Error(`Erro ${response.status}: ${response.statusText}`)
+      if (!response.ok) {
+        throw new Error(`Erro ${response.status}: ${response.statusText}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Erro ao obter perfil:', error);
+      throw error;
     }
-
-    return response.json()
   }
 
   async validateToken(token: string): Promise<{ valid: boolean }> {
@@ -429,7 +424,7 @@ class ApiService {
   }
 
   async getCadastro(id: string, token: string): Promise<any> {
-    return this.request<any>(`/api/cadastros/${id}`, {
+    return this.request<any>(`/api/companies/${id}`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -438,7 +433,7 @@ class ApiService {
   }
 
   async updateCadastro(id: string, data: Partial<CadastroData>, token: string): Promise<any> {
-    return this.request<any>(`/api/cadastros/${id}`, {
+    return this.request<any>(`/api/companies/${id}`, {
       method: 'PATCH',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -1240,6 +1235,174 @@ class ApiService {
       return result;
     } catch (error) {
       console.error('❌ API calcularImpostosNfe erro:', error);
+      throw error;
+    }
+  }
+
+  // ===== MÉTODOS DE INTEGRAÇÃO NFe =====
+
+  /**
+   * Emitir NFe via API externa
+   */
+  async emitirNFeExterna(nfeId: string, token: string): Promise<any> {
+    try {
+      console.log('🔄 API emitirNFeExterna iniciado:', { nfeId, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<any>(`/api/nfe-integration/emitir/${nfeId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API emitirNFeExterna sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API emitirNFeExterna erro:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sincronizar NFe com API externa
+   */
+  async sincronizarNFe(nfeId: string, token: string): Promise<any> {
+    try {
+      console.log('🔄 API sincronizarNFe iniciado:', { nfeId, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<any>(`/api/nfe-integration/sincronizar/${nfeId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API sincronizarNFe sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API sincronizarNFe erro:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obter status de integração da NFe
+   */
+  async getStatusIntegracaoNFe(nfeId: string, token: string): Promise<any> {
+    try {
+      console.log('🔄 API getStatusIntegracaoNFe iniciado:', { nfeId, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<any>(`/api/nfe-integration/status/${nfeId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API getStatusIntegracaoNFe sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API getStatusIntegracaoNFe erro:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cancelar NFe via API externa
+   */
+  async cancelarNFeExterna(nfeId: string, justificativa: string, token: string): Promise<any> {
+    try {
+      console.log('🔄 API cancelarNFeExterna iniciado:', { nfeId, justificativa: justificativa ? 'presente' : 'ausente' });
+      const result = await this.request<any>(`/api/nfe-integration/cancelar/${nfeId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ justificativa })
+      });
+      console.log('✅ API cancelarNFeExterna sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API cancelarNFeExterna erro:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Download XML da NFe
+   */
+  async downloadXMLNFe(nfeId: string, token: string): Promise<{ xml: string; filename: string }> {
+    try {
+      console.log('🔄 API downloadXMLNFe iniciado:', { nfeId, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<{ xml: string; filename: string }>(`/api/nfe-integration/xml/${nfeId}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API downloadXMLNFe sucesso:', { filename: result.filename, xmlLength: result.xml?.length });
+      return result;
+    } catch (error) {
+      console.error('❌ API downloadXMLNFe erro:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Download PDF da NFe
+   */
+  async downloadPDFNFe(nfeId: string, token: string): Promise<{ pdf: string; filename: string }> {
+    try {
+      console.log('🔄 API downloadPDFNFe iniciado:', { nfeId, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<{ pdf: string; filename: string }>(`/api/nfe-integration/pdf/${nfeId}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API downloadPDFNFe sucesso:', { filename: result.filename, pdfLength: result.pdf?.length });
+      return result;
+    } catch (error) {
+      console.error('❌ API downloadPDFNFe erro:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Download DANFE da NFe
+   */
+  async downloadDANFENFe(nfeId: string, token: string): Promise<{ danfe: string; filename: string }> {
+    try {
+      console.log('🔄 API downloadDANFENFe iniciado:', { nfeId, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<{ danfe: string; filename: string }>(`/api/nfe-integration/danfe/${nfeId}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API downloadDANFENFe sucesso:', { filename: result.filename, danfeLength: result.danfe?.length });
+      return result;
+    } catch (error) {
+      console.error('❌ API downloadDANFENFe erro:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Consultar NFe por chave de acesso
+   */
+  async consultarNFeExterna(chaveAcesso: string, token: string): Promise<any> {
+    try {
+      console.log('🔄 API consultarNFeExterna iniciado:', { chaveAcesso, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<any>(`/api/nfe-integration/consulta/${chaveAcesso}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log('✅ API consultarNFeExterna sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ API consultarNFeExterna erro:', error);
       throw error;
     }
   }

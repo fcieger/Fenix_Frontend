@@ -25,6 +25,7 @@ import { apiService, ConfiguracaoNfeResponse } from '@/lib/api';
 import { useNumeroSequencial } from '@/hooks/useNumeroSequencial';
 import ClienteSearchDialog from '@/components/nfe/ClienteSearchDialog';
 import ProdutoSearchDialog from '@/components/nfe/ProdutoSearchDialog';
+import NFeIntegration from '@/components/nfe/nfe-integration';
 
 interface NFeItem {
   id: string;
@@ -90,6 +91,7 @@ export default function NovaNotaFiscalPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDetailedErrors, setShowDetailedErrors] = useState(false);
+  const [nfeSalva, setNfeSalva] = useState<{ id: string; status: string } | null>(null);
 
   // Estado dos Dados Gerais
   const [naturezaOperacao, setNaturezaOperacao] = useState('');
@@ -254,8 +256,21 @@ export default function NovaNotaFiscalPage() {
       prepararParaSalvar(configuracaoNfeId);
       // Limpar número anterior
       setNumero('');
+      
+      // Aplicar configuração selecionada aos campos modelo e série
+      const configuracaoSelecionada = configuracoesDisponiveis.find(config => config.id === configuracaoNfeId);
+      if (configuracaoSelecionada) {
+        console.log('🎯 Aplicando configuração selecionada:', {
+          modelo: configuracaoSelecionada.modelo,
+          serie: configuracaoSelecionada.serie,
+          descricao: configuracaoSelecionada.descricaoModelo
+        });
+        
+        setModelo(configuracaoSelecionada.modelo);
+        setSerie(configuracaoSelecionada.serie);
+      }
     }
-  }, [configuracaoNfeId, prepararParaSalvar]);
+  }, [configuracaoNfeId, prepararParaSalvar, configuracoesDisponiveis]);
 
   // Atualizar campo número quando número sequencial for gerado
   useEffect(() => {
@@ -326,139 +341,24 @@ export default function NovaNotaFiscalPage() {
         console.log('✅ Transportadoras encontradas:', transportadorasData.length);
       } else {
         console.error('Erro na resposta da API:', response.status, response.statusText);
-        // Dados de teste para desenvolvimento
-        const dadosTeste = [
-          {
-            id: '1',
-            nomeRazaoSocial: 'Empresa Teste LTDA',
-            nomeFantasia: 'Teste Corp',
-            cnpj: '12345678000195',
-            cpf: null,
-            ie: '123456789',
-            im: '987654321',
-            email: 'contato@teste.com',
-            telefoneComercial: '(11) 99999-9999',
-            enderecos: [{
-              logradouro: 'Rua das Flores, 123',
-              numero: '123',
-              complemento: 'Sala 1',
-              bairro: 'Centro',
-              cidade: 'São Paulo',
-              estado: 'SP',
-              cep: '01234-567'
-            }],
-            tiposCliente: {
-              cliente: true,
-              vendedor: false,
-              transportadora: false
-            }
-          },
-          {
-            id: '2',
-            nomeRazaoSocial: 'João Silva',
-            nomeFantasia: null,
-            cnpj: null,
-            cpf: '12345678901',
-            ie: null,
-            im: null,
-            email: 'joao@email.com',
-            telefoneComercial: '(11) 88888-8888',
-            enderecos: [{
-              logradouro: 'Av. Paulista, 1000',
-              numero: '1000',
-              complemento: 'Apto 45',
-              bairro: 'Bela Vista',
-              cidade: 'São Paulo',
-              estado: 'SP',
-              cep: '01310-100'
-            }],
-            tiposCliente: {
-              cliente: true,
-              vendedor: false,
-              transportadora: false
-            }
-          },
-          {
-            id: '3',
-            nomeRazaoSocial: 'Transportadora Express LTDA',
-            nomeFantasia: 'Express Log',
-            cnpj: '98765432000123',
-            cpf: null,
-            ie: '987654321',
-            im: '123456789',
-            email: 'contato@express.com',
-            telefoneComercial: '(11) 77777-7777',
-            enderecos: [{
-              logradouro: 'Av. dos Transportes, 456',
-              numero: '456',
-              complemento: 'Galpão 1',
-              bairro: 'Industrial',
-              cidade: 'São Paulo',
-              estado: 'SP',
-              cep: '04567-890'
-            }],
-            tiposCliente: {
-              cliente: false,
-              vendedor: false,
-              transportadora: true
-            }
-          }
-        ];
+        // Se não conseguir carregar dados, mostrar lista vazia
+        console.error('Erro ao carregar cadastros:', error);
+        setCadastros([]);
+        setError('Erro ao carregar cadastros. Tente novamente mais tarde.');
         
-        setCadastros(dadosTeste);
-        
-        // Separar clientes e transportadoras dos dados de teste
-        const clientesData = dadosTeste.filter((c: any) => c.tiposCliente?.cliente);
-        const transportadorasData = dadosTeste.filter((c: any) => c.tiposCliente?.transportadora);
+        // Se não conseguir carregar dados, não há clientes nem transportadoras
+        const clientesData: any[] = [];
+        const transportadorasData: any[] = [];
         
         setClientes(clientesData);
         setTransportadoras(transportadorasData);
       }
     } catch (err) {
       console.error('Erro ao carregar cadastros:', err);
-      // Dados de teste em caso de erro
-      setCadastros([
-        {
-          id: '1',
-          nomeRazaoSocial: 'Empresa Teste LTDA',
-          nomeFantasia: 'Teste Corp',
-          cnpj: '12345678000195',
-          cpf: null,
-          ie: '123456789',
-          im: '987654321',
-          email: 'contato@teste.com',
-          telefoneComercial: '(11) 99999-9999',
-          enderecos: [{
-            logradouro: 'Rua das Flores, 123',
-            numero: '123',
-            complemento: 'Sala 1',
-            bairro: 'Centro',
-            cidade: 'São Paulo',
-            estado: 'SP',
-            cep: '01234-567'
-          }]
-        },
-        {
-          id: '2',
-          nomeRazaoSocial: 'João Silva',
-          nomeFantasia: null,
-          cnpj: null,
-          cpf: '12345678901',
-          ie: null,
-          im: null,
-          email: 'joao@email.com',
-          telefoneComercial: '(11) 88888-8888',
-          enderecos: [{
-            logradouro: 'Av. Paulista, 1000',
-            numero: '1000',
-            complemento: 'Apto 45',
-            bairro: 'Bela Vista',
-            cidade: 'São Paulo',
-            estado: 'SP',
-            cep: '01310-100'
-          }]
-        }
-      ]);
+      // Em caso de erro, manter listas vazias
+      setCadastros([]);
+      setClientes([]);
+      setTransportadoras([]);
     } finally {
       setIsLoadingCadastros(false);
     }
@@ -1003,7 +903,8 @@ export default function NovaNotaFiscalPage() {
       return 'UF de origem e destino são obrigatórias';
     }
     
-    if (ufOrigem === ufDestino) {
+    // Verificar se é operação interestadual baseado na configuração da natureza
+    if (ufOrigem === ufDestino && configuracaoNatureza?.localDestinoOperacao === 'interestadual') {
       return 'UF de origem e destino não podem ser iguais para operações interestaduais';
     }
     
@@ -1248,6 +1149,7 @@ export default function NovaNotaFiscalPage() {
       }
 
       const result = await response.json();
+      setNfeSalva({ id: result.id, status: result.status });
       alert('Rascunho salvo com sucesso!');
       console.log('NFe salva:', result);
     } catch (err) {
@@ -3233,6 +3135,22 @@ export default function NovaNotaFiscalPage() {
             </div>
           </div>
         </motion.div>
+
+        {/* Componente de Integração NFe */}
+        {nfeSalva && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="mt-6"
+          >
+            <NFeIntegration 
+              nfeId={nfeSalva.id} 
+              nfeStatus={nfeSalva.status}
+              onStatusChange={(newStatus) => setNfeSalva(prev => prev ? { ...prev, status: newStatus } : null)}
+            />
+          </motion.div>
+        )}
       </div>
     </Layout>
   );

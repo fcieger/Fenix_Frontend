@@ -50,6 +50,34 @@ const EstadoImpostoTabs: React.FC<EstadoImpostoTabsProps> = ({ estado, updateEst
   // Estilos modernos para inputs e selects
   const inputStyles = "w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white shadow-sm hover:shadow-md";
   const selectStyles = "w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white shadow-sm hover:shadow-md";
+
+  // Opções combinadas de CST e CSOSN
+  const icmsOptions = [
+    // CST - Regime Normal
+    { value: "00", label: "00 - Tributada integralmente (CST)", group: "Regime Normal" },
+    { value: "10", label: "10 - Tributada e com cobrança do ICMS por substituição tributária (CST)", group: "Regime Normal" },
+    { value: "20", label: "20 - Com redução de base de cálculo (CST)", group: "Regime Normal" },
+    { value: "30", label: "30 - Isenta ou não tributada e com cobrança do ICMS por substituição tributária (CST)", group: "Regime Normal" },
+    { value: "40", label: "40 - Isenta (CST)", group: "Regime Normal" },
+    { value: "41", label: "41 - Não tributada (CST)", group: "Regime Normal" },
+    { value: "50", label: "50 - Suspensão (CST)", group: "Regime Normal" },
+    { value: "51", label: "51 - Diferimento (CST)", group: "Regime Normal" },
+    { value: "60", label: "60 - ICMS cobrado anteriormente por substituição tributária (CST)", group: "Regime Normal" },
+    { value: "70", label: "70 - Com redução de base de cálculo e cobrança do ICMS por substituição tributária (CST)", group: "Regime Normal" },
+    { value: "90", label: "90 - Outras (CST)", group: "Regime Normal" },
+    
+    // CSOSN - Simples Nacional
+    { value: "101", label: "101 - Tributada com permissão de crédito (CSOSN)", group: "Simples Nacional" },
+    { value: "102", label: "102 - Tributada sem permissão de crédito (CSOSN)", group: "Simples Nacional" },
+    { value: "103", label: "103 - Isenção (CSOSN)", group: "Simples Nacional" },
+    { value: "201", label: "201 - Tributada com permissão de crédito e com cobrança do ICMS por substituição tributária (CSOSN)", group: "Simples Nacional" },
+    { value: "202", label: "202 - Tributada sem permissão de crédito e com cobrança do ICMS por substituição tributária (CSOSN)", group: "Simples Nacional" },
+    { value: "203", label: "203 - Isenção e com cobrança do ICMS por substituição tributária (CSOSN)", group: "Simples Nacional" },
+    { value: "300", label: "300 - Imune (CSOSN)", group: "Simples Nacional" },
+    { value: "400", label: "400 - Não tributada (CSOSN)", group: "Simples Nacional" },
+    { value: "500", label: "500 - ICMS cobrado anteriormente por substituição tributária (substituído) ou por antecipação (CSOSN)", group: "Simples Nacional" },
+    { value: "900", label: "900 - Outras (CSOSN)", group: "Simples Nacional" }
+  ];
   const checkboxStyles = "w-5 h-5 text-blue-600 border-gray-300 rounded-lg focus:ring-blue-500 focus:ring-2 transition-all duration-200";
   const labelStyles = "flex items-center mb-3 text-sm font-semibold text-gray-700";
   
@@ -198,7 +226,7 @@ const EstadoImpostoTabs: React.FC<EstadoImpostoTabsProps> = ({ estado, updateEst
               <div>
                 <Label htmlFor={`icms-cst-${estado.uf}`} className="flex items-center text-sm font-semibold text-gray-700 mb-3">
             <Calculator className="w-4 h-4 mr-2 text-blue-600" />
-                  Código de Situação Tributária (CST)
+                  Código de Situação Tributária (CST/CSOSN)
                   <span className="ml-2 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">Obrigatório</span>
           </Label>
           <select
@@ -207,18 +235,21 @@ const EstadoImpostoTabs: React.FC<EstadoImpostoTabsProps> = ({ estado, updateEst
             onChange={(e) => updateEstadoConfig(estado.uf, 'icms.cst', e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white shadow-sm hover:shadow-md"
           >
-            <option value="">Selecione o CST</option>
-            <option value="00">00 - Tributada integralmente</option>
-            <option value="10">10 - Tributada e com cobrança do ICMS por substituição tributária</option>
-            <option value="20">20 - Com redução de base de cálculo</option>
-            <option value="30">30 - Isenta ou não tributada e com cobrança do ICMS por substituição tributária</option>
-            <option value="40">40 - Isenta</option>
-            <option value="41">41 - Não tributada</option>
-            <option value="50">50 - Suspensão</option>
-            <option value="51">51 - Diferimento</option>
-            <option value="60">60 - ICMS cobrado anteriormente por substituição tributária</option>
-            <option value="70">70 - Com redução de base de cálculo e cobrança do ICMS por substituição tributária</option>
-            <option value="90">90 - Outras</option>
+            <option value="">Selecione o CST ou CSOSN</option>
+            <optgroup label="🏢 Regime Normal (CST)">
+              {icmsOptions.filter(option => option.group === "Regime Normal").map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="🏪 Simples Nacional (CSOSN)">
+              {icmsOptions.filter(option => option.group === "Simples Nacional").map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </optgroup>
           </select>
         </div>
 

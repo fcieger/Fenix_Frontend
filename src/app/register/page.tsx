@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/auth-context';
 import { makeCnpjRequest, extractCompanyData, CnpjResponse } from '@/lib/cnpj-api';
-import { ArrowLeft, ArrowRight, Check, User, Building2, Search, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, User, Building2, Search, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
 
 interface RegisterData {
   name: string;
@@ -98,12 +98,55 @@ export default function RegisterPage() {
         if (response) {
           const companyInfo = extractCompanyData(response);
           setCompanyData(companyInfo);
+          console.log('✅ Dados da API CNPJA carregados:', companyInfo);
         } else {
-          setCompanyData(null);
+          // API não retornou dados - criar empresa apenas com CNPJ
+          setCompanyData({
+            name: '',
+            cnpj: data.cnpj,
+            founded: '',
+            nature: '',
+            size: '',
+            status: '',
+            address: {
+              street: '',
+              number: '',
+              district: '',
+              city: '',
+              state: '',
+              zip: '',
+            },
+            mainActivity: '',
+            phones: [],
+            emails: [],
+            members: [],
+          });
+          console.log('⚠️ API não retornou dados - empresa será criada apenas com CNPJ');
         }
       } catch (error) {
-        console.error('Erro ao buscar CNPJ:', error);
-        setCompanyData(null);
+        console.error('❌ Erro ao consultar API CNPJA:', error);
+        // Em caso de erro - criar empresa apenas com CNPJ
+        setCompanyData({
+          name: '',
+          cnpj: data.cnpj,
+          founded: '',
+          nature: '',
+          size: '',
+          status: '',
+          address: {
+            street: '',
+            number: '',
+            district: '',
+            city: '',
+            state: '',
+            zip: '',
+          },
+          mainActivity: '',
+          phones: [],
+          emails: [],
+          members: [],
+        });
+        console.log('⚠️ Erro na API - empresa será criada apenas com CNPJ');
       } finally {
         setSearchingCnpj(false);
       }
@@ -370,51 +413,61 @@ export default function RegisterPage() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="bg-green-50 border border-green-200 rounded-lg p-4"
+                  className={`border rounded-lg p-4 ${
+                    companyData.name 
+                      ? 'bg-green-50 border-green-200' 
+                      : 'bg-yellow-50 border-yellow-200'
+                  }`}
                 >
-                  <h4 className="font-semibold text-green-800 mb-3 flex items-center">
-                    <Check className="w-4 h-4 mr-2" />
-                    Dados da Empresa Encontrados
+                  <h4 className={`font-semibold mb-3 flex items-center ${
+                    companyData.name 
+                      ? 'text-green-800' 
+                      : 'text-yellow-800'
+                  }`}>
+                    {companyData.name ? (
+                      <Check className="w-4 h-4 mr-2" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 mr-2" />
+                    )}
+                    {companyData.name ? 'Dados da Empresa Encontrados' : 'Empresa Não Encontrada na API'}
                   </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-green-700">
-                    <div>
-                      <p><strong>Nome:</strong> {companyData.name}</p>
-                      <p><strong>Natureza:</strong> {companyData.nature}</p>
-                      <p><strong>Porte:</strong> {companyData.size}</p>
-                      <p><strong>Status:</strong> {companyData.status}</p>
+                  
+                  {companyData.name ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-green-700">
+                      <div>
+                        <p><strong>Nome:</strong> {companyData.name}</p>
+                        <p><strong>Natureza:</strong> {companyData.nature || 'Não informado'}</p>
+                        <p><strong>Porte:</strong> {companyData.size || 'Não informado'}</p>
+                        <p><strong>Status:</strong> {companyData.status || 'Não informado'}</p>
+                      </div>
+                      <div>
+                        <p><strong>Endereço:</strong></p>
+                        <p className="ml-2">{companyData.address.street || 'Não informado'}, {companyData.address.number || 'S/N'}</p>
+                        <p className="ml-2">{companyData.address.district || 'Não informado'}</p>
+                        <p className="ml-2">{companyData.address.city || 'Não informado'}/{companyData.address.state || 'N/A'} - CEP: {companyData.address.zip || 'Não informado'}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p><strong>Endereço:</strong></p>
-                      <p className="ml-2">{companyData.address.street}, {companyData.address.number}</p>
-                      <p className="ml-2">{companyData.address.district}</p>
-                      <p className="ml-2">{companyData.address.city}/{companyData.address.state} - CEP: {companyData.address.zip}</p>
+                  ) : (
+                    <div className="text-sm text-yellow-700">
+                      <p>A empresa será criada apenas com o CNPJ informado.</p>
+                      <p>Você poderá preencher os demais dados posteriormente na área de configurações.</p>
                     </div>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-green-200">
-                    <p><strong>Atividade Principal:</strong> {companyData.mainActivity}</p>
-                    {companyData.phones && companyData.phones.length > 0 && (
-                      <p><strong>Telefones:</strong> {companyData.phones.map(phone => `(${phone.area}) ${phone.number}`).join(', ')}</p>
-                    )}
-                    {companyData.emails && companyData.emails.length > 0 && (
-                      <p><strong>Emails:</strong> {companyData.emails.map(email => email.address).join(', ')}</p>
-                    )}
-                  </div>
+                  )}
+                  
+                  {companyData.name && (
+                    <div className="mt-3 pt-3 border-t border-green-200">
+                      <p><strong>Atividade Principal:</strong> {companyData.mainActivity || 'Não informado'}</p>
+                      {companyData.phones && companyData.phones.length > 0 && (
+                        <p><strong>Telefones:</strong> {companyData.phones.map(phone => `(${phone.area}) ${phone.number}`).join(', ')}</p>
+                      )}
+                      {companyData.emails && companyData.emails.length > 0 && (
+                        <p><strong>Emails:</strong> {companyData.emails.map(email => email.address).join(', ')}</p>
+                      )}
+                    </div>
+                  )}
                 </motion.div>
               )}
 
-              {/* Error message for CNPJ not found */}
-              {data.userType === 'pessoa-juridica' && !searchingCnpj && data.cnpj && !companyData && data.cnpj.replace(/\D/g, '').length === 14 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="bg-red-50 border border-red-200 rounded-lg p-4"
-                >
-                  <p className="text-red-700 text-sm">
-                    <strong>CNPJ não encontrado.</strong> Verifique se o número está correto ou tente novamente.
-                  </p>
-                </motion.div>
-              )}
 
               {/* Password */}
               <div>

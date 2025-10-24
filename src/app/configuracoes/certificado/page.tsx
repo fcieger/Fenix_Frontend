@@ -20,7 +20,6 @@ import {
   Lock,
   Calendar,
   User,
-  FileCheck,
   Sparkles,
   Zap,
   Globe
@@ -35,7 +34,9 @@ export default function CertificadoDigitalPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isCnpjValidationError, setIsCnpjValidationError] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
 
   // Redirecionar se não autenticado
   useEffect(() => {
@@ -111,6 +112,7 @@ export default function CertificadoDigitalPage() {
 
     setIsUploading(true);
     setError('');
+    setIsCnpjValidationError(false);
 
     try {
       console.log('🔍 Debug - Iniciando validação completa:', { 
@@ -144,8 +146,19 @@ export default function CertificadoDigitalPage() {
         senha: password
       });
       setCertificado(response);
-      setSuccess('Certificado validado e enviado com sucesso!');
+      setSuccess(`✅ Certificado digital adicionado com sucesso! Empresa: ${response.nome} (CNPJ: ${response.cnpj})`);
+      setShowSuccessAnimation(true);
       console.log('✅ Debug - Upload para backend bem-sucedido');
+      
+      // Limpar animação após 3 segundos
+      setTimeout(() => {
+        setShowSuccessAnimation(false);
+      }, 3000);
+      
+      // Limpar mensagem de sucesso após 8 segundos
+      setTimeout(() => {
+        setSuccess('');
+      }, 8000);
       
       // Limpar estado
       setPassword('');
@@ -156,8 +169,20 @@ export default function CertificadoDigitalPage() {
       if (fileInput) fileInput.value = '';
       
     } catch (error: any) {
-      console.error('❌ Debug - Erro geral:', error);
-      setError(error.message || 'Erro inesperado ao processar certificado. Verifique o console para mais detalhes.');
+      console.error('❌ Debug - Erro no upload:', error);
+      
+      // Verificar se é erro de validação de CNPJ
+      const errorMessage = error.message || '';
+      const isCnpjError = errorMessage.includes('certificado digital não é válido para esta empresa') || 
+                         errorMessage.includes('CNPJ do certificado') ||
+                         errorMessage.includes('deve ser o mesmo da empresa cadastrada');
+      
+      if (isCnpjError) {
+        setIsCnpjValidationError(true);
+        setError(errorMessage);
+      } else {
+        setError(errorMessage || 'Erro ao enviar certificado. Verifique o console para mais detalhes.');
+      }
     } finally {
       setIsUploading(false);
     }
@@ -178,16 +203,6 @@ export default function CertificadoDigitalPage() {
     }
   };
 
-  const handleVerificarCertificado = async () => {
-    try {
-      const response = await CertificadoService.verificarCertificado();
-      setCertificado(response);
-      setSuccess('Certificado verificado com sucesso!');
-    } catch (error) {
-      console.error('Erro ao verificar certificado:', error);
-      setError('Erro ao verificar certificado. Tente novamente.');
-    }
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
@@ -276,15 +291,49 @@ export default function CertificadoDigitalPage() {
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between shadow-sm"
+            className={`p-4 border rounded-xl flex items-center justify-between shadow-sm ${
+              isCnpjValidationError 
+                ? 'bg-orange-50 border-orange-200' 
+                : 'bg-red-50 border-red-200'
+            }`}
           >
             <div className="flex items-center space-x-3">
-              <AlertCircle className="h-5 w-5 text-red-600" />
-              <span className="text-red-800 font-medium">{error}</span>
+              {isCnpjValidationError ? (
+                <Shield className="h-5 w-5 text-orange-600" />
+              ) : (
+                <AlertCircle className="h-5 w-5 text-red-600" />
+              )}
+              <div className="flex-1">
+                <span className={`font-medium ${
+                  isCnpjValidationError ? 'text-orange-800' : 'text-red-800'
+                }`}>
+                  {isCnpjValidationError ? '⚠️ Validação de CNPJ' : '❌ Erro'}
+                </span>
+                <p className={`text-sm mt-1 ${
+                  isCnpjValidationError ? 'text-orange-700' : 'text-red-700'
+                }`}>
+                  {error}
+                </p>
+                {isCnpjValidationError && (
+                  <div className="mt-2 p-2 bg-orange-100 rounded-lg">
+                    <p className="text-xs text-orange-800">
+                      💡 <strong>Dica:</strong> O certificado digital deve ser da mesma empresa cadastrada no sistema. 
+                      Verifique se o CNPJ do certificado corresponde ao CNPJ da sua empresa.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
             <button
-              onClick={() => setError('')}
-              className="text-red-400 hover:text-red-600 transition-colors p-1"
+              onClick={() => {
+                setError('');
+                setIsCnpjValidationError(false);
+              }}
+              className={`p-1 transition-colors ${
+                isCnpjValidationError 
+                  ? 'text-orange-400 hover:text-orange-600' 
+                  : 'text-red-400 hover:text-red-600'
+              }`}
               title="Fechar erro"
             >
               <AlertCircle className="h-4 w-4" />
@@ -295,11 +344,61 @@ export default function CertificadoDigitalPage() {
         {success && (
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="p-4 bg-green-50 border border-green-200 rounded-xl flex items-center space-x-3 shadow-sm"
+            animate={{ 
+              opacity: 1, 
+              scale: showSuccessAnimation ? [1, 1.02, 1] : 1,
+              y: showSuccessAnimation ? [0, -5, 0] : 0
+            }}
+            transition={{ 
+              duration: 0.5,
+              scale: { duration: 0.6, repeat: showSuccessAnimation ? 2 : 0 },
+              y: { duration: 0.6, repeat: showSuccessAnimation ? 2 : 0 }
+            }}
+            className={`p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl shadow-lg ${
+              showSuccessAnimation ? 'ring-4 ring-green-200 ring-opacity-50' : ''
+            }`}
           >
-            <CheckCircle className="h-5 w-5 text-green-600" />
-            <span className="text-green-800 font-medium">{success}</span>
+            <div className="flex items-start space-x-4">
+              <div className="flex-shrink-0">
+                <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
+                  <CheckCircle className="h-6 w-6 text-white" />
+                </div>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-green-800 mb-2">
+                  {showSuccessAnimation ? '🎉✨🎊' : '🎉'} Certificado Digital Adicionado com Sucesso! {showSuccessAnimation ? '🎊✨🎉' : ''}
+                </h3>
+                <p className="text-green-700 font-medium mb-3">
+                  {success}
+                </p>
+                <div className="bg-green-100 p-3 rounded-lg">
+                  <p className="text-sm text-green-800">
+                    <strong>✅ Validação completa:</strong> O certificado foi validado, o CNPJ foi verificado e o arquivo foi salvo com segurança no sistema.
+                  </p>
+                </div>
+                <div className="mt-3 flex items-center space-x-4 text-sm text-green-600">
+                  <span className="flex items-center">
+                    <Shield className="h-4 w-4 mr-1" />
+                    Seguro
+                  </span>
+                  <span className="flex items-center">
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    Validado
+                  </span>
+                  <span className="flex items-center">
+                    <Globe className="h-4 w-4 mr-1" />
+                    Pronto para uso
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setSuccess('')}
+                className="text-green-400 hover:text-green-600 transition-colors p-1"
+                title="Fechar mensagem"
+              >
+                <CheckCircle className="h-5 w-5" />
+              </button>
+            </div>
           </motion.div>
         )}
 
@@ -582,20 +681,13 @@ export default function CertificadoDigitalPage() {
 
                 {/* Action Buttons */}
                 <div className="pt-4 border-t border-gray-200">
-                  <div className="flex space-x-3">
+                  <div className="flex justify-center">
                     <button
                       onClick={handleDeleteCertificado}
-                      className="flex-1 bg-red-50 text-red-700 py-3 px-4 rounded-xl hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 flex items-center justify-center font-medium transition-all duration-200 border border-red-200 hover:border-red-300"
+                      className="bg-red-50 text-red-700 py-3 px-6 rounded-xl hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 flex items-center justify-center font-medium transition-all duration-200 border border-red-200 hover:border-red-300"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
-                      Remover
-                    </button>
-                    <button
-                      onClick={handleVerificarCertificado}
-                      className="flex-1 bg-gray-50 text-gray-700 py-3 px-4 rounded-xl hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 flex items-center justify-center font-medium transition-all duration-200 border border-gray-200 hover:border-gray-300"
-                    >
-                      <FileCheck className="h-4 w-4 mr-2" />
-                      Verificar
+                      Remover Certificado
                     </button>
                   </div>
                 </div>

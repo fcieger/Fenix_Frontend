@@ -1,69 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-// Simulação de dados do banco de dados baseados no register
-const mockUsers = [
-  {
-    id: '2b866126-8cfa-4c8d-b5fb-a91e5cc4c18b',
-    name: 'João Silva',
-    email: 'joao.silva@certus.com.br',
-    phone: '(11) 99999-9999',
-    isActive: true,
-    role: 'Administrador',
-    createdAt: '2024-01-15T10:30:00Z',
-    updatedAt: '2024-01-15T10:30:00Z',
-    lastLogin: '2024-01-20T14:22:00Z',
-    companies: [
-      {
-        id: '2c650c76-4e2a-4b58-933c-c3f8b7434d80',
-        name: 'Certus Empresa',
-        cnpj: '12.345.678/0001-90',
-        isActive: true
-      }
-    ]
-  },
-  {
-    id: '3c977237-9dfb-5d9e-c6gc-b92f6dd5d29c',
-    name: 'Maria Santos',
-    email: 'maria.santos@certus.com.br',
-    phone: '(11) 88888-8888',
-    isActive: true,
-    role: 'Usuário',
-    createdAt: '2024-01-16T09:15:00Z',
-    updatedAt: '2024-01-18T16:45:00Z',
-    lastLogin: '2024-01-19T11:30:00Z',
-    companies: [
-      {
-        id: '2c650c76-4e2a-4b58-933c-c3f8b7434d80',
-        name: 'Certus Empresa',
-        cnpj: '12.345.678/0001-90',
-        isActive: true
-      }
-    ]
-  },
-  {
-    id: '4d088348-ae0c-6e0f-d7hd-c03g7ee6e30d',
-    name: 'Pedro Oliveira',
-    email: 'pedro.oliveira@certus.com.br',
-    phone: '(11) 77777-7777',
-    isActive: false,
-    role: 'Usuário',
-    createdAt: '2024-01-17T14:20:00Z',
-    updatedAt: '2024-01-19T10:15:00Z',
-    lastLogin: '2024-01-18T09:45:00Z',
-    companies: [
-      {
-        id: '2c650c76-4e2a-4b58-933c-c3f8b7434d80',
-        name: 'Certus Empresa',
-        cnpj: '12.345.678/0001-90',
-        isActive: true
-      }
-    ]
-  }
-];
+import { UserService, UserCompanyService } from '@/lib/database-service';
 
 export async function GET(request: NextRequest) {
   try {
-    // Verificar se há token de autenticação
     const authHeader = request.headers.get('authorization');
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -73,6 +12,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Buscar todos os usuários do banco
+    const users = await UserService.getAll();
+    
+    // Para cada usuário, buscar suas empresas
+    const usersWithCompanies = await Promise.all(
+      users.map(async (user) => {
+        const companies = await UserCompanyService.getUserCompanies(user.id!);
+        return {
+          ...user,
+          companies: companies
+        };
+      })
+    );
+
     // Parâmetros de query para paginação e filtros
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
@@ -81,7 +34,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') || '';
 
     // Filtrar usuários
-    let filteredUsers = mockUsers;
+    let filteredUsers = usersWithCompanies;
 
     if (search) {
       filteredUsers = filteredUsers.filter(user => 
@@ -147,7 +100,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar se email já existe
-    const existingUser = mockUsers.find(u => u.email === userData.email);
+    const existingUser = await UserService.findByEmail(userData.email);
     if (existingUser) {
       return NextResponse.json(
         { message: 'Email já está em uso' },
@@ -155,21 +108,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Criar novo usuário
-    const newUser = {
-      id: `user-${Date.now()}`,
+    // Criar novo usuário no banco
+    const newUser = await UserService.create({
       name: userData.name,
       email: userData.email,
       phone: userData.phone,
-      isActive: true,
-      role: userData.role || 'Usuário',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      lastLogin: null,
-      companies: userData.companies || []
-    };
-
-    mockUsers.push(newUser);
+      password: userData.password || '123456', // Senha padrão
+      isActive: true
+    });
 
     return NextResponse.json(newUser, { status: 201 });
   } catch (error) {

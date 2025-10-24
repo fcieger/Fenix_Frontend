@@ -25,6 +25,9 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/auth-context';
 import { API_CONFIG } from '@/config/api';
+import { apiService } from '@/lib/api';
+import NFeIntegration from '@/components/nfe/nfe-integration';
+import { toast } from 'sonner';
 
 interface NFeItem {
   id: string;
@@ -80,6 +83,14 @@ export default function NFePage() {
   const [error, setError] = useState<string | null>(null);
   const [showNewNFeDialog, setShowNewNFeDialog] = useState(false);
   
+  // Estados para ações
+  const [isTransmitting, setIsTransmitting] = useState(false);
+  const [isCanceling, setIsCanceling] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
+  const [processStatus, setProcessStatus] = useState(0);
+  const [processMessage, setProcessMessage] = useState('');
+  
   // Filtros baseados na imagem
   const [searchTerm, setSearchTerm] = useState('');
   const [statusSefazFilter, setStatusSefazFilter] = useState('ALL');
@@ -105,9 +116,6 @@ export default function NFePage() {
   const [selectAll, setSelectAll] = useState(false);
   const [selectedNFes, setSelectedNFes] = useState<string[]>([]);
   
-  // Status de processamento
-  const [processStatus, setProcessStatus] = useState(0);
-  const [processMessage, setProcessMessage] = useState('0 % OK');
 
   // Estados para nova NFe
   const [newNFe, setNewNFe] = useState({
@@ -162,122 +170,43 @@ export default function NFePage() {
           setNfes(data as NFe[]);
           return;
         } catch (e) {
-          console.warn('Falha ao carregar NFes do backend, usando mock:', e);
+          console.error('Falha ao carregar NFes do backend:', e);
+          setError('Erro ao carregar notas fiscais. Tente novamente mais tarde.');
+          setNfes([]);
+          return;
         }
       }
 
-      // Fallback: mock baseado na imagem
-      const mockNFes: NFe[] = [
-        {
-          id: '1',
-          companyId: '123e4567-e89b-12d3-a456-426614174000',
-          numeroNfe: '1363',
-          serie: '1',
-          chaveAcesso: '35240114200166000187550010000000011234567890',
-          status: 'AUTORIZADA',
-          dataEmissao: '2025-10-06T10:30:00Z',
-          dataSaida: '2025-10-06T10:30:00Z',
-          dataAutorizacao: '2025-10-06T10:32:00Z',
-          valorTotalNota: 2900.00,
-          naturezaOperacao: 'Venda',
-          destinatarioCnpjCpf: '29.951.402/0001-53',
-          destinatarioRazaoSocial: 'COMPATECH METAL-MECÂNICA LTDA',
-          destinatarioUF: 'PR',
-          numeroPedido: '096/25',
-          modelo: '55',
-          tipoOperacao: 'SAIDA',
-          ambiente: 'PRODUCAO',
-          informacoesComplementares: 'NFe de exemplo',
-          itens: [
-            {
-              id: '1',
-              codigoProduto: 'PROD001',
-              descricao: 'Produto de Exemplo',
-              quantidade: 10,
-              valorUnitario: 290.00,
-              valorTotal: 2900.00,
-              ncm: '12345678',
-              cfop: '5102',
-              unidadeComercial: 'UN'
-            }
-          ]
-        },
-        {
-          id: '2',
-          companyId: '123e4567-e89b-12d3-a456-426614174000',
-          numeroNfe: '1364',
-          serie: '1',
-          chaveAcesso: '35240114200166000187550010000000011234567891',
-          status: 'AUTORIZADA',
-          dataEmissao: '2025-10-06T11:30:00Z',
-          dataSaida: '2025-10-06T11:30:00Z',
-          dataAutorizacao: '2025-10-06T11:32:00Z',
-          valorTotalNota: 3600.00,
-          naturezaOperacao: 'Venda',
-          destinatarioCnpjCpf: '44.556.763/0001-99',
-          destinatarioRazaoSocial: 'CASTRO INDÚSTRIA SERVIÇOS LTDA',
-          destinatarioUF: 'PR',
-          numeroPedido: '0155/25-1',
-          modelo: '55',
-          tipoOperacao: 'SAIDA',
-          ambiente: 'PRODUCAO',
-          informacoesComplementares: 'NFe de exemplo',
-          itens: [
-            {
-              id: '2',
-              codigoProduto: 'PROD002',
-              descricao: 'Produto de Exemplo 2',
-              quantidade: 15,
-              valorUnitario: 240.00,
-              valorTotal: 3600.00,
-              ncm: '12345678',
-              cfop: '5102',
-              unidadeComercial: 'UN'
-            }
-          ]
-        },
-        {
-          id: '3',
-          companyId: '123e4567-e89b-12d3-a456-426614174000',
-          numeroNfe: '1365',
-          serie: '1',
-          chaveAcesso: '35240114200166000187550010000000011234567892',
-          status: 'AUTORIZADA',
-          dataEmissao: '2025-10-06T12:30:00Z',
-          dataSaida: '2025-10-06T12:30:00Z',
-          dataAutorizacao: '2025-10-06T12:32:00Z',
-          valorTotalNota: 2092.50,
-          naturezaOperacao: 'Venda',
-          destinatarioCnpjCpf: '29.951.402/0001-53',
-          destinatarioRazaoSocial: 'COMPATECH METAL-MECÂNICA LTDA',
-          destinatarioUF: 'PR',
-          numeroPedido: '0155/25-2',
-          modelo: '55',
-          tipoOperacao: 'SAIDA',
-          ambiente: 'PRODUCAO',
-          informacoesComplementares: 'NFe de exemplo',
-          itens: [
-            {
-              id: '3',
-              codigoProduto: 'PROD003',
-              descricao: 'Produto de Exemplo 3',
-              quantidade: 8,
-              valorUnitario: 261.56,
-              valorTotal: 2092.50,
-              ncm: '12345678',
-              cfop: '5102',
-              unidadeComercial: 'UN'
-            }
-          ]
-        }
-      ];
-      
-      setNfes(mockNFes);
+      // Se não estiver autenticado, mostrar lista vazia
+      setNfes([]);
+      setError('É necessário estar logado para visualizar as notas fiscais.');
     } catch (err) {
       setError('Erro ao carregar NFes');
       console.error('Erro ao carregar NFes:', err);
+      setNfes([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const sincronizarNFe = async (nfeId: string) => {
+    if (!token) {
+      toast.error('Token não encontrado');
+      return;
+    }
+    
+    try {
+      const response = await apiService.sincronizarNFe(nfeId, token);
+      
+      if (response.success) {
+        // Recarregar a lista para atualizar o status
+        await loadNFes();
+      } else {
+        throw new Error(response.message);
+      }
+    } catch (error: any) {
+      console.error('Erro ao sincronizar NFe:', error);
+      setError(error.message || 'Erro ao sincronizar NFe');
     }
   };
 
@@ -424,39 +353,179 @@ export default function NFePage() {
   };
 
   // Funções de ação
-  const handleTransmitirNFe = () => {
+  const handleTransmitirNFe = async () => {
+    if (selectedNFes.length === 0) {
+      toast.error('Selecione pelo menos uma NFe para transmitir');
+      return;
+    }
+
+    if (!token) {
+      toast.error('Token não encontrado');
+      return;
+    }
+
+    setIsTransmitting(true);
     setProcessStatus(0);
-    setProcessMessage('0 % OK');
-    // Simular processo
-    const interval = setInterval(() => {
-      setProcessStatus(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setProcessMessage('100 % OK');
-          return 100;
-        }
-        const newStatus = prev + 10;
-        setProcessMessage(`${newStatus} % OK`);
-        return newStatus;
+    setProcessMessage('Iniciando transmissão...');
+
+    try {
+      for (let i = 0; i < selectedNFes.length; i++) {
+        const nfeId = selectedNFes[i];
+        setProcessMessage(`Transmitindo NFe ${i + 1} de ${selectedNFes.length}...`);
+        
+        await apiService.emitirNFeExterna(nfeId, token);
+        
+        setProcessStatus(((i + 1) / selectedNFes.length) * 100);
+      }
+
+      setProcessMessage('100% - Transmissão concluída!');
+      toast.success(`${selectedNFes.length} NFe(s) transmitida(s) com sucesso!`);
+      
+      // Recarregar lista
+      await loadNFes();
+      
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || 'Erro desconhecido';
+      toast.error('Erro na transmissão', {
+        description: errorMessage
       });
-    }, 200);
+      setProcessMessage('Erro na transmissão');
+    } finally {
+      setIsTransmitting(false);
+      setTimeout(() => {
+        setProcessStatus(0);
+        setProcessMessage('');
+      }, 3000);
+    }
   };
 
   const handleCopiarNFe = () => {
     console.log('Copiando NFes:', selectedNFes);
+    toast.info('Funcionalidade de cópia em desenvolvimento');
   };
 
-  const handleCancelarNFe = () => {
-    console.log('Cancelando NFes:', selectedNFes);
+  const handleCancelarNFe = async () => {
+    if (selectedNFes.length === 0) {
+      toast.error('Selecione pelo menos uma NFe para cancelar');
+      return;
+    }
+
+    if (!token) {
+      toast.error('Token não encontrado');
+      return;
+    }
+
+    const justificativa = prompt('Digite a justificativa para o cancelamento (mínimo 15 caracteres):');
+    if (!justificativa || justificativa.trim().length < 15) {
+      toast.error('Justificativa deve ter pelo menos 15 caracteres');
+      return;
+    }
+
+    setIsCanceling(true);
+
+    try {
+      for (const nfeId of selectedNFes) {
+        await apiService.cancelarNFeExterna(nfeId, justificativa, token);
+      }
+
+      toast.success(`${selectedNFes.length} NFe(s) cancelada(s) com sucesso!`);
+      await loadNFes();
+      
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || 'Erro desconhecido';
+      toast.error('Erro no cancelamento', {
+        description: errorMessage
+      });
+    } finally {
+      setIsCanceling(false);
+    }
   };
 
-  const handleValidarXML = () => {
-    console.log('Validando XML das NFes:', selectedNFes);
+  const handleValidarXML = async () => {
+    if (selectedNFes.length === 0) {
+      toast.error('Selecione pelo menos uma NFe para validar');
+      return;
+    }
+
+    setIsValidating(true);
+
+    try {
+      // TODO: Implementar validação de XML
+      toast.info('Funcionalidade de validação XML em desenvolvimento');
+    } catch (error: any) {
+      toast.error('Erro na validação', {
+        description: error.message
+      });
+    } finally {
+      setIsValidating(false);
+    }
   };
 
-  const handleExportarXML = () => {
-    console.log('Exportando XML das NFes:', selectedNFes);
+  const handleExportarXML = async () => {
+    if (selectedNFes.length === 0) {
+      toast.error('Selecione pelo menos uma NFe para exportar');
+      return;
+    }
+
+    if (!token) {
+      toast.error('Token não encontrado');
+      return;
+    }
+
+    setIsDownloading(true);
+
+    try {
+      for (const nfeId of selectedNFes) {
+        const response = await apiService.downloadXMLNFe(nfeId, token);
+        
+        // Criar e baixar arquivo
+        const blob = new Blob([response.xml], { type: 'application/xml' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = response.filename;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      }
+
+      toast.success(`${selectedNFes.length} XML(s) baixado(s) com sucesso!`);
+      
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || 'Erro desconhecido';
+      toast.error('Erro no download', {
+        description: errorMessage
+      });
+    } finally {
+      setIsDownloading(false);
+    }
   };
+
+  const handleEnviarEmail = () => {
+    console.log('Enviando email para NFes:', selectedNFes);
+    toast.info('Funcionalidade de envio por email em desenvolvimento');
+  };
+
+  const handleImprimir = () => {
+    console.log('Imprimindo NFes:', selectedNFes);
+    toast.info('Funcionalidade de impressão em desenvolvimento');
+  };
+
+  const handleSalvar = () => {
+    console.log('Salvando NFes:', selectedNFes);
+    toast.info('Funcionalidade de salvamento em desenvolvimento');
+  };
+
+  const handleRetorno = () => {
+    console.log('Processando retorno para NFes:', selectedNFes);
+    toast.info('Funcionalidade de retorno em desenvolvimento');
+  };
+
+  const handleExcluir = () => {
+    console.log('Excluindo NFes:', selectedNFes);
+    toast.info('Funcionalidade de exclusão em desenvolvimento');
+  };
+
+
 
   if (loading) {
     return (
@@ -818,6 +887,9 @@ export default function NFePage() {
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Integração
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Ações
                     </th>
                   </tr>
@@ -883,6 +955,26 @@ export default function NFePage() {
                             {status.label}
                           </Badge>
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            {(nfe.status === 'PENDENTE' || nfe.status === 'AUTORIZADA') && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => sincronizarNFe(nfe.id)}
+                                className="h-7 px-2 text-xs"
+                              >
+                                <RefreshCw className="w-3 h-3 mr-1" />
+                                Sincronizar
+                              </Button>
+                            )}
+                            {nfe.chaveAcesso && (
+                              <span className="text-xs text-gray-500">
+                                Integrada
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <Button variant="outline" size="sm" className="h-8 w-8 p-0">
                             <Edit className="w-4 h-4" />
@@ -916,28 +1008,85 @@ export default function NFePage() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
               <Button 
                 onClick={handleTransmitirNFe}
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                disabled={isTransmitting || selectedNFes.length === 0}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Send className="w-4 h-4 mr-2" />
-                Transmitir NF-e
+                {isTransmitting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Transmitindo...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 mr-2" />
+                    Transmitir NF-e
+                  </>
+                )}
               </Button>
               <Button variant="outline" onClick={handleCopiarNFe} className="border-gray-200 hover:bg-gray-50">
                 <Copy className="w-4 h-4 mr-2" />
                 Copiar
               </Button>
-              <Button variant="outline" onClick={handleCancelarNFe} className="border-gray-200 hover:bg-gray-50">
-                <Ban className="w-4 h-4 mr-2" />
-                Cancelar/Inutilizar
+              <Button 
+                variant="outline" 
+                onClick={handleCancelarNFe} 
+                disabled={isCanceling || selectedNFes.length === 0}
+                className="border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isCanceling ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Cancelando...
+                  </>
+                ) : (
+                  <>
+                    <Ban className="w-4 h-4 mr-2" />
+                    Cancelar/Inutilizar
+                  </>
+                )}
               </Button>
-              <Button variant="outline" onClick={handleValidarXML} className="border-gray-200 hover:bg-gray-50">
-                <CheckSquare className="w-4 h-4 mr-2" />
-                Validar XML
+              <Button 
+                variant="outline" 
+                onClick={handleValidarXML} 
+                disabled={isValidating || selectedNFes.length === 0}
+                className="border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isValidating ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Validando...
+                  </>
+                ) : (
+                  <>
+                    <CheckSquare className="w-4 h-4 mr-2" />
+                    Validar XML
+                  </>
+                )}
               </Button>
-              <Button variant="outline" onClick={handleExportarXML} className="border-gray-200 hover:bg-gray-50">
-                <FileDown className="w-4 h-4 mr-2" />
-                Exportar XML
+              <Button 
+                variant="outline" 
+                onClick={handleExportarXML} 
+                disabled={isDownloading || selectedNFes.length === 0}
+                className="border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isDownloading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Baixando...
+                  </>
+                ) : (
+                  <>
+                    <FileDown className="w-4 h-4 mr-2" />
+                    Exportar XML
+                  </>
+                )}
               </Button>
-              <Button variant="outline" className="border-gray-200 hover:bg-gray-50">
+              <Button 
+                variant="outline" 
+                onClick={handleRetorno}
+                disabled={selectedNFes.length === 0}
+                className="border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 <RotateCcw className="w-4 h-4 mr-2" />
                 Retorno
               </Button>
@@ -945,27 +1094,55 @@ export default function NFePage() {
 
             {/* Segunda linha - Ações secundárias */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-              <Button variant="outline" className="border-gray-200 hover:bg-gray-50">
+              <Button 
+                variant="outline" 
+                disabled={selectedNFes.length === 0}
+                className="border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 <Edit3 className="w-4 h-4 mr-2" />
                 Carta de Correção
               </Button>
-              <Button variant="outline" className="border-gray-200 hover:bg-gray-50">
+              <Button 
+                variant="outline" 
+                disabled={selectedNFes.length === 0}
+                className="border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 <FileText className="w-4 h-4 mr-2" />
                 Origem
               </Button>
-              <Button variant="outline" className="border-gray-200 hover:bg-gray-50">
+              <Button 
+                variant="outline" 
+                onClick={handleEnviarEmail}
+                disabled={selectedNFes.length === 0}
+                className="border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 <Mail className="w-4 h-4 mr-2" />
                 Enviar por Email
               </Button>
-              <Button variant="outline" className="border-gray-200 hover:bg-gray-50">
+              <Button 
+                variant="outline" 
+                onClick={handleImprimir}
+                disabled={selectedNFes.length === 0}
+                className="border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 <Printer className="w-4 h-4 mr-2" />
                 Imprimir
               </Button>
-              <Button variant="outline" className="border-gray-200 hover:bg-gray-50">
+              <Button 
+                variant="outline" 
+                onClick={handleSalvar}
+                disabled={selectedNFes.length === 0}
+                className="border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 <Save className="w-4 h-4 mr-2" />
                 Salvar
               </Button>
-              <Button variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 hover:border-red-300">
+              <Button 
+                variant="outline" 
+                onClick={handleExcluir}
+                disabled={selectedNFes.length === 0}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 hover:border-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 <Trash2 className="w-4 h-4 mr-2" />
                 Excluir
               </Button>

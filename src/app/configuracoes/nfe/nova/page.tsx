@@ -32,7 +32,7 @@ export default function NovaConfiguracaoNFEPage() {
   const [modelo, setModelo] = useState('');
   const [serie, setSerie] = useState('');
   const [numeroAtual, setNumeroAtual] = useState('');
-  const [ambiente, setAmbiente] = useState('producao');
+  const [ambiente, setAmbiente] = useState('PRODUCAO');
   
   // Estados para RPS
   const [naturezaOperacao, setNaturezaOperacao] = useState('1');
@@ -390,8 +390,8 @@ export default function NovaConfiguracaoNFEPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl">
-                        <SelectItem value="homologacao" className="rounded-lg">Homologação</SelectItem>
-                        <SelectItem value="producao" className="rounded-lg">Produção</SelectItem>
+                        <SelectItem value="HOMOLOGACAO" className="rounded-lg">Homologação</SelectItem>
+                        <SelectItem value="PRODUCAO" className="rounded-lg">Produção</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

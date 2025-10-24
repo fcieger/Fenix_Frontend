@@ -109,35 +109,37 @@ export function formatCnpj(response: CnpjResponse): string {
 }
 
 export function extractCompanyData(cnpjResponse: CnpjResponse) {
+  // Mapear apenas dados que existem, deixar vazio o que não existe
   return {
-    name: cnpjResponse.company.name,
-    cnpj: cnpjResponse.taxId,
-    founded: cnpjResponse.founded,
-    nature: cnpjResponse.company.nature.text,
-    size: cnpjResponse.company.size.text,
-    status: cnpjResponse.status.text,
+    name: cnpjResponse.company?.name || '',
+    cnpj: cnpjResponse.taxId || '',
+    founded: cnpjResponse.founded || '',
+    nature: cnpjResponse.company?.nature?.text || '',
+    size: cnpjResponse.company?.size?.text || '',
+    status: cnpjResponse.status?.text || '',
     address: {
-      street: cnpjResponse.address.street,
-      number: cnpjResponse.address.number,
-      district: cnpjResponse.address.district,
-      city: cnpjResponse.address.city,
-      state: cnpjResponse.address.state,
-      zip: cnpjResponse.address.zip,
+      street: cnpjResponse.address?.street || '',
+      number: cnpjResponse.address?.number || '',
+      district: cnpjResponse.address?.district || '',
+      city: cnpjResponse.address?.city || '',
+      state: cnpjResponse.address?.state || '',
+      zip: cnpjResponse.address?.zip || '',
     },
-    mainActivity: cnpjResponse.mainActivity.text,
-    phones: cnpjResponse.phones.map(phone => ({
-      type: phone.type,
-      area: phone.area,
-      number: phone.number,
-    })),
-    emails: cnpjResponse.emails.map(email => ({
-      ownership: email.ownership,
-      address: email.address,
-    })),
-    members: cnpjResponse.company.members.map(member => ({
-      name: member.person.name,
-      role: member.role.text,
-      type: member.person.type,
-    })),
+    mainActivity: cnpjResponse.mainActivity?.text || '',
+    phones: cnpjResponse.phones?.map(phone => ({
+      type: phone.type || 'LANDLINE',
+      area: phone.area || '',
+      number: phone.number || '',
+    })) || [],
+    emails: cnpjResponse.emails?.map(email => ({
+      ownership: email.ownership || 'CORPORATE',
+      address: email.address || '',
+    })) || [],
+    members: cnpjResponse.company?.members?.map(member => ({
+      name: member.person?.name || '',
+      role: member.role?.text || '',
+      type: member.person?.type || 'PESSOA_FISICA',
+    })) || [],
+    simplesNacional: cnpjResponse.company?.simples?.optant || false,
   };
 }

@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
+import { UserService, UserCompanyService } from '@/lib/database-service';
 
 export async function GET(request: NextRequest) {
   try {
-    // Verificar se há token de autenticação
     const authHeader = request.headers.get('authorization');
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -16,40 +14,38 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.substring(7);
     
-    // Fazer requisição para o backend real
-    const response = await fetch(`${BACKEND_URL}/api/users/profile`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        return NextResponse.json(
-          { message: 'Token inválido ou expirado' },
-          { status: 401 }
-        );
-      }
-      
-      const errorData = await response.json().catch(() => ({}));
+    // Extrair user ID do token (formato: mock-jwt-token-{userId}-{timestamp})
+    // O UUID tem formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+    const tokenMatch = token.match(/^mock-jwt-token-(.{36})-\d+$/);
+    if (!tokenMatch) {
       return NextResponse.json(
-        { message: errorData.message || 'Erro ao buscar perfil' },
-        { status: response.status }
+        { message: 'Token inválido' },
+        { status: 401 }
+      );
+    }
+    
+    const userId = tokenMatch[1];
+    
+    // Buscar usuário no banco
+    const user = await UserService.findById(userId);
+    
+    if (!user) {
+      return NextResponse.json(
+        { message: 'Usuário não encontrado' },
+        { status: 404 }
       );
     }
 
-    const userData = await response.json();
-    
-    // Adicionar campos que podem estar faltando para compatibilidade
-    const user = {
-      ...userData,
-      role: 'Administrador', // Campo padrão
-      lastLogin: null, // Campo padrão
+    // Buscar empresas do usuário
+    const companies = await UserCompanyService.getUserCompanies(user.id!);
+
+    // Retornar dados do usuário sem a senha
+    const { password: _, ...userWithoutPassword } = {
+      ...user,
+      companies: companies
     };
 
-    return NextResponse.json(user);
+    return NextResponse.json(userWithoutPassword);
   } catch (error) {
     console.error('Erro ao buscar perfil do usuário:', error);
     return NextResponse.json(

@@ -60,10 +60,11 @@ const ESTADOS_BRASILEIROS = [
 
 export default function EmpresaDadosPage() {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading, token } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, token } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [company, setCompany] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -79,58 +80,63 @@ export default function EmpresaDadosPage() {
 
   useEffect(() => {
     // Remover redirecionamento automático por enquanto
-    console.log('🔐 Estado de autenticação:', { isLoading, isAuthenticated, user: !!user });
-  }, [isAuthenticated, isLoading, router]);
+    console.log('🔐 Estado de autenticação:', { authLoading, isAuthenticated, user: !!user });
+  }, [isAuthenticated, authLoading, router]);
 
   useEffect(() => {
     const loadCompanyData = async () => {
-      console.log('🔄 loadCompanyData iniciado - carregando dados de teste...');
+      console.log('🔄 loadCompanyData iniciado - carregando dados da API...');
       
       try {
         setLoading(true);
         
-        // Dados de teste da empresa
-        const testCompanyData = {
-          id: '2c650c76-4e2a-4b58-933c-c3f8b7434d80',
-          name: 'fabio Ieger',
-          cnpj: '042.503.009-19',
-          emails: [{ address: 'teste@ieger.com.br' }],
-          phones: [{ number: '(12) 21212-121212121221' }],
-          address: { street: 'Rua Teste, 123', city: 'São Paulo', state: 'SP', zip: '01234-567' },
-          mainActivity: 'Desenvolvimento de Software'
-        };
+        if (!token || !user?.companies?.[0]?.id) {
+          console.error('❌ Token ou company ID não encontrado');
+          setError('Dados de autenticação não encontrados');
+          return;
+        }
+
+        const companyId = user.companies[0].id;
+        console.log('🔍 Buscando dados da empresa ID:', companyId);
         
-        setCompany(testCompanyData);
+        // Buscar dados da empresa via API usando apiService
+        const companyData = await apiService.getCadastro(companyId, token);
+        console.log('✅ Dados da empresa carregados:', companyData);
+        
+        setCompany(companyData);
         
         // Mapear os dados da empresa para o formulário
         const mappedData = {
-          name: testCompanyData.name || '',
-          cnpj: testCompanyData.cnpj || '',
-          email: testCompanyData.emails?.[0]?.address || '',
-          phone: testCompanyData.phones?.[0]?.number || '',
-          address: testCompanyData.address?.street || '',
-          city: testCompanyData.address?.city || '',
-          state: testCompanyData.address?.state || '',
-          zipCode: testCompanyData.address?.zip || '',
-          description: testCompanyData.mainActivity || ''
+          name: companyData.name || '',
+          cnpj: companyData.cnpj || '',
+          email: companyData.emails?.[0]?.address || '',
+          phone: companyData.phones?.[0] ? `${companyData.phones[0].area} ${companyData.phones[0].number}` : '',
+          address: companyData.address?.street || '',
+          city: companyData.address?.city || '',
+          state: companyData.address?.state || '',
+          zipCode: companyData.address?.zip || '',
+          description: companyData.mainActivity || ''
         };
         
-        console.log('📝 Dados de teste mapeados para o formulário:', mappedData);
+        console.log('📝 Dados mapeados para o formulário:', mappedData);
         setFormData(mappedData);
       } catch (error) {
-        console.error('❌ Erro ao carregar dados de teste:', error);
+        console.error('❌ Erro ao carregar dados da empresa:', error);
+        setError(`Erro ao carregar dados da empresa: ${error.message}`);
       } finally {
         setLoading(false);
       }
     };
 
-    // Carregar dados imediatamente
-    loadCompanyData();
-  }, []);
+    // Carregar dados apenas se estiver autenticado
+    if (isAuthenticated && !authLoading) {
+      loadCompanyData();
+    }
+  }, [isAuthenticated, authLoading, token, user]);
 
   // Debug: Mostrar informações de estado
   console.log('🔍 Estado atual da página:', {
-    isLoading,
+    authLoading,
     loading,
     isAuthenticated,
     user: !!user,
@@ -175,26 +181,31 @@ export default function EmpresaDadosPage() {
       const updateData = {
         name: formData.name,
         cnpj: formData.cnpj,
-        emails: formData.email ? [{ address: formData.email, ownership: 'CORPORATE' }] : [],
-        phones: formData.phone ? [{ type: 'LANDLINE', area: '11', number: formData.phone }] : [],
+        emails: formData.email ? [{ ownership: 'CORPORATE', address: formData.email }] : [],
+        phones: formData.phone ? [{ type: 'LANDLINE', area: formData.phone.split(' ')[0] || '', number: formData.phone.split(' ').slice(1).join(' ') || formData.phone }] : [],
         address: {
           street: formData.address,
           city: formData.city,
           state: formData.state,
-          zip: formData.zipCode,
-          number: '',
-          district: ''
+          zip: formData.zipCode
         },
         mainActivity: formData.description
       };
 
-      const updatedCompany = await apiService.updateCompany(company.id, updateData, token);
+      console.log('🔄 Salvando dados da empresa:', updateData);
+
+      // Atualizar dados da empresa via API usando apiService
+      const updatedCompany = await apiService.updateCadastro(company.id, updateData as any, token);
+      console.log('✅ Dados salvos com sucesso:', updatedCompany);
+      
+      // Atualizar estado local
       setCompany(updatedCompany);
       setIsEditing(false);
       
       console.log('Dados da empresa salvos com sucesso');
     } catch (error) {
       console.error('Erro ao salvar dados da empresa:', error);
+      setError(`Erro ao salvar dados: ${error.message}`);
     } finally {
       setSaving(false);
     }
@@ -283,9 +294,10 @@ export default function EmpresaDadosPage() {
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                           className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-gray-50"
+                          placeholder="Nome fantasia da empresa"
                         />
                       ) : (
-                        <p className="text-gray-900 py-3 px-4 bg-gray-50 rounded-xl">{formData.name}</p>
+                        <p className="text-gray-900 py-3 px-4 bg-gray-50 rounded-xl">{formData.name || 'Não informado'}</p>
                       )}
                     </div>
 
@@ -422,6 +434,67 @@ export default function EmpresaDadosPage() {
                       ) : (
                         <p className="text-gray-900 py-3 px-4 bg-gray-50 rounded-xl">{formData.description}</p>
                       )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Seção: Informações Adicionais */}
+                <div className="mb-8">
+                  <div className="flex items-center mb-6">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center mr-4">
+                      <FileText className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900">Informações Adicionais</h2>
+                      <p className="text-gray-600 text-sm">Detalhes complementares da empresa</p>
+                    </div>
+                  </div>
+              
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Natureza Jurídica
+                      </label>
+                      <p className="text-gray-900 py-3 px-4 bg-gray-50 rounded-xl">{company?.nature || 'Não informado'}</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Porte da Empresa
+                      </label>
+                      <p className="text-gray-900 py-3 px-4 bg-gray-50 rounded-xl">{company?.size || 'Não informado'}</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Status
+                      </label>
+                      <p className="text-gray-900 py-3 px-4 bg-gray-50 rounded-xl">{company?.status || 'Não informado'}</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Data de Fundação
+                      </label>
+                      <p className="text-gray-900 py-3 px-4 bg-gray-50 rounded-xl">
+                        {company?.founded ? new Date(company.founded).toLocaleDateString('pt-BR') : 'Não informado'}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Token da Empresa
+                      </label>
+                      <p className="text-gray-900 py-3 px-4 bg-gray-50 rounded-xl font-mono text-sm">{company?.token || 'Não informado'}</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Última Atualização
+                      </label>
+                      <p className="text-gray-900 py-3 px-4 bg-gray-50 rounded-xl">
+                        {company?.updatedAt ? new Date(company.updatedAt).toLocaleDateString('pt-BR') : 'Não informado'}
+                      </p>
                     </div>
                   </div>
                 </div>

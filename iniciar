@@ -1,0 +1,264 @@
+#!/bin/bash
+
+# ========================================
+# SCRIPT INICIAR - FENIX ERP
+# ========================================
+# Script para iniciar todos os serviços do projeto FENIX
+# Uso: ./iniciar
+
+echo "🚀 FENIX ERP - Iniciando Serviços"
+echo "=================================="
+
+# Cores para output
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+NC='\033[0m' # No Color
+
+# Função para log colorido
+log() {
+    echo -e "${BLUE}[$(date +'%H:%M:%S')]${NC} $1"
+}
+
+success() {
+    echo -e "${GREEN}✅ $1${NC}"
+}
+
+warning() {
+    echo -e "${YELLOW}⚠️  $1${NC}"
+}
+
+error() {
+    echo -e "${RED}❌ $1${NC}"
+}
+
+info() {
+    echo -e "${PURPLE}ℹ️  $1${NC}"
+}
+
+# Função para verificar se uma porta está em uso
+check_port() {
+    local port=$1
+    if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Função para aguardar serviço ficar pronto
+wait_for_service() {
+    local url=$1
+    local service_name=$2
+    local max_attempts=30
+    local attempt=1
+    
+    log "Aguardando $service_name ficar pronto..."
+    
+    while [ $attempt -le $max_attempts ]; do
+        if curl -s "$url" > /dev/null 2>&1; then
+            success "$service_name está pronto!"
+            return 0
+        fi
+        
+        echo -n "."
+        sleep 2
+        attempt=$((attempt + 1))
+    done
+    
+    error "$service_name não ficou pronto após $((max_attempts * 2)) segundos"
+    return 1
+}
+
+# Função para mostrar status dos serviços
+show_status() {
+    echo ""
+    echo "📊 Status dos Serviços:"
+    echo "======================="
+    
+    # Backend
+    if check_port 3001; then
+        success "Backend FENIX:    http://localhost:3001 (RODANDO)"
+    else
+        error "Backend FENIX:    http://localhost:3001 (PARADO)"
+    fi
+    
+    # Frontend
+    if check_port 3004; then
+        success "Frontend FENIX:   http://localhost:3004 (RODANDO)"
+    else
+        error "Frontend FENIX:   http://localhost:3004 (PARADO)"
+    fi
+    
+    # API NFe
+    if check_port 8080; then
+        success "API NFe Externa:  http://localhost:8080 (RODANDO)"
+    else
+        warning "API NFe Externa:  http://localhost:8080 (PARADO - opcional)"
+    fi
+}
+
+# ========================================
+# VERIFICAR STATUS ATUAL
+# ========================================
+log "Verificando status atual dos serviços..."
+show_status
+
+# ========================================
+# PARAR SERVIÇOS EXISTENTES (se solicitado)
+# ========================================
+if [ "$1" = "--restart" ] || [ "$1" = "-r" ]; then
+    log "Reiniciando todos os serviços..."
+    
+    # Parar processos
+    pkill -f "next dev" 2>/dev/null || true
+    pkill -f "nest start" 2>/dev/null || true
+    pkill -f "spring-boot:run" 2>/dev/null || true
+    
+    sleep 3
+    success "Serviços anteriores parados"
+fi
+
+# ========================================
+# INICIAR BACKEND (FENIX-Backend)
+# ========================================
+if ! check_port 3001; then
+    log "Iniciando Backend FENIX..."
+    
+    cd /home/fabio/projetos/fenix-backend
+    
+    # Iniciar backend em background
+    nohup npm run start:dev > /tmp/fenix-backend.log 2>&1 &
+    BACKEND_PID=$!
+    
+    # Aguardar backend ficar pronto
+    if wait_for_service "http://localhost:3001/api" "Backend FENIX"; then
+        success "Backend iniciado (PID: $BACKEND_PID)"
+        echo $BACKEND_PID > /tmp/fenix-backend.pid
+    else
+        error "Falha ao iniciar Backend"
+        exit 1
+    fi
+else
+    info "Backend já está rodando"
+fi
+
+# ========================================
+# INICIAR FRONTEND (FENIX)
+# ========================================
+if ! check_port 3004; then
+    log "Iniciando Frontend FENIX..."
+    
+    cd /home/fabio/projetos/fenix
+    
+    # Iniciar frontend em background
+    nohup npm run dev:3004 > /tmp/fenix-frontend.log 2>&1 &
+    FRONTEND_PID=$!
+    
+    # Aguardar frontend ficar pronto
+    if wait_for_service "http://localhost:3004" "Frontend FENIX"; then
+        success "Frontend iniciado (PID: $FRONTEND_PID)"
+        echo $FRONTEND_PID > /tmp/fenix-frontend.pid
+    else
+        error "Falha ao iniciar Frontend"
+        exit 1
+    fi
+else
+    info "Frontend já está rodando"
+fi
+
+# ========================================
+# INICIAR API NFe (OPCIONAL)
+# ========================================
+if [ "$1" = "--with-nfe" ] || [ "$1" = "-n" ]; then
+    if ! check_port 8080; then
+        log "Iniciando API NFe Externa..."
+        
+        cd /home/fabio/projetos/fenix-nfe-api
+        
+        # Verificar se Maven está disponível
+        if command -v mvn >/dev/null 2>&1; then
+            # Iniciar API NFe em background
+            nohup mvn spring-boot:run > /tmp/fenix-nfe-api.log 2>&1 &
+            NFE_API_PID=$!
+            
+            # Aguardar API NFe ficar pronto
+            if wait_for_service "http://localhost:8080/api" "API NFe"; then
+                success "API NFe iniciada (PID: $NFE_API_PID)"
+                echo $NFE_API_PID > /tmp/fenix-nfe-api.pid
+            else
+                warning "API NFe não ficou pronta, mas continuando sem ela"
+            fi
+        else
+            warning "Maven não encontrado, pulando API NFe"
+        fi
+    else
+        info "API NFe já está rodando"
+    fi
+else
+    info "API NFe não será iniciada (use --with-nfe para incluir)"
+fi
+
+# ========================================
+# EXECUTAR TESTES (OPCIONAL)
+# ========================================
+if [ "$1" = "--test" ] || [ "$1" = "-t" ]; then
+    log "Executando testes de integração..."
+    
+    cd /home/fabio/projetos/fenix
+    
+    if [ -f "test-integration.js" ]; then
+        node test-integration.js
+        if [ $? -eq 0 ]; then
+            success "Testes de integração passaram!"
+        else
+            warning "Alguns testes falharam, mas os serviços estão rodando"
+        fi
+    else
+        warning "Script de teste não encontrado, pulando testes automáticos"
+    fi
+fi
+
+# ========================================
+# RESUMO FINAL
+# ========================================
+echo ""
+echo "🎉 FENIX ERP - SERVIÇOS INICIADOS!"
+echo "=================================="
+echo ""
+show_status
+echo ""
+echo "🔧 Como usar:"
+echo "  • Acesse: http://localhost:3004"
+echo "  • Login: teste@ieger.com.br / 123456"
+echo "  • Navegue para: Notas Fiscais → Nova NFe"
+echo "  • Teste a integração NFe!"
+echo ""
+echo "📝 Comandos úteis:"
+echo "  • Ver logs Backend:    tail -f /tmp/fenix-backend.log"
+echo "  • Ver logs Frontend:   tail -f /tmp/fenix-frontend.log"
+echo "  • Ver logs API NFe:    tail -f /tmp/fenix-nfe-api.log"
+echo "  • Parar serviços:      ./parar"
+echo "  • Reiniciar:           ./iniciar --restart"
+echo "  • Com API NFe:         ./iniciar --with-nfe"
+echo "  • Com testes:          ./iniciar --test"
+echo ""
+
+# Criar script de parada se não existir
+if [ ! -f "parar" ]; then
+    echo "#!/bin/bash" > parar
+    echo "echo '🛑 Parando serviços FENIX...'" >> parar
+    echo "pkill -f 'next dev' 2>/dev/null || true" >> parar
+    echo "pkill -f 'nest start' 2>/dev/null || true" >> parar
+    echo "pkill -f 'spring-boot:run' 2>/dev/null || true" >> parar
+    echo "rm -f /tmp/fenix-*.pid /tmp/fenix-*.log" >> parar
+    echo "echo '✅ Serviços parados!'" >> parar
+    chmod +x parar
+    success "Script de parada criado: ./parar"
+fi
+
+success "Pronto para trabalhar! 🚀"
+
+

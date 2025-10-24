@@ -93,7 +93,7 @@ export default function LoginPage() {
                   Dados de teste pré-preenchidos
                 </p>
                 <p className="text-blue-600 text-sm">
-                  Email: admin@fenix.com | Senha: password
+                  Email: teste@ieger.com.br | Senha: 123456
                 </p>
               </div>
             </div>

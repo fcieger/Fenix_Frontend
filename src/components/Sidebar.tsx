@@ -55,6 +55,8 @@ const menuItems = [
     icon: Settings, 
     href: '/configuracoes',
     submenu: [
+      { id: 'configuracoes-nfe', label: 'Configurações NFe', href: '/configuracoes/nfe' },
+      { id: 'certificado-digital', label: 'Certificado Digital', href: '/configuracoes/certificado' },
       { id: 'prazos-pagamento', label: 'Prazos de Pagamento', href: '/configuracoes/prazos-pagamento' }
     ]
   },

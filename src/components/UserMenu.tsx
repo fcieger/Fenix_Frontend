@@ -109,6 +109,11 @@ export default function UserMenu() {
           icon: FileSpreadsheet
         },
         {
+          title: 'Certificado Digital',
+          href: '/configuracoes/certificado',
+          icon: Shield
+        },
+        {
           title: 'Importar dados',
           href: '/configuracoes/importar',
           icon: Download
