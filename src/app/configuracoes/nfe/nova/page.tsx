@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,8 @@ import {
 import { useAuth } from '@/contexts/auth-context';
 import { apiService, ConfiguracaoNfeResponse } from '@/lib/api';
 
-export default function NovaConfiguracaoNFEPage() {
+// Componente que usa useSearchParams
+function NovaConfiguracaoNfeForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, token, activeCompanyId, isAuthenticated, isLoading } = useAuth();
@@ -732,3 +733,21 @@ export default function NovaConfiguracaoNFEPage() {
       </Layout>
     );
   }
+
+// Componente principal com Suspense
+export default function NovaConfiguracaoNFEPage() {
+  return (
+    <Suspense fallback={
+      <Layout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Carregando...</p>
+          </div>
+        </div>
+      </Layout>
+    }>
+      <NovaConfiguracaoNfeForm />
+    </Suspense>
+  );
+}
