@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    const apiResponse = await fetch(`${apiUrl}/health`, {
+    const apiResponse = await fetch(`${apiUrl}/api/health`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
