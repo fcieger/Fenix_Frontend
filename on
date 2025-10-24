@@ -1,0 +1,8 @@
+next.config.js
+package-lock.json
+package.json
+src/app/cadastros/novo/page.tsx
+src/app/configuracoes/nfe/nova/page.tsx
+src/app/impostos/natureza-operacao/novo/page.tsx
+src/app/produtos/novo/page.tsx
+src/app/vendas/novo/page.tsx
