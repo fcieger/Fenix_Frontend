@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import Layout from '@/components/Layout';
@@ -55,7 +55,8 @@ import {
   Send
 } from 'lucide-react';
 
-export default function NovoPedidoPage() {
+// Componente que usa useSearchParams
+function NovoPedidoForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pedidoId = searchParams.get('id');
@@ -2570,5 +2571,23 @@ export default function NovoPedidoPage() {
         <div className="h-24"></div>
       </div>
     </Layout>
+  );
+}
+
+// Componente principal com Suspense
+export default function NovoPedidoPage() {
+  return (
+    <Suspense fallback={
+      <Layout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Carregando...</p>
+          </div>
+        </div>
+      </Layout>
+    }>
+      <NovoPedidoForm />
+    </Suspense>
   );
 }
