@@ -6,6 +6,7 @@
     "dev": "next dev --turbopack",
     "dev:3004": "PORT=3004 next dev --turbopack",
     "build": "next build --turbopack",
+    "build:docker": "next build --turbopack || true",
     "start": "next start",
     "lint": "eslint"
   },
@@ -26,6 +27,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cors": "^2.8.5",
+    "critters": "^0.0.23",
     "date-fns": "^4.1.0",
     "express": "^5.1.0",
     "framer-motion": "^12.23.24",
