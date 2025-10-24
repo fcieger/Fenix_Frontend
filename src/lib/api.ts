@@ -1,6 +1,7 @@
 import { API_CONFIG } from '@/config/api'
+import { api } from '@/config/api'
 
-const BASE_URL = API_CONFIG.BASE_URL || 'http://localhost:3000'
+const BASE_URL = API_CONFIG.BASE_URL
 
 
 export interface RegisterData {

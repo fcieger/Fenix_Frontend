@@ -254,3 +254,4 @@ Se encontrar problemas:
 **Última atualização**: 2024-12-19  
 **Versão Docker**: 1.0.0
 
+

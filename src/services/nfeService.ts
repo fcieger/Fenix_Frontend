@@ -49,7 +49,7 @@ class NFeService {
   private apiUrl: string;
 
   constructor() {
-    this.apiUrl = process.env.NEXT_PUBLIC_NFE_API_URL || 'http://localhost:8080/api';
+    this.apiUrl = process.env.NEXT_PUBLIC_NFE_API_URL || '';
   }
 
   /**

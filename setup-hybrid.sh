@@ -143,3 +143,4 @@ echo "• Parar Docker: docker-compose down"
 echo ""
 echo "✅ Pronto para usar! O backend agora roda nativamente sem problemas de Docker!"
 
+

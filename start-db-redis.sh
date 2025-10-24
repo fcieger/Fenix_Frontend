@@ -53,3 +53,4 @@ echo ""
 echo "🚀 Agora você pode iniciar o backend nativamente:"
 echo "   ./start-backend-native.sh"
 
+

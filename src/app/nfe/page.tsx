@@ -155,7 +155,7 @@ export default function NFePage() {
       // Se autenticado e com empresa ativa, tentar backend
       if (isAuthenticated && token && activeCompanyId) {
         try {
-          const response = await fetch(`${API_CONFIG.BASE_URL || 'http://localhost:3001'}/api/nfe`, {
+          const response = await fetch(`${API_CONFIG.BASE_URL}/api/nfe`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'

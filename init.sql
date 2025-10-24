@@ -31,3 +31,4 @@ SELECT pg_reload_conf();
 -- Log de inicialização
 INSERT INTO pg_stat_statements_reset() VALUES (1);
 
+

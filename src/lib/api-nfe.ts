@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api } from '@/config/api';
 
 export interface NFeItem {
   id?: string;
@@ -166,6 +166,7 @@ export class NFeService {
     }
   }
 }
+
 
 
 
