@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { apiService, CadastroData } from '@/lib/api';
@@ -26,7 +26,8 @@ import {
 } from 'lucide-react';
 import CadastrosAIAssistant from '@/components/CadastrosAIAssistant';
 
-export default function NovoClientePage() {
+// Componente que usa useSearchParams
+function NovoClienteForm() {
   const router = useRouter();
   const { user, token, isAuthenticated, isLoading: authLoading, activeCompanyId } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -1435,5 +1436,21 @@ export default function NovoClientePage() {
         onClose={() => setIsAIAssistantOpen(false)}
       />
     </div>
+  );
+}
+
+// Componente principal com Suspense
+export default function NovoClientePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando...</p>
+        </div>
+      </div>
+    }>
+      <NovoClienteForm />
+    </Suspense>
   );
 }
