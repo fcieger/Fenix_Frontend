@@ -14,6 +14,9 @@ import {
   FileText,
   Plus
 } from 'lucide-react';
+import { useContas } from '@/hooks/useContas';
+import { CreateContaFinanceiraRequest } from '@/types/conta';
+import { parseBrazilianCurrency } from '@/utils/currency';
 
 interface CriarOutroTipoModalProps {
   isOpen: boolean;
@@ -23,11 +26,15 @@ interface CriarOutroTipoModalProps {
 
 export default function CriarOutroTipoModal({ isOpen, onClose, onVoltarParaSelecao }: CriarOutroTipoModalProps) {
   const [step, setStep] = useState(1);
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     descricao: '',
     dataInicial: '',
     saldoInicial: ''
   });
+
+  // Hook para gerenciar contas
+  const { createConta, refreshContas } = useContas('123e4567-e89b-12d3-a456-426614174000');
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -48,16 +55,51 @@ export default function CriarOutroTipoModal({ isOpen, onClose, onVoltarParaSelec
     }
   };
 
-  const handleSave = () => {
-    console.log('Salvando outro tipo de conta:', formData);
-    // Aqui você implementaria a lógica para salvar o outro tipo de conta
-    onClose();
-    setStep(1);
-    setFormData({
-      descricao: '',
-      dataInicial: '',
-      saldoInicial: ''
-    });
+  const handleSave = async () => {
+    console.log('🔍 DEBUG - Salvando outro tipo de conta:', formData);
+    
+    setSaving(true);
+    
+    try {
+      const contaData: CreateContaFinanceiraRequest = {
+        company_id: '123e4567-e89b-12d3-a456-426614174000',
+        tipo_conta: 'outro_tipo',
+        descricao: formData.descricao,
+        banco_id: '999', // Banco "Outros"
+        banco_nome: 'Outros',
+        banco_codigo: '999',
+        numero_agencia: '',
+        numero_conta: '',
+        tipo_pessoa: 'fisica',
+        saldo_inicial: parseBrazilianCurrency(formData.saldoInicial),
+        data_saldo: formData.dataInicial,
+        created_by: '123e4567-e89b-12d3-a456-426614174001'
+      };
+
+      console.log('🔍 DEBUG - contaData a ser enviada:', contaData);
+
+      await createConta(contaData);
+      
+      // Atualizar lista de contas
+      await refreshContas();
+      
+      alert('Conta criada com sucesso!');
+      onClose();
+      
+      // Reset form
+      setStep(1);
+      setFormData({
+        descricao: '',
+        dataInicial: '',
+        saldoInicial: ''
+      });
+      
+    } catch (error) {
+      console.error('Erro ao criar conta:', error);
+      alert(`Erro ao criar conta: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const isStep1Valid = formData.descricao.trim() !== '';
@@ -394,10 +436,20 @@ export default function CriarOutroTipoModal({ isOpen, onClose, onVoltarParaSelec
             ) : (
               <Button
                 onClick={handleSave}
-                className="px-3 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white flex items-center shadow-lg hover:shadow-xl transition-all duration-200 text-xs sm:text-sm"
+                disabled={saving}
+                className="px-3 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white flex items-center shadow-lg hover:shadow-xl transition-all duration-200 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                Criar Conta
+                {saving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white mr-1 sm:mr-2"></div>
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    Criar Conta
+                  </>
+                )}
               </Button>
             )}
           </div>
@@ -406,3 +458,4 @@ export default function CriarOutroTipoModal({ isOpen, onClose, onVoltarParaSelec
     </div>
   );
 }
+
