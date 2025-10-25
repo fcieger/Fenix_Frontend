@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import {
@@ -20,7 +20,15 @@ import {
   ChevronRight,
   ShoppingCart,
   Shield,
-  FileText
+  FileText,
+  DollarSign,
+  CreditCard,
+  TrendingUp,
+  Banknote,
+  Calculator,
+  History,
+  BookOpen,
+  Target
 } from 'lucide-react';
 
 // Menu centralizado - ÚNICA FONTE DA VERDADE
@@ -47,6 +55,23 @@ const menuItems = [
     ]
   },
   { id: 'nfe', label: 'Notas Fiscais', icon: FileText, href: '/nfe' },
+  { 
+    id: 'financeiro', 
+    label: 'Financeiro', 
+    icon: DollarSign, 
+    href: '/financeiro',
+    submenu: [
+      { id: 'financeiro-dashboard', label: 'Dashboard', href: '/financeiro' },
+      { id: 'banco', label: 'Banco', href: '/financeiro/banco' },
+      { id: 'contas-pagar', label: 'Contas a Pagar', href: '/financeiro/contas-pagar' },
+      { id: 'contas-receber', label: 'Contas a Receber', href: '/financeiro/contas-receber' },
+      { id: 'fluxo-caixa', label: 'Fluxo de Caixa', href: '/financeiro/fluxo-caixa' },
+      { id: 'dre', label: 'DRE', href: '/financeiro/dre' },
+      { id: 'historico', label: 'Histórico', href: '/financeiro/historico' },
+      { id: 'conta-contabil', label: 'Conta Contábil', href: '/financeiro/conta-contabil' },
+      { id: 'centro-custo', label: 'Centro de Custo', href: '/financeiro/centro-custo' }
+    ]
+  },
   { id: 'assistentes', label: 'Assistentes IA', icon: Bot, href: '/assistentes', badge: 'IA' },
   { id: 'relatorios', label: 'Relatórios', icon: BarChart3, href: '/relatorios' },
   { 
@@ -69,6 +94,13 @@ export default function Sidebar() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
 
+  // Manter menu financeiro expandido quando estiver na área financeira
+  useEffect(() => {
+    if (pathname.startsWith('/financeiro')) {
+      setExpandedMenus(prev => new Set([...prev, 'financeiro']));
+    }
+  }, [pathname]);
+
   const getActiveItem = () => {
     // Verificar se algum item do menu está ativo
     for (const item of menuItems) {
@@ -89,7 +121,10 @@ export default function Sidebar() {
 
   const handleNavigation = (href: string) => {
     router.push(href);
-    setSidebarOpen(false);
+    // Só fecha o menu em dispositivos móveis
+    if (window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
   };
 
   const handleLogout = () => {
