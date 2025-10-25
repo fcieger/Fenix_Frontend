@@ -18,6 +18,8 @@ import {
   Building2
 } from 'lucide-react';
 import ListaBancosBrasil from './ListaBancosBrasil';
+import { useContas } from '@/hooks/useContas';
+import { CreateContaFinanceiraRequest } from '@/types/conta';
 
 interface Banco {
   id: string;
@@ -33,6 +35,7 @@ interface CriarCartaoCreditoModalProps {
 
 export default function CriarCartaoCreditoModal({ isOpen, onClose, onVoltarParaSelecao }: CriarCartaoCreditoModalProps) {
   const [step, setStep] = useState(1);
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     descricao: '',
     ultimos4Digitos: '',
@@ -43,6 +46,9 @@ export default function CriarCartaoCreditoModal({ isOpen, onClose, onVoltarParaS
     diaVencimento: ''
   });
   const [selectedEmissor, setSelectedEmissor] = useState<Banco | null>(null);
+
+  // Hook para gerenciar contas
+  const { createConta, refreshContas } = useContas('123e4567-e89b-12d3-a456-426614174000');
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -78,21 +84,68 @@ export default function CriarCartaoCreditoModal({ isOpen, onClose, onVoltarParaS
     }
   };
 
-  const handleSave = () => {
-    console.log('Salvando cartão de crédito:', formData);
-    // Aqui você implementaria a lógica para salvar o cartão
-    onClose();
-    setStep(1);
-    setFormData({
-      descricao: '',
-      ultimos4Digitos: '',
-      bandeira: '',
-      emissorId: '',
-      contaPagamento: '',
-      diaFechamento: '',
-      diaVencimento: ''
-    });
-    setSelectedEmissor(null);
+  const handleSave = async () => {
+    if (!selectedEmissor) {
+      alert('Por favor, selecione um emissor');
+      return;
+    }
+
+    console.log('🔍 DEBUG - Salvando cartão de crédito:', formData);
+    console.log('🔍 DEBUG - selectedEmissor:', selectedEmissor);
+    
+    setSaving(true);
+    
+    try {
+      const contaData: CreateContaFinanceiraRequest = {
+        company_id: '123e4567-e89b-12d3-a456-426614174000',
+        tipo_conta: 'cartao_credito',
+        descricao: formData.descricao,
+        banco_id: selectedEmissor.id,
+        banco_nome: selectedEmissor.nome,
+        banco_codigo: selectedEmissor.codigo,
+        numero_agencia: '',
+        numero_conta: '',
+        tipo_pessoa: 'fisica',
+        ultimos_4_digitos: formData.ultimos4Digitos,
+        bandeira_cartao: formData.bandeira,
+        emissor_cartao: selectedEmissor.nome,
+        conta_padrao_pagamento: formData.contaPagamento,
+        dia_fechamento: parseInt(formData.diaFechamento) || null,
+        dia_vencimento: parseInt(formData.diaVencimento) || null,
+        saldo_inicial: 0,
+        data_saldo: new Date().toISOString().split('T')[0],
+        created_by: '123e4567-e89b-12d3-a456-426614174001'
+      };
+
+      console.log('🔍 DEBUG - contaData a ser enviada:', contaData);
+
+      await createConta(contaData);
+      
+      // Atualizar lista de contas
+      await refreshContas();
+      
+      alert('Cartão de crédito criado com sucesso!');
+      onClose();
+      
+      // Reset form
+      setStep(1);
+      setFormData({
+        descricao: '',
+        ultimos4Digitos: '',
+        bandeira: '',
+        emissorId: '',
+        contaPagamento: '',
+        diaFechamento: '',
+        diaVencimento: ''
+      });
+      setSelectedEmissor(null);
+      
+    } catch (error) {
+      console.error('Erro ao criar cartão de crédito:', error);
+      alert(`Erro ao criar cartão de crédito: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const isStep1Valid = formData.descricao.trim() !== '' && 
@@ -550,10 +603,20 @@ export default function CriarCartaoCreditoModal({ isOpen, onClose, onVoltarParaS
             ) : (
               <Button
                 onClick={handleSave}
-                className="px-3 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white flex items-center shadow-lg hover:shadow-xl transition-all duration-200 text-xs sm:text-sm"
+                disabled={saving}
+                className="px-3 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white flex items-center shadow-lg hover:shadow-xl transition-all duration-200 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                Criar Cartão
+                {saving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white mr-1 sm:mr-2"></div>
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    Criar Cartão
+                  </>
+                )}
               </Button>
             )}
           </div>
