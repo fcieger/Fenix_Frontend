@@ -16,6 +16,9 @@ import {
   FileText,
   Shield
 } from 'lucide-react';
+import { useContas } from '@/hooks/useContas';
+import { CreateContaFinanceiraRequest } from '@/types/conta';
+import { parseBrazilianCurrency } from '@/utils/currency';
 
 interface CriarCaixinhaModalProps {
   isOpen: boolean;
@@ -25,11 +28,15 @@ interface CriarCaixinhaModalProps {
 
 export default function CriarCaixinhaModal({ isOpen, onClose, onVoltarParaSelecao }: CriarCaixinhaModalProps) {
   const [step, setStep] = useState(1);
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     descricao: '',
     dataSaldo: '',
     saldoInicial: ''
   });
+
+  // Hook para gerenciar contas
+  const { createConta, refreshContas } = useContas('123e4567-e89b-12d3-a456-426614174000');
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -50,16 +57,51 @@ export default function CriarCaixinhaModal({ isOpen, onClose, onVoltarParaSeleca
     }
   };
 
-  const handleSave = () => {
-    console.log('Salvando caixinha:', formData);
-    // Aqui você implementaria a lógica para salvar a caixinha
-    onClose();
-    setStep(1);
-    setFormData({
-      descricao: '',
-      dataSaldo: '',
-      saldoInicial: ''
-    });
+  const handleSave = async () => {
+    console.log('🔍 DEBUG - Salvando caixinha:', formData);
+    
+    setSaving(true);
+    
+    try {
+      const contaData: CreateContaFinanceiraRequest = {
+        company_id: '123e4567-e89b-12d3-a456-426614174000',
+        tipo_conta: 'caixinha',
+        descricao: formData.descricao,
+        banco_id: '001', // Banco padrão para caixinha
+        banco_nome: 'Banco do Brasil',
+        banco_codigo: '001',
+        numero_agencia: '',
+        numero_conta: '',
+        tipo_pessoa: 'fisica',
+        saldo_inicial: parseBrazilianCurrency(formData.saldoInicial),
+        data_saldo: formData.dataSaldo,
+        created_by: '123e4567-e89b-12d3-a456-426614174001'
+      };
+
+      console.log('🔍 DEBUG - contaData a ser enviada:', contaData);
+
+      await createConta(contaData);
+      
+      // Atualizar lista de contas
+      await refreshContas();
+      
+      alert('Caixinha criada com sucesso!');
+      onClose();
+      
+      // Reset form
+      setStep(1);
+      setFormData({
+        descricao: '',
+        dataSaldo: '',
+        saldoInicial: ''
+      });
+      
+    } catch (error) {
+      console.error('Erro ao criar caixinha:', error);
+      alert(`Erro ao criar caixinha: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const isStep1Valid = formData.descricao.trim() !== '';
@@ -396,10 +438,20 @@ export default function CriarCaixinhaModal({ isOpen, onClose, onVoltarParaSeleca
             ) : (
               <Button
                 onClick={handleSave}
-                className="px-3 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white flex items-center shadow-lg hover:shadow-xl transition-all duration-200 text-xs sm:text-sm"
+                disabled={saving}
+                className="px-3 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white flex items-center shadow-lg hover:shadow-xl transition-all duration-200 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                Criar Caixinha
+                {saving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white mr-1 sm:mr-2"></div>
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    Criar Caixinha
+                  </>
+                )}
               </Button>
             )}
           </div>
