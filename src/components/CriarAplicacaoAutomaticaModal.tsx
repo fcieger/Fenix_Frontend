@@ -16,6 +16,9 @@ import {
   Building2
 } from 'lucide-react';
 import ListaBancosBrasil from './ListaBancosBrasil';
+import { useContas } from '@/hooks/useContas';
+import { CreateContaFinanceiraRequest } from '@/types/conta';
+import { parseBrazilianCurrency } from '@/utils/currency';
 
 interface Banco {
   id: string;
@@ -31,13 +34,20 @@ interface CriarAplicacaoAutomaticaModalProps {
 
 export default function CriarAplicacaoAutomaticaModal({ isOpen, onClose, onVoltarParaSelecao }: CriarAplicacaoAutomaticaModalProps) {
   const [step, setStep] = useState(1);
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     descricao: '',
     bancoId: '',
+    modalidade: '',
+    numeroAgencia: '',
+    numeroConta: '',
     dataInicial: '',
     saldoInicial: ''
   });
   const [selectedBanco, setSelectedBanco] = useState<Banco | null>(null);
+
+  // Hook para gerenciar contas
+  const { createConta, refreshContas } = useContas('123e4567-e89b-12d3-a456-426614174000');
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -66,21 +76,66 @@ export default function CriarAplicacaoAutomaticaModal({ isOpen, onClose, onVolta
     }
   };
 
-  const handleSave = () => {
-    console.log('Salvando aplicação automática:', formData);
-    // Aqui você implementaria a lógica para salvar a aplicação automática
-    onClose();
-    setStep(1);
-    setFormData({
-      descricao: '',
-      bancoId: '',
-      dataInicial: '',
-      saldoInicial: ''
-    });
-    setSelectedBanco(null);
+  const handleSave = async () => {
+    if (!selectedBanco) {
+      alert('Por favor, selecione um banco');
+      return;
+    }
+
+    console.log('🔍 DEBUG - Salvando poupança:', formData);
+    console.log('🔍 DEBUG - selectedBanco:', selectedBanco);
+    
+    setSaving(true);
+    
+    try {
+      const contaData: CreateContaFinanceiraRequest = {
+        company_id: '123e4567-e89b-12d3-a456-426614174000',
+        tipo_conta: 'poupanca',
+        descricao: formData.descricao,
+        banco_id: selectedBanco.id,
+        banco_nome: selectedBanco.nome,
+        banco_codigo: selectedBanco.codigo,
+        numero_agencia: formData.numeroAgencia,
+        numero_conta: formData.numeroConta,
+        tipo_pessoa: formData.modalidade === 'pf' ? 'fisica' : formData.modalidade === 'pj' ? 'juridica' : 'fisica',
+        modalidade: formData.modalidade,
+        saldo_inicial: parseBrazilianCurrency(formData.saldoInicial),
+        data_saldo: formData.dataInicial,
+        created_by: '123e4567-e89b-12d3-a456-426614174001'
+      };
+
+      console.log('🔍 DEBUG - contaData a ser enviada:', contaData);
+
+      await createConta(contaData);
+      
+      // Atualizar lista de contas
+      await refreshContas();
+      
+      alert('Poupança criada com sucesso!');
+      onClose();
+      
+      // Reset form
+      setStep(1);
+      setFormData({
+        descricao: '',
+        bancoId: '',
+        modalidade: '',
+        numeroAgencia: '',
+        numeroConta: '',
+        dataInicial: '',
+        saldoInicial: ''
+      });
+      setSelectedBanco(null);
+      
+    } catch (error) {
+      console.error('Erro ao criar poupança:', error);
+      alert(`Erro ao criar poupança: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const isStep1Valid = formData.descricao.trim() !== '' && formData.bancoId.trim() !== '';
+  const isStep1Valid = formData.descricao.trim() !== '' && formData.bancoId.trim() !== '' && formData.modalidade.trim() !== '' && formData.numeroAgencia.trim() !== '' && formData.numeroConta.trim() !== '';
   const isStep2Valid = formData.dataInicial.trim() !== '' && formData.saldoInicial.trim() !== '';
 
   if (!isOpen) return null;
@@ -102,10 +157,10 @@ export default function CriarAplicacaoAutomaticaModal({ isOpen, onClose, onVolta
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="text-lg sm:text-xl font-bold text-gray-900 truncate">
-                  Criar Aplicação Automática
+                  Criar Poupança
                 </h3>
                 <p className="text-gray-600 text-xs sm:text-sm truncate">
-                  Passo {step} de 3 - Configure seu investimento automático
+                  Passo {step} de 3 - Configure sua conta poupança
                 </p>
               </div>
             </div>
@@ -146,7 +201,7 @@ export default function CriarAplicacaoAutomaticaModal({ isOpen, onClose, onVolta
             </div>
           </div>
 
-          {/* Step 1: Dados da Aplicação Automática */}
+          {/* Step 1: Dados da Poupança */}
           {step === 1 && (
             <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-2xl sm:rounded-3xl p-2 sm:p-3 lg:p-4 flex-1 overflow-y-auto">
               {/* Header Moderno */}
@@ -154,9 +209,9 @@ export default function CriarAplicacaoAutomaticaModal({ isOpen, onClose, onVolta
                 <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg shadow-lg mb-1 sm:mb-2">
                   <RefreshCw className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                 </div>
-                <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-1">Configure a Aplicação Automática</h3>
+                <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-1">Configure a Poupança</h3>
                 <p className="text-gray-600 max-w-2xl mx-auto text-xs">
-                  Preencha as informações básicas da sua aplicação automática para começar o controle
+                  Preencha as informações básicas da sua conta poupança para começar o controle
                 </p>
               </div>
 
@@ -189,9 +244,9 @@ export default function CriarAplicacaoAutomaticaModal({ isOpen, onClose, onVolta
                     </div>
                     <div className="min-w-0 flex-1">
                       <label className="block text-sm font-bold text-gray-900">
-                        Descrição da Aplicação <span className="text-red-500">*</span>
+                        Descrição da Poupança <span className="text-red-500">*</span>
                       </label>
-                      <p className="text-xs text-gray-600">Como você quer identificar esta aplicação?</p>
+                      <p className="text-xs text-gray-600">Como você quer identificar esta poupança?</p>
                     </div>
                   </div>
                   
@@ -212,6 +267,101 @@ export default function CriarAplicacaoAutomaticaModal({ isOpen, onClose, onVolta
                   </div>
                 </div>
 
+                {/* Campo Modalidade */}
+                <div className="space-y-1">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <div className="w-6 h-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded flex items-center justify-center flex-shrink-0">
+                      <Building2 className="h-3 w-3 text-white" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <label className="block text-sm font-bold text-gray-900">
+                        Modalidade <span className="text-red-500">*</span>
+                      </label>
+                      <p className="text-xs text-gray-600">Tipo de pessoa (PF ou PJ)</p>
+                    </div>
+                  </div>
+                  
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Building2 className="h-4 w-4 text-gray-400 group-focus-within:text-purple-500 transition-colors" />
+                    </div>
+                    <select
+                      value={formData.modalidade}
+                      onChange={(e) => handleInputChange('modalidade', e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-100 focus:border-purple-500 transition-all duration-300 bg-white shadow-sm hover:shadow-md text-gray-700 font-semibold text-sm"
+                    >
+                      <option value="">Selecione a modalidade</option>
+                      <option value="pf">Pessoa Física (PF)</option>
+                      <option value="pj">Pessoa Jurídica (PJ)</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <div className="w-1.5 h-1.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Campo Número da Agência */}
+                <div className="space-y-1">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <div className="w-6 h-6 bg-gradient-to-br from-orange-500 to-red-500 rounded flex items-center justify-center flex-shrink-0">
+                      <Building2 className="h-3 w-3 text-white" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <label className="block text-sm font-bold text-gray-900">
+                        Número da Agência <span className="text-red-500">*</span>
+                      </label>
+                      <p className="text-xs text-gray-600">Código da agência bancária</p>
+                    </div>
+                  </div>
+                  
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Building2 className="h-4 w-4 text-gray-400 group-focus-within:text-orange-500 transition-colors" />
+                    </div>
+                    <input
+                      type="text"
+                      value={formData.numeroAgencia}
+                      onChange={(e) => handleInputChange('numeroAgencia', e.target.value)}
+                      placeholder="Ex: 1234"
+                      className="w-full pl-10 pr-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all duration-300 bg-white shadow-sm hover:shadow-md text-gray-700 font-semibold text-sm"
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <div className="w-1.5 h-1.5 bg-gradient-to-r from-orange-500 to-red-500 rounded-full"></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Campo Número da Conta */}
+                <div className="space-y-1">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <div className="w-6 h-6 bg-gradient-to-br from-teal-500 to-cyan-500 rounded flex items-center justify-center flex-shrink-0">
+                      <Building2 className="h-3 w-3 text-white" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <label className="block text-sm font-bold text-gray-900">
+                        Número da Conta <span className="text-red-500">*</span>
+                      </label>
+                      <p className="text-xs text-gray-600">Número da conta poupança</p>
+                    </div>
+                  </div>
+                  
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Building2 className="h-4 w-4 text-gray-400 group-focus-within:text-teal-500 transition-colors" />
+                    </div>
+                    <input
+                      type="text"
+                      value={formData.numeroConta}
+                      onChange={(e) => handleInputChange('numeroConta', e.target.value)}
+                      placeholder="Ex: 12345-6"
+                      className="w-full pl-10 pr-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-100 focus:border-teal-500 transition-all duration-300 bg-white shadow-sm hover:shadow-md text-gray-700 font-semibold text-sm"
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <div className="w-1.5 h-1.5 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full"></div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Campo Banco */}
                 <div className="space-y-1">
                   <div className="flex items-center space-x-2 mb-1">
@@ -227,7 +377,7 @@ export default function CriarAplicacaoAutomaticaModal({ isOpen, onClose, onVolta
                   </div>
                   
                   <ListaBancosBrasil
-                    onBancoSelect={handleBancoSelect}
+                    onSelect={handleBancoSelect}
                     selectedBanco={selectedBanco}
                   />
                 </div>
@@ -378,8 +528,8 @@ export default function CriarAplicacaoAutomaticaModal({ isOpen, onClose, onVolta
                 <div className="p-1 bg-green-200 rounded-full w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-1 flex items-center justify-center">
                   <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-700" />
                 </div>
-                <h4 className="text-sm sm:text-base font-bold text-gray-900 mb-1">Resumo da Aplicação Automática</h4>
-                <p className="text-gray-600 text-xs">Revise as informações antes de criar a aplicação</p>
+                <h4 className="text-sm sm:text-base font-bold text-gray-900 mb-1">Resumo da Poupança</h4>
+                <p className="text-gray-600 text-xs">Revise as informações antes de criar a poupança</p>
               </div>
               
               <div className="bg-white rounded-lg shadow-lg p-2 sm:p-3">
@@ -388,6 +538,23 @@ export default function CriarAplicacaoAutomaticaModal({ isOpen, onClose, onVolta
                     <div className="flex items-center justify-between py-1 border-b border-gray-100">
                       <span className="text-gray-600 font-medium text-xs">Descrição:</span>
                       <span className="font-bold text-gray-900 text-xs truncate ml-2">{formData.descricao}</span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between py-1 border-b border-gray-100">
+                      <span className="text-gray-600 font-medium text-xs">Modalidade:</span>
+                      <span className="font-bold text-gray-900 text-xs truncate ml-2">
+                        {formData.modalidade === 'pf' ? 'Pessoa Física (PF)' : formData.modalidade === 'pj' ? 'Pessoa Jurídica (PJ)' : 'Não selecionado'}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between py-1 border-b border-gray-100">
+                      <span className="text-gray-600 font-medium text-xs">Agência:</span>
+                      <span className="font-bold text-gray-900 text-xs truncate ml-2">{formData.numeroAgencia || 'Não informado'}</span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between py-1 border-b border-gray-100">
+                      <span className="text-gray-600 font-medium text-xs">Conta:</span>
+                      <span className="font-bold text-gray-900 text-xs truncate ml-2">{formData.numeroConta || 'Não informado'}</span>
                     </div>
                     
                     <div className="flex items-center justify-between py-1 border-b border-gray-100">
@@ -441,10 +608,20 @@ export default function CriarAplicacaoAutomaticaModal({ isOpen, onClose, onVolta
             ) : (
               <Button
                 onClick={handleSave}
-                className="px-3 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white flex items-center shadow-lg hover:shadow-xl transition-all duration-200 text-xs sm:text-sm"
+                disabled={saving}
+                className="px-3 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white flex items-center shadow-lg hover:shadow-xl transition-all duration-200 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                Criar Aplicação
+                {saving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white mr-1 sm:mr-2"></div>
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    Criar Poupança
+                  </>
+                )}
               </Button>
             )}
           </div>
@@ -453,3 +630,4 @@ export default function CriarAplicacaoAutomaticaModal({ isOpen, onClose, onVolta
     </div>
   );
 }
+
