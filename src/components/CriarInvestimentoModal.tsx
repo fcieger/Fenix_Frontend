@@ -16,6 +16,9 @@ import {
   Building2
 } from 'lucide-react';
 import ListaBancosBrasil from './ListaBancosBrasil';
+import { useContas } from '@/hooks/useContas';
+import { CreateContaFinanceiraRequest } from '@/types/conta';
+import { parseBrazilianCurrency } from '@/utils/currency';
 
 interface Banco {
   id: string;
@@ -31,6 +34,7 @@ interface CriarInvestimentoModalProps {
 
 export default function CriarInvestimentoModal({ isOpen, onClose, onVoltarParaSelecao }: CriarInvestimentoModalProps) {
   const [step, setStep] = useState(1);
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     descricao: '',
     bancoId: '',
@@ -38,6 +42,9 @@ export default function CriarInvestimentoModal({ isOpen, onClose, onVoltarParaSe
     saldoInicial: ''
   });
   const [selectedBanco, setSelectedBanco] = useState<Banco | null>(null);
+
+  // Hook para gerenciar contas
+  const { createConta, refreshContas } = useContas('123e4567-e89b-12d3-a456-426614174000');
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -66,18 +73,59 @@ export default function CriarInvestimentoModal({ isOpen, onClose, onVoltarParaSe
     }
   };
 
-  const handleSave = () => {
-    console.log('Salvando investimento:', formData);
-    // Aqui você implementaria a lógica para salvar o investimento
-    onClose();
-    setStep(1);
-    setFormData({
-      descricao: '',
-      bancoId: '',
-      dataInicial: '',
-      saldoInicial: ''
-    });
-    setSelectedBanco(null);
+  const handleSave = async () => {
+    if (!selectedBanco) {
+      alert('Por favor, selecione um banco');
+      return;
+    }
+
+    console.log('🔍 DEBUG - Salvando investimento:', formData);
+    console.log('🔍 DEBUG - selectedBanco:', selectedBanco);
+    
+    setSaving(true);
+    
+    try {
+      const contaData: CreateContaFinanceiraRequest = {
+        company_id: '123e4567-e89b-12d3-a456-426614174000',
+        tipo_conta: 'investimento',
+        descricao: formData.descricao,
+        banco_id: selectedBanco.id,
+        banco_nome: selectedBanco.nome,
+        banco_codigo: selectedBanco.codigo,
+        numero_agencia: '',
+        numero_conta: '',
+        tipo_pessoa: 'fisica',
+        saldo_inicial: parseBrazilianCurrency(formData.saldoInicial),
+        data_saldo: formData.dataInicial,
+        created_by: '123e4567-e89b-12d3-a456-426614174001'
+      };
+
+      console.log('🔍 DEBUG - contaData a ser enviada:', contaData);
+
+      await createConta(contaData);
+      
+      // Atualizar lista de contas
+      await refreshContas();
+      
+      alert('Investimento criado com sucesso!');
+      onClose();
+      
+      // Reset form
+      setStep(1);
+      setFormData({
+        descricao: '',
+        bancoId: '',
+        dataInicial: '',
+        saldoInicial: ''
+      });
+      setSelectedBanco(null);
+      
+    } catch (error) {
+      console.error('Erro ao criar investimento:', error);
+      alert(`Erro ao criar investimento: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const isStep1Valid = formData.descricao.trim() !== '' && formData.bancoId.trim() !== '';
@@ -227,7 +275,7 @@ export default function CriarInvestimentoModal({ isOpen, onClose, onVoltarParaSe
                   </div>
                   
                   <ListaBancosBrasil
-                    onBancoSelect={handleBancoSelect}
+                    onSelect={handleBancoSelect}
                     selectedBanco={selectedBanco}
                   />
                 </div>
@@ -441,10 +489,20 @@ export default function CriarInvestimentoModal({ isOpen, onClose, onVoltarParaSe
             ) : (
               <Button
                 onClick={handleSave}
-                className="px-3 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white flex items-center shadow-lg hover:shadow-xl transition-all duration-200 text-xs sm:text-sm"
+                disabled={saving}
+                className="px-3 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white flex items-center shadow-lg hover:shadow-xl transition-all duration-200 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                Criar Investimento
+                {saving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white mr-1 sm:mr-2"></div>
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    Criar Investimento
+                  </>
+                )}
               </Button>
             )}
           </div>
@@ -453,3 +511,4 @@ export default function CriarInvestimentoModal({ isOpen, onClose, onVoltarParaSe
     </div>
   );
 }
+
