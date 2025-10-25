@@ -28,10 +28,15 @@ for created files make this pattern
 
 feat(context): created #{filename} without extension
 
-dont commit .md that are not the README.md 
+dont commit .md that are not the README.md 
 
+**DEPOIS DOS COMMITS ATÔMICOS:**
+```bash
+git push origin main
+# ✅ Deploy automático executado pela Vercel
+```
 
-depois
+**PRONTO!** 🎉 O sistema fará deploy automático de todos os commits.
 ## 🚀 **DEPLOY FRONTEND (NEXT.JS) - AUTOMÁTICO**
 
 ### **✅ DEPLOY AUTOMÁTICO ATIVO**
