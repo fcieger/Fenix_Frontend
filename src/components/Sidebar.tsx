@@ -69,7 +69,9 @@ const menuItems = [
       { id: 'dre', label: 'DRE', href: '/financeiro/dre' },
       { id: 'historico', label: 'Histórico', href: '/financeiro/historico' },
       { id: 'conta-contabil', label: 'Conta Contábil', href: '/financeiro/conta-contabil' },
-      { id: 'centro-custo', label: 'Centro de Custo', href: '/financeiro/centro-custo' }
+      { id: 'centro-custo', label: 'Centro de Custo', href: '/financeiro/centro-custo' },
+      { id: 'forma-pagamento', label: 'Formas de Pagamento', href: '/financeiro/forma-pagamento' },
+      { id: 'prazos-pagamento', label: 'Prazos de Pagamento', href: '/configuracoes/prazos-pagamento' }
     ]
   },
   { id: 'assistentes', label: 'Assistentes IA', icon: Bot, href: '/assistentes', badge: 'IA' },
@@ -81,8 +83,7 @@ const menuItems = [
     href: '/configuracoes',
     submenu: [
       { id: 'configuracoes-nfe', label: 'Configurações NFe', href: '/configuracoes/nfe' },
-      { id: 'certificado-digital', label: 'Certificado Digital', href: '/configuracoes/certificado' },
-      { id: 'prazos-pagamento', label: 'Prazos de Pagamento', href: '/configuracoes/prazos-pagamento' }
+      { id: 'certificado-digital', label: 'Certificado Digital', href: '/configuracoes/certificado' }
     ]
   },
 ];
