@@ -6,10 +6,10 @@ const movimentacoesService = new MovimentacoesService();
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const { searchParams } = new URL(request.url);
     
     const filters: MovimentacaoFilters = {
@@ -17,8 +17,11 @@ export async function GET(
       tipo_movimentacao: searchParams.get('tipo_movimentacao') || undefined,
       data_inicio: searchParams.get('data_inicio') || undefined,
       data_fim: searchParams.get('data_fim') || undefined,
+      periodo: searchParams.get('periodo') || undefined, // formato YYYY-MM
+      search: searchParams.get('search') || undefined,
       valor_min: searchParams.get('valor_min') ? parseFloat(searchParams.get('valor_min')!) : undefined,
       valor_max: searchParams.get('valor_max') ? parseFloat(searchParams.get('valor_max')!) : undefined,
+      situacao: searchParams.get('situacao') || undefined,
       limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined,
       offset: searchParams.get('offset') ? parseInt(searchParams.get('offset')!) : undefined,
     };
@@ -44,10 +47,10 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body: CreateMovimentacaoRequest = await request.json();
     
     // Garantir que a conta_id seja a mesma do parâmetro
