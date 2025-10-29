@@ -41,17 +41,10 @@ export function ModalContaContabil({
 
   const isEdit = !!conta;
 
-  // Debug: Mostrar contas recebidas
-  console.log('ModalContaContabil - contasDisponiveis recebidas:', contasDisponiveis);
-  console.log('ModalContaContabil - contasDisponiveis.length:', contasDisponiveis.length);
-
   // Filtrar contas disponíveis para serem pais (apenas níveis 1 e 2)
-  const contasPaiDisponiveis = contasDisponiveis.filter(conta => 
-    conta.nivel < 3 && conta.ativo && conta.id !== conta?.id
+  const contasPaiDisponiveis = contasDisponiveis.filter(contaItem => 
+    contaItem.nivel < 3 && contaItem.ativo && contaItem.id !== conta?.id
   );
-
-  console.log('ModalContaContabil - contasPaiDisponiveis filtradas:', contasPaiDisponiveis);
-  console.log('ModalContaContabil - contasPaiDisponiveis.length:', contasPaiDisponiveis.length);
 
   // Encontrar conta pai selecionada
   const contaPaiSelecionada = contasPaiDisponiveis.find(c => c.id === formData.conta_pai_id);
