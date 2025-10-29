@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 interface Movimentacao {
   id: string;
@@ -33,7 +33,19 @@ interface CreateMovimentacaoRequest {
   created_by: string;
 }
 
-export function useMovimentacoes(contaId: string) {
+interface MovimentacoesFilters {
+  periodo?: string; // formato YYYY-MM
+  data_inicio?: string; // formato YYYY-MM-DD
+  data_fim?: string; // formato YYYY-MM-DD
+  search?: string;
+  // Filtros avançados
+  tipo_movimentacao?: string; // valores separados por vírgula
+  valor_min?: number;
+  valor_max?: number;
+  situacao?: string; // valores separados por vírgula
+}
+
+export function useMovimentacoes(contaId: string, filters?: MovimentacoesFilters) {
   const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
   const [resumo, setResumo] = useState<ResumoPeriodo>({
     receitas_aberto: 0,
@@ -45,6 +57,18 @@ export function useMovimentacoes(contaId: string) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Memoizar os filtros para evitar re-renderizações desnecessárias
+  const memoizedFilters = useMemo(() => filters, [
+    filters?.periodo,
+    filters?.data_inicio,
+    filters?.data_fim,
+    filters?.search,
+    filters?.tipo_movimentacao,
+    filters?.valor_min,
+    filters?.valor_max,
+    filters?.situacao
+  ]);
+
   const fetchMovimentacoes = async () => {
     if (!contaId) return;
     
@@ -52,8 +76,37 @@ export function useMovimentacoes(contaId: string) {
     setError(null);
     
     try {
-      console.log('🔍 Buscando movimentações para conta:', contaId);
-      const response = await fetch(`/api/contas/${contaId}/movimentacoes`);
+      // Construir URL com filtros
+      const params = new URLSearchParams();
+      if (memoizedFilters?.periodo) {
+        params.append('periodo', memoizedFilters.periodo);
+      }
+      if (memoizedFilters?.data_inicio) {
+        params.append('data_inicio', memoizedFilters.data_inicio);
+      }
+      if (memoizedFilters?.data_fim) {
+        params.append('data_fim', memoizedFilters.data_fim);
+      }
+      if (memoizedFilters?.search) {
+        params.append('search', memoizedFilters.search);
+      }
+      if (memoizedFilters?.tipo_movimentacao) {
+        params.append('tipo_movimentacao', memoizedFilters.tipo_movimentacao);
+      }
+      if (memoizedFilters?.valor_min !== undefined) {
+        params.append('valor_min', memoizedFilters.valor_min.toString());
+      }
+      if (memoizedFilters?.valor_max !== undefined) {
+        params.append('valor_max', memoizedFilters.valor_max.toString());
+      }
+      if (memoizedFilters?.situacao) {
+        params.append('situacao', memoizedFilters.situacao);
+      }
+      
+      const url = `/api/contas/${contaId}/movimentacoes${params.toString() ? '?' + params.toString() : ''}`;
+      console.log('🔍 Buscando movimentações para conta:', contaId, 'com filtros:', memoizedFilters);
+      
+      const response = await fetch(url);
       const result = await response.json();
       
       console.log('📊 Resultado da API:', result);
@@ -206,7 +259,7 @@ export function useMovimentacoes(contaId: string) {
     if (contaId) {
       refreshMovimentacoes();
     }
-  }, [contaId]);
+  }, [contaId, memoizedFilters]);
 
   return {
     movimentacoes,
