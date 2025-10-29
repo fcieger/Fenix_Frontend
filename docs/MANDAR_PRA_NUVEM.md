@@ -72,11 +72,10 @@ git push
 ## 📚 **REPOSITÓRIO GITHUB**
 
 ### **✅ REPOSITÓRIO ATIVO**
+front - **URL**: https://github.com/fcieger/Fenix_Frontend
 
-- **URL**: https://github.com/fcieger/Fenix_Frontend
-- **Status**: ✅ Ativo e sincronizado
-- **Commits**: 32 commits atômicos realizados
-- **Branch**: main
+back - **URL** :https://github.com/fcieger/Fenix_Backend
+
 
 ## 🚀 **DEPLOY FRONTEND (NEXT.JS) - AUTOMÁTICO**
 
