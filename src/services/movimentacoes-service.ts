@@ -55,11 +55,6 @@ export class MovimentacoesService {
         }
       }
 
-      // Verificar se saldo não ficará negativo
-      if (saldoPosterior < 0) {
-        throw new Error('Saldo insuficiente para esta movimentação');
-      }
-
       // Inserir movimentação
       const sql = `
         INSERT INTO movimentacoes_financeiras (
@@ -90,11 +85,11 @@ export class MovimentacoesService {
       const result = await client.query(sql, params);
       const movimentacao = result.rows[0];
 
-      // Atualizar saldo da conta (o trigger já faz isso, mas vamos garantir)
-      await client.query(
-        'UPDATE contas_financeiras SET saldo_atual = $1, data_ultima_atualizacao = CURRENT_TIMESTAMP WHERE id = $2',
-        [saldoPosterior, data.conta_id]
-      );
+      // Atualizar saldo da conta usando o método do serviço
+      await this.contasService.atualizarSaldoAtual(data.conta_id);
+
+      // Recalcular saldo_apos_movimentacao para todas as movimentações da conta
+      await client.query('SELECT recalcular_saldo_dia_conta($1)', [data.conta_id]);
 
       // Se for transferência e há conta destino, criar movimentação na conta destino
       if (data.tipo_movimentacao === 'transferencia' && data.conta_destino_id) {
@@ -133,11 +128,11 @@ export class MovimentacoesService {
 
         await client.query(sqlDestino, paramsDestino);
 
-        // Atualizar saldo da conta destino
-        await client.query(
-          'UPDATE contas_financeiras SET saldo_atual = $1, data_ultima_atualizacao = CURRENT_TIMESTAMP WHERE id = $2',
-          [saldoPosteriorDestino, data.conta_destino_id]
-        );
+        // Atualizar saldo da conta destino usando o método do serviço
+        await this.contasService.atualizarSaldoAtual(data.conta_destino_id);
+
+        // Recalcular saldo_apos_movimentacao para todas as movimentações da conta destino
+        await client.query('SELECT recalcular_saldo_dia_conta($1)', [data.conta_destino_id]);
       }
 
       return movimentacao;
@@ -149,13 +144,13 @@ export class MovimentacoesService {
       throw new Error('ID deve ser um UUID válido');
     }
 
-    const sql = 'SELECT * FROM movimentacoes_financeiras WHERE id = $1';
+    const sql = 'SELECT *, saldo_apos_movimentacao FROM movimentacoes_financeiras WHERE id = $1';
     const result = await query(sql, [id]);
     return result.rows[0] || null;
   }
 
   async getMovimentacoes(filters: MovimentacaoFilters = {}): Promise<MovimentacaoFinanceira[]> {
-    let sql = 'SELECT * FROM movimentacoes_financeiras WHERE 1=1';
+    let sql = 'SELECT *, saldo_apos_movimentacao FROM movimentacoes_financeiras WHERE 1=1';
     const params: any[] = [];
     let paramCount = 0;
 
@@ -167,8 +162,17 @@ export class MovimentacoesService {
 
     if (filters.tipo_movimentacao) {
       paramCount++;
-      sql += ` AND tipo_movimentacao = $${paramCount}`;
-      params.push(filters.tipo_movimentacao);
+      // Suportar múltiplos tipos separados por vírgula
+      const tipos = filters.tipo_movimentacao.split(',').map(t => t.trim());
+      if (tipos.length === 1) {
+        sql += ` AND tipo_movimentacao = $${paramCount}`;
+        params.push(tipos[0]);
+      } else {
+        const placeholders = tipos.map((_, index) => `$${paramCount + index}`).join(',');
+        sql += ` AND tipo_movimentacao IN (${placeholders})`;
+        params.push(...tipos);
+        paramCount += tipos.length - 1;
+      }
     }
 
     if (filters.data_inicio) {
@@ -183,6 +187,47 @@ export class MovimentacoesService {
       params.push(filters.data_fim);
     }
 
+    // Filtro por período (formato YYYY-MM)
+    if (filters.periodo) {
+      const [ano, mes] = filters.periodo.split('-');
+      const dataInicio = `${ano}-${mes}-01`;
+      
+      // Calcular o último dia do mês
+      const ultimoDia = new Date(parseInt(ano), parseInt(mes), 0).getDate();
+      const dataFim = `${ano}-${mes}-${ultimoDia.toString().padStart(2, '0')}`;
+      
+      paramCount++;
+      sql += ` AND data_movimentacao >= $${paramCount}`;
+      params.push(dataInicio);
+      
+      paramCount++;
+      sql += ` AND data_movimentacao <= $${paramCount}`;
+      params.push(dataFim);
+    }
+
+    // Filtro de busca por descrição
+    if (filters.search) {
+      paramCount++;
+      sql += ` AND (descricao ILIKE $${paramCount} OR descricao_detalhada ILIKE $${paramCount})`;
+      params.push(`%${filters.search}%`);
+    }
+
+    // Filtro por situação
+    if (filters.situacao) {
+      paramCount++;
+      // Suportar múltiplas situações separadas por vírgula
+      const situacoes = filters.situacao.split(',').map(s => s.trim());
+      if (situacoes.length === 1) {
+        sql += ` AND situacao = $${paramCount}`;
+        params.push(situacoes[0]);
+      } else {
+        const placeholders = situacoes.map((_, index) => `$${paramCount + index}`).join(',');
+        sql += ` AND situacao IN (${placeholders})`;
+        params.push(...situacoes);
+        paramCount += situacoes.length - 1;
+      }
+    }
+
     if (filters.valor_min !== undefined) {
       paramCount++;
       sql += ` AND (valor_entrada >= $${paramCount} OR valor_saida >= $${paramCount})`;
@@ -195,7 +240,7 @@ export class MovimentacoesService {
       params.push(filters.valor_max);
     }
 
-    sql += ' ORDER BY data_movimentacao DESC';
+    sql += ' ORDER BY data_movimentacao ASC, created_at ASC';
 
     if (filters.limit) {
       paramCount++;
@@ -286,11 +331,8 @@ export class MovimentacoesService {
         return false;
       }
 
-      // Atualizar saldo da conta
-      await client.query(
-        'UPDATE contas_financeiras SET saldo_atual = $1, data_ultima_atualizacao = CURRENT_TIMESTAMP WHERE id = $2',
-        [novoSaldo, movimentacao.conta_id]
-      );
+      // Atualizar saldo da conta usando o método do serviço
+      await this.contasService.atualizarSaldoAtual(movimentacao.conta_id);
 
       return true;
     });
