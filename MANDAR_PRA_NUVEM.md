@@ -5,6 +5,28 @@
 - **Backend**: NestJS (Fenix Backend) 
 - **Banco de Dados**: PostgreSQL (Neon)
 - **Deploy**: Vercel (Frontend + Backend)
+- **Repositório GitHub**: https://github.com/fcieger/Fenix_Frontend
+
+
+comando uteis
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+npm run build
+
+Testar para ver se build passa... sempre tem que rodar antes de comitar o projeto, se tiver erroo projeto não roda...
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+eval seta pra cima
+E pra parecer alto assim:
+eval $(ssh-agent)  
+
+ssh-add seta pra cima
+
+Sempre rodar os dois comandos antes de comitar pra confirmar que esta salvando no git correto.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 ## 🎯 **STATUS ATUAL**
 - ✅ **Backend**: Deploy automático ativo na Vercel + Neon
@@ -37,6 +59,26 @@ git push origin main
 ```
 
 **PRONTO!** 🎉 O sistema fará deploy automático de todos os commits.
+
+## 📚 **REPOSITÓRIO GITHUB**
+
+### **✅ REPOSITÓRIO ATIVO**
+- **URL**: https://github.com/fcieger/Fenix_Frontend
+- **Status**: ✅ Ativo e sincronizado
+- **Commits**: 32 commits atômicos realizados
+- **Branch**: main
+
+### **Configuração do Remote**
+```bash
+# Configurar remote origin
+git remote add origin https://github.com/fcieger/Fenix_Frontend.git
+
+# Verificar remote
+git remote -v
+
+# Push para o repositório
+git push -u origin main
+```
 ## 🚀 **DEPLOY FRONTEND (NEXT.JS) - AUTOMÁTICO**
 
 ### **✅ DEPLOY AUTOMÁTICO ATIVO**
