@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import ListaBancosBrasil from './ListaBancosBrasil';
 import { useContas } from '@/hooks/useContas';
+import { useAuth } from '@/contexts/auth-context';
 import { CreateContaFinanceiraRequest } from '@/types/conta';
 
 interface Banco {
@@ -47,8 +48,11 @@ export default function CriarCartaoCreditoModal({ isOpen, onClose, onVoltarParaS
   });
   const [selectedEmissor, setSelectedEmissor] = useState<Banco | null>(null);
 
+  // Hook de autenticação
+  const { activeCompanyId } = useAuth();
+
   // Hook para gerenciar contas
-  const { createConta, refreshContas } = useContas('123e4567-e89b-12d3-a456-426614174000');
+  const { createConta, refreshContas } = useContas(activeCompanyId || '');
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -97,7 +101,7 @@ export default function CriarCartaoCreditoModal({ isOpen, onClose, onVoltarParaS
     
     try {
       const contaData: CreateContaFinanceiraRequest = {
-        company_id: '123e4567-e89b-12d3-a456-426614174000',
+        company_id: activeCompanyId || '',
         tipo_conta: 'cartao_credito',
         descricao: formData.descricao,
         banco_id: selectedEmissor.id,
