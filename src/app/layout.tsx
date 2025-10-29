@@ -15,7 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "FENIX ERP - Sistema Inteligente para Pequenas Empresas",
-  description: "ERP com IA integrada para pequenas empresas. Gestão completa com token único por empresa.",
+  description:
+    "ERP com IA integrada para pequenas empresas. Gestão completa com token único por empresa.",
 };
 
 export default function RootLayout({
@@ -29,9 +30,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning={true}
       >
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

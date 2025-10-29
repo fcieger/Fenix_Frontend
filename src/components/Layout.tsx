@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/auth-context';
-import { useCompanyLogo } from '@/hooks/useCompanyLogo';
-import { usePageContext } from '@/hooks/usePageContext';
-import Sidebar from './Sidebar';
-import UserMenu from './UserMenu';
-import { Bell, Search, Menu, Building2 } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/auth-context";
+import { useCompanyLogo } from "@/hooks/useCompanyLogo";
+import { usePageContext } from "@/hooks/usePageContext";
+import Sidebar from "./Sidebar";
+import UserMenu from "./UserMenu";
+import { Bell, Search, Menu, Building2 } from "lucide-react";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -18,13 +18,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   // Debug: Log da logo (apenas quando logo muda)
   useEffect(() => {
-    console.log('🏢 Layout - Logo da empresa:', logo ? 'Presente' : 'Ausente');
+    console.log("🏢 Layout - Logo da empresa:", logo ? "Presente" : "Ausente");
   }, [logo]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <Sidebar />
-      
+
       {/* Main Content */}
       <div className="lg:pl-64 flex flex-col flex-1 min-w-0">
         {/* Top Bar */}
@@ -37,7 +37,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               >
                 <Menu className="w-5 h-5" />
               </button>
-              
+
               {/* Search Bar */}
               <div className="relative hidden sm:block">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -48,7 +48,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 />
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               {/* Company Logo */}
               {logo && (
@@ -61,16 +61,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     />
                   </div>
                   <span className="text-sm font-medium text-gray-700 hidden sm:block">
-                    {user?.companies?.[0]?.name || 'Empresa'}
+                    {user?.companies?.[0]?.name || "Empresa"}
                   </span>
                 </div>
               )}
-              
+
               {/* Notification Bell */}
               <button className="p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-md">
                 <Bell className="w-5 h-5" />
               </button>
-              
+
               {/* User Menu */}
               <UserMenu />
             </div>
@@ -78,11 +78,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Page Content */}
-        <div className="flex-1 p-6">
-          {children}
-        </div>
+        <div className="flex-1 p-6">{children}</div>
       </div>
-
     </div>
   );
 }
