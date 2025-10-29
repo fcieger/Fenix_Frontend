@@ -31,13 +31,13 @@ export class CentrosCustosService {
       if (data.centro_pai_id) {
         // Sub-pasta - verificar se código existe na mesma pasta pai
         codigoExists = await client.query(
-          'SELECT id FROM centros_custos WHERE company_id = $1 AND codigo = $2 AND centro_pai_id = $3',
+          'SELECT id FROM centros_custos WHERE "companyId" = $1 AND codigo = $2 AND centro_pai_id = $3',
           [data.company_id, data.codigo, data.centro_pai_id]
         );
       } else {
         // Pasta principal - verificar se código existe no nível 1
         codigoExists = await client.query(
-          'SELECT id FROM centros_custos WHERE company_id = $1 AND codigo = $2 AND centro_pai_id IS NULL',
+          'SELECT id FROM centros_custos WHERE "companyId" = $1 AND codigo = $2 AND centro_pai_id IS NULL',
           [data.company_id, data.codigo]
         );
       }
@@ -49,7 +49,7 @@ export class CentrosCustosService {
       // Se é sub-pasta, verificar se a pasta pai existe
       if (data.centro_pai_id) {
         const paiExists = await client.query(
-          'SELECT id FROM centros_custos WHERE id = $1 AND company_id = $2',
+          'SELECT id FROM centros_custos WHERE id = $1 AND "companyId" = $2',
           [data.centro_pai_id, data.company_id]
         );
 
@@ -61,7 +61,7 @@ export class CentrosCustosService {
       // Inserir centro de custo
       const sql = `
         INSERT INTO centros_custos (
-          company_id, codigo, descricao, centro_pai_id, ativo, created_by
+          "companyId", codigo, descricao, centro_pai_id, ativo, created_by
         ) VALUES (
           $1, $2, $3, $4, $5, $6
         ) RETURNING *
@@ -87,7 +87,7 @@ export class CentrosCustosService {
     let paramIndex = 1;
 
     if (filters.company_id) {
-      whereConditions.push(`cc.company_id = $${paramIndex}`);
+      whereConditions.push(`cc."companyId" = $${paramIndex}`);
       params.push(filters.company_id);
       paramIndex++;
     }
@@ -178,7 +178,7 @@ export class CentrosCustosService {
       if (data.codigo && data.codigo !== current.codigo) {
         const codigoExistsSql = `
           SELECT id FROM centros_custos 
-          WHERE company_id = $1 AND codigo = $2 AND id != $3
+          WHERE "companyId" = $1 AND codigo = $2 AND id != $3
           AND (centro_pai_id IS NULL AND $4 IS NULL OR centro_pai_id = $4)
         `;
         const codigoExists = await client.query(codigoExistsSql, [
@@ -197,7 +197,7 @@ export class CentrosCustosService {
       if (data.centro_pai_id !== undefined && data.centro_pai_id !== current.centro_pai_id) {
         if (data.centro_pai_id) {
           const paiExists = await client.query(
-            'SELECT id FROM centros_custos WHERE id = $1 AND company_id = $2',
+            'SELECT id FROM centros_custos WHERE id = $1 AND "companyId" = $2',
             [data.centro_pai_id, current.company_id]
           );
 
@@ -308,7 +308,7 @@ export class CentrosCustosService {
     let paramIndex = 1;
 
     if (filters.company_id) {
-      whereConditions.push(`company_id = $${paramIndex}`);
+      whereConditions.push(`"companyId" = $${paramIndex}`);
       params.push(filters.company_id);
       paramIndex++;
     }
