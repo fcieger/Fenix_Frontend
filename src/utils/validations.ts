@@ -58,10 +58,6 @@ export function validateContaFinanceira(data: CreateContaFinanceiraRequest): str
     errors.push('dia_vencimento deve estar entre 1 e 31');
   }
 
-  if (data.saldo_inicial !== undefined && data.saldo_inicial < 0) {
-    errors.push('saldo_inicial não pode ser negativo');
-  }
-
   // Validação de data
   if (data.data_saldo && isNaN(Date.parse(data.data_saldo))) {
     errors.push('data_saldo deve ser uma data válida');
@@ -89,20 +85,20 @@ export function validateMovimentacao(data: CreateMovimentacaoRequest): string[] 
   const valorSaida = data.valor_saida || 0;
 
   if (data.tipo_movimentacao === 'entrada') {
-    if (valorEntrada <= 0) errors.push('valor_entrada deve ser maior que zero para entrada');
+    if (valorEntrada === 0) errors.push('valor_entrada deve ser diferente de zero para entrada');
     if (valorSaida > 0) errors.push('valor_saida deve ser zero para entrada');
   }
 
   if (data.tipo_movimentacao === 'saida') {
-    if (valorSaida <= 0) errors.push('valor_saida deve ser maior que zero para saída');
+    if (valorSaida === 0) errors.push('valor_saida deve ser diferente de zero para saída');
     if (valorEntrada > 0) errors.push('valor_entrada deve ser zero para saída');
   }
 
   if (data.tipo_movimentacao === 'transferencia') {
-    if (valorEntrada <= 0 && valorSaida <= 0) {
-      errors.push('Para transferência, pelo menos um valor (entrada ou saída) deve ser maior que zero');
+    if (valorEntrada === 0 && valorSaida === 0) {
+      errors.push('Para transferência, pelo menos um valor (entrada ou saída) deve ser diferente de zero');
     }
-    if (valorEntrada > 0 && valorSaida > 0) {
+    if (valorEntrada !== 0 && valorSaida !== 0) {
       errors.push('Para transferência, apenas um valor (entrada ou saída) deve ser preenchido');
     }
     if (!data.conta_destino_id) {
