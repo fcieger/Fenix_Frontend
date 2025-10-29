@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { MovimentacoesService } from '@/services/movimentacoes-service';
 import { CreateMovimentacaoRequest, MovimentacaoFilters } from '@/types/movimentacao';
+import { query } from '@/lib/database';
 
 const movimentacoesService = new MovimentacoesService();
 
@@ -57,6 +58,45 @@ export async function POST(request: NextRequest) {
         error: error instanceof Error ? error.message : 'Erro interno do servidor' 
       },
       { status: 400 }
+    );
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const action = searchParams.get('action');
+    const contaId = searchParams.get('conta_id');
+
+    if (action === 'recalcular-saldo-dia') {
+      if (contaId) {
+        // Recalcular para uma conta específica
+        const result = await query('SELECT recalcular_saldo_dia_conta($1)', [contaId]);
+        return NextResponse.json({
+          success: true,
+          message: `Saldo dia recalculado para conta ${contaId}`,
+          movimentacoes_atualizadas: result.rows[0].recalcular_saldo_dia_conta
+        });
+      } else {
+        // Recalcular para todas as contas
+        const result = await query('SELECT * FROM recalcular_saldo_dia_todas_contas()');
+        return NextResponse.json({
+          success: true,
+          message: 'Saldo dia recalculado para todas as contas',
+          contas_atualizadas: result.rows
+        });
+      }
+    }
+
+    return NextResponse.json(
+      { error: 'Ação não reconhecida' },
+      { status: 400 }
+    );
+  } catch (error) {
+    console.error('Erro ao recalcular saldo dia:', error);
+    return NextResponse.json(
+      { error: 'Erro interno do servidor' },
+      { status: 500 }
     );
   }
 }
