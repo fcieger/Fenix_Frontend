@@ -97,7 +97,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -109,7 +109,7 @@ export async function DELETE(
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
     
     // Buscar empresa por ID
     const companyIndex = mockCompanies.findIndex(c => c.id === id && c.isActive);
