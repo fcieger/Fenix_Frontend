@@ -15,6 +15,8 @@ import {
   Plus,
   ChevronRight,
   ChevronDown,
+  ChevronsDown,
+  ChevronsUp,
 } from 'lucide-react';
 
 interface ListaContasContabeisProps {
@@ -64,9 +66,6 @@ export function ListaContasContabeis({
 
   const contasHierarquicas = organizarHierarquia(contas);
   
-  // Debug temporário
-  console.log('ListaContasContabeis - contas recebidas:', contas);
-  console.log('ListaContasContabeis - contasHierarquicas:', contasHierarquicas);
 
   const toggleExpanded = (id: string) => {
     const newExpanded = new Set(expandedIds);
@@ -76,6 +75,29 @@ export function ListaContasContabeis({
       newExpanded.add(id);
     }
     setExpandedIds(newExpanded);
+  };
+
+  // Função para expandir todas as contas que têm filhos
+  const expandirTodas = () => {
+    const contasComFilhos = new Set<string>();
+    
+    // Encontrar todas as contas que têm filhos
+    const encontrarContasComFilhos = (contas: (ContaContabil & { filhos: ContaContabil[] })[]) => {
+      contas.forEach(conta => {
+        if (conta.filhos.length > 0) {
+          contasComFilhos.add(conta.id);
+          encontrarContasComFilhos(conta.filhos);
+        }
+      });
+    };
+    
+    encontrarContasComFilhos(contasHierarquicas);
+    setExpandedIds(contasComFilhos);
+  };
+
+  // Função para recolher todas as contas
+  const recolherTodas = () => {
+    setExpandedIds(new Set());
   };
 
   const renderConta = (conta: ContaContabil & { filhos: ContaContabil[] }, nivel = 0) => {
@@ -93,7 +115,7 @@ export function ListaContasContabeis({
           onMouseLeave={() => setHoveredId(null)}
         >
           <div 
-            className="px-6 py-4 hover:bg-gray-50 transition-colors cursor-pointer"
+            className="px-6 py-4 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100"
             style={{ paddingLeft: `${24 + indent}px` }}
             onClick={() => hasFilhos && toggleExpanded(conta.id)}
           >
@@ -104,12 +126,12 @@ export function ListaContasContabeis({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 w-6 p-0"
+                    className="h-6 w-6 p-0 hover:bg-slate-200"
                   >
                     {isExpanded ? (
-                      <ChevronDown className="h-4 w-4" />
+                      <ChevronDown className="h-4 w-4 text-slate-600" />
                     ) : (
-                      <ChevronRight className="h-4 w-4" />
+                      <ChevronRight className="h-4 w-4 text-slate-600" />
                     )}
                   </Button>
                 ) : (
@@ -119,31 +141,31 @@ export function ListaContasContabeis({
 
               {/* Ícone da conta */}
               <div className="flex-shrink-0">
-                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                   conta.ativo
                     ? 'bg-green-100 text-green-600'
                     : 'bg-red-100 text-red-600'
                 }`}>
-                  <Calculator className="h-6 w-6" />
+                  <Calculator className="h-5 w-5" />
                 </div>
               </div>
 
               {/* Informações */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-3">
-                  <h4 className="text-lg font-medium text-gray-900 truncate">
+                  <h4 className="text-base font-medium text-slate-900 truncate">
                     {conta.descricao}
                   </h4>
-                  <Badge variant="secondary" className="font-mono text-xs">
+                  <Badge variant="secondary" className="font-mono text-xs bg-slate-100 text-slate-700">
                     {conta.codigo}
                   </Badge>
                   <Badge 
                     variant="outline" 
                     className={`text-xs ${
-                      conta.tipo === 'RECEITA' ? 'text-green-600 border-green-200' :
-                      conta.tipo === 'DESPESA_FIXA' ? 'text-red-600 border-red-200' :
-                      conta.tipo === 'DESPESA_VARIAVEL' ? 'text-orange-600 border-orange-200' :
-                      'text-blue-600 border-blue-200'
+                      conta.tipo === 'RECEITA' ? 'text-green-600 border-green-200 bg-green-50' :
+                      conta.tipo === 'DESPESA_FIXA' ? 'text-red-600 border-red-200 bg-red-50' :
+                      conta.tipo === 'DESPESA_VARIAVEL' ? 'text-orange-600 border-orange-200 bg-orange-50' :
+                      'text-blue-600 border-blue-200 bg-blue-50'
                     }`}
                   >
                     {conta.tipo.replace('_', ' ')}
@@ -154,13 +176,11 @@ export function ListaContasContabeis({
                     </Badge>
                   )}
                 </div>
-                <div className="mt-1 flex items-center space-x-4 text-sm text-gray-500">
+                <div className="mt-1 flex items-center space-x-3 text-sm text-slate-500">
                   <span className="flex items-center">
                     <Calendar className="h-3 w-3 mr-1" />
                     {new Date(conta.created_at).toLocaleDateString('pt-BR')}
                   </span>
-                  <span>•</span>
-                  <span className="font-mono text-xs">ID: {conta.id.slice(0, 8)}...</span>
                   <span>•</span>
                   <span className="text-xs">Nível {conta.nivel}</span>
                 </div>
@@ -229,34 +249,34 @@ export function ListaContasContabeis({
 
   if (loading) {
     return (
-      <Card className="p-6">
+      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
         <div className="space-y-4">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="flex items-center space-x-4 animate-pulse">
-              <div className="w-12 h-12 bg-gray-200 rounded-lg"></div>
+              <div className="w-10 h-10 bg-slate-200 rounded-lg"></div>
               <div className="flex-1 space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-1/3"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+                <div className="h-4 bg-slate-200 rounded w-1/3"></div>
+                <div className="h-3 bg-slate-200 rounded w-1/4"></div>
               </div>
-              <div className="w-20 h-8 bg-gray-200 rounded-full"></div>
+              <div className="w-20 h-8 bg-slate-200 rounded-full"></div>
             </div>
           ))}
         </div>
-      </Card>
+      </div>
     );
   }
 
   if (contas.length === 0) {
     return (
-      <Card className="p-12 text-center">
+      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-12 text-center">
         <div className="flex flex-col items-center">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-            <Calculator className="h-8 w-8 text-gray-400" />
+          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+            <Calculator className="h-8 w-8 text-slate-400" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <h3 className="text-lg font-medium text-slate-900 mb-2">
             {searchTerm ? 'Nenhuma conta encontrada' : 'Nenhuma conta contábil cadastrada'}
           </h3>
-          <p className="text-gray-500 mb-6 max-w-md">
+          <p className="text-slate-500 mb-6 max-w-md">
             {searchTerm
               ? `Nenhuma conta contábil encontrada para "${searchTerm}"`
               : 'Crie sua primeira conta contábil para começar a organizar seu plano de contas'
@@ -272,30 +292,55 @@ export function ListaContasContabeis({
             </Button>
           )}
         </div>
-      </Card>
+      </div>
     );
   }
 
   return (
-    <Card className="overflow-hidden">
+    <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
       {/* Header */}
-      <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+      <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-blue-100 rounded-lg">
               <Calculator className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3 className="text-lg font-semibold text-slate-900">
                 Contas Contábeis
               </h3>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-slate-600">
                 {contas.length} conta{contas.length !== 1 ? 's' : ''} cadastrada{contas.length !== 1 ? 's' : ''}
               </p>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <Badge variant="outline" className="text-xs">
+          <div className="flex items-center space-x-3">
+            {/* Botões de Expandir/Recolher */}
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={expandirTodas}
+                className="flex items-center gap-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                title="Expandir todas as contas"
+              >
+                <ChevronsDown className="h-4 w-4" />
+                <span className="hidden sm:inline">Expandir Todas</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={recolherTodas}
+                className="flex items-center gap-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                title="Recolher todas as contas"
+              >
+                <ChevronsUp className="h-4 w-4" />
+                <span className="hidden sm:inline">Recolher Todas</span>
+              </Button>
+            </div>
+            
+            {/* Badge de ajuda */}
+            <Badge variant="outline" className="text-xs text-slate-600 border-slate-300">
               <AlertCircle className="h-3 w-3 mr-1" />
               Clique para expandir/recolher
             </Badge>
@@ -304,27 +349,27 @@ export function ListaContasContabeis({
       </div>
 
       {/* Lista Hierárquica */}
-      <div className="divide-y divide-gray-100">
+      <div>
         {contasHierarquicas.map((conta) => renderConta(conta))}
       </div>
 
       {/* Footer */}
-      <div className="bg-gray-50 px-6 py-3 border-t border-gray-200">
-        <div className="flex items-center justify-between text-sm text-gray-600">
+      <div className="bg-slate-50 px-6 py-3 border-t border-slate-200">
+        <div className="flex items-center justify-between text-sm text-slate-600">
           <div className="flex items-center space-x-4">
             <span className="font-medium">Total: {contas.length} itens</span>
-            <Badge variant="outline" className="text-green-600 border-green-200">
+            <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
               Ativas: {contas.filter(c => c.ativo).length}
             </Badge>
-            <Badge variant="outline" className="text-red-600 border-red-200">
+            <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50">
               Inativas: {contas.filter(c => !c.ativo).length}
             </Badge>
           </div>
           <div className="flex items-center space-x-2">
-            <span className="text-xs text-gray-500">Atualizado agora</span>
+            <span className="text-xs text-slate-500">Atualizado agora</span>
           </div>
         </div>
       </div>
-    </Card>
+    </div>
   );
 }
