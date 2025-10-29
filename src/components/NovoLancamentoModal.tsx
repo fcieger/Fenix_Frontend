@@ -26,15 +26,13 @@ export default function NovoLancamentoModal({
   contaId, 
   onSuccess 
 }: NovoLancamentoModalProps) {
-  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     descricao: '',
     descricao_detalhada: '',
     tipo: 'entrada', // 'entrada' ou 'saida'
     valor: '',
-    data_movimentacao: new Date().toISOString().split('T')[0],
-    situacao: 'pendente'
+    data_movimentacao: new Date().toISOString().split('T')[0]
   });
 
   const handleInputChange = (field: string, value: any) => {
@@ -56,7 +54,7 @@ export default function NovoLancamentoModal({
         valor_entrada: formData.tipo === 'entrada' ? parseFloat(formData.valor) : undefined,
         valor_saida: formData.tipo === 'saida' ? parseFloat(formData.valor) : undefined,
         data_movimentacao: formData.data_movimentacao,
-        situacao: formData.situacao as 'pendente' | 'pago' | 'transferido' | 'cancelado',
+        situacao: 'pago', // Sempre criar como pago para simplificar
         created_by: '123e4567-e89b-12d3-a456-426614174001' // System user
       };
 
@@ -80,11 +78,9 @@ export default function NovoLancamentoModal({
           descricao_detalhada: '',
           tipo: 'entrada',
           valor: '',
-          data_movimentacao: new Date().toISOString().split('T')[0],
-          situacao: 'pendente'
+          data_movimentacao: new Date().toISOString().split('T')[0]
         });
         
-        setStep(1);
         onSuccess?.();
         onClose();
       } else {
@@ -292,18 +288,14 @@ export default function NovoLancamentoModal({
                     
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">
-                        Situação
+                        Data da Movimentação
                       </label>
-                      <select
-                        value={formData.situacao}
-                        onChange={(e) => handleInputChange('situacao', e.target.value)}
+                      <input
+                        type="date"
+                        value={formData.data_movimentacao}
+                        onChange={(e) => handleInputChange('data_movimentacao', e.target.value)}
                         className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 shadow-sm"
-                      >
-                        <option value="pendente">Pendente</option>
-                        <option value="pago">Pago</option>
-                        <option value="transferido">Transferido</option>
-                        <option value="cancelado">Cancelado</option>
-                      </select>
+                      />
                     </div>
                   </div>
                 </div>
@@ -352,10 +344,6 @@ export default function NovoLancamentoModal({
                           <span className="font-medium">
                             {new Date(formData.data_movimentacao).toLocaleDateString('pt-BR')}
                           </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Situação:</span>
-                          <span className="font-medium capitalize">{formData.situacao}</span>
                         </div>
                       </div>
                     </div>
