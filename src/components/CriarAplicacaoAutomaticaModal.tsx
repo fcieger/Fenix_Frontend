@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import ListaBancosBrasil from './ListaBancosBrasil';
 import { useContas } from '@/hooks/useContas';
+import { useAuth } from '@/contexts/auth-context';
 import { CreateContaFinanceiraRequest } from '@/types/conta';
 import { parseBrazilianCurrency } from '@/utils/currency';
 
@@ -46,8 +47,11 @@ export default function CriarAplicacaoAutomaticaModal({ isOpen, onClose, onVolta
   });
   const [selectedBanco, setSelectedBanco] = useState<Banco | null>(null);
 
+  // Hook de autenticação
+  const { activeCompanyId } = useAuth();
+
   // Hook para gerenciar contas
-  const { createConta, refreshContas } = useContas('123e4567-e89b-12d3-a456-426614174000');
+  const { createConta, refreshContas } = useContas(activeCompanyId || '');
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -89,7 +93,7 @@ export default function CriarAplicacaoAutomaticaModal({ isOpen, onClose, onVolta
     
     try {
       const contaData: CreateContaFinanceiraRequest = {
-        company_id: '123e4567-e89b-12d3-a456-426614174000',
+        company_id: activeCompanyId || '',
         tipo_conta: 'poupanca',
         descricao: formData.descricao,
         banco_id: selectedBanco.id,
