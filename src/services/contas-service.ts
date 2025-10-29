@@ -20,40 +20,34 @@ export class ContasService {
     }
 
     return await transaction(async (client) => {
-      // 1. Criar a conta
+      // 1. Criar a conta - usando apenas campos que existem na tabela
       const contaSql = `
         INSERT INTO contas_financeiras (
-          company_id, tipo_conta, descricao, banco_id, banco_nome, banco_codigo,
-          numero_agencia, numero_conta, tipo_pessoa, ultimos_4_digitos, bandeira_cartao,
-          emissor_cartao, conta_padrao_pagamento, dia_fechamento, dia_vencimento,
-          modalidade, conta_corrente_vinculada, saldo_inicial, data_saldo, created_by
+          "companyId", tipo_conta, descricao, banco_id, banco_nome, banco_codigo,
+          numero_agencia, numero_conta, tipo_pessoa, saldo_inicial, data_abertura
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
         ) RETURNING *
       `;
 
+      // Filtrar apenas campos que existem na tabela
       const contaParams = [
         data.company_id,
         data.tipo_conta,
         data.descricao,
-        data.banco_id,
-        data.banco_nome,
-        data.banco_codigo,
+        data.banco_id || null,
+        data.banco_nome || null,
+        data.banco_codigo || null,
         data.numero_agencia || null,
         data.numero_conta || null,
-        data.tipo_pessoa || 'fisica',
-        data.ultimos_4_digitos || null,
-        data.bandeira_cartao || null,
-        data.emissor_cartao || null,
-        data.conta_padrao_pagamento || null,
-        data.dia_fechamento || null,
-        data.dia_vencimento || null,
-        data.modalidade || null,
-        data.conta_corrente_vinculada || null,
-        data.saldo_inicial,
-        data.data_saldo,
-        data.created_by || null
+        data.tipo_pessoa || null,
+        data.saldo_inicial || 0,
+        data.data_abertura || new Date().toISOString().split('T')[0]
       ];
+
+      console.log('🔧 Campos filtrados - apenas campos que existem na tabela:', contaParams);
+
+      console.log('🔧 Criando conta com parâmetros:', contaParams);
 
       const contaResult = await client.query(contaSql, contaParams);
       const conta = contaResult.rows[0];
@@ -77,7 +71,7 @@ export class ContasService {
           0,
           'Saldo Inicial',
           `Saldo inicial da conta ${data.descricao}`,
-          data.data_saldo || new Date().toISOString(),
+          data.data_abertura || new Date().toISOString(),
           0, // saldo anterior é 0
           data.saldo_inicial, // saldo posterior é o saldo inicial
           'pago', // situacao pago pois é o saldo inicial
@@ -85,12 +79,58 @@ export class ContasService {
         ];
 
         await client.query(movimentacaoSql, movimentacaoParams);
-        
-        console.log(`✅ Lançamento de saldo inicial criado para conta ${conta.descricao}: R$ ${data.saldo_inicial}`);
       }
 
       return conta;
     });
+  }
+
+  async calcularSaldoAtual(contaId: string): Promise<number> {
+    if (!validateUUID(contaId)) {
+      throw new Error('ID deve ser um UUID válido');
+    }
+
+    // Verificar se a conta existe
+    const contaResult = await query('SELECT id FROM contas_financeiras WHERE id = $1', [contaId]);
+    if (contaResult.rows.length === 0) {
+      throw new Error('Conta não encontrada');
+    }
+
+    // Buscar todas as movimentações da conta (apenas as realizadas/pagas)
+    // ORDENAR POR DATA - não excluir nenhum tipo de lançamento
+    const movimentacoesResult = await query(
+      'SELECT tipo_movimentacao, valor_entrada, valor_saida FROM movimentacoes_financeiras WHERE conta_id = $1 AND situacao = $2 ORDER BY data_movimentacao ASC, created_at ASC',
+      [contaId, 'pago'] // ✅ Sem exclusão de "Saldo Inicial"
+    );
+
+    let saldoAtual = 0; // ✅ Começar do zero, não do saldo_inicial
+    
+    // Calcular saldo baseado nas movimentações em ordem cronológica
+    for (const mov of movimentacoesResult.rows) {
+      if (mov.tipo_movimentacao === 'entrada') {
+        saldoAtual += parseFloat(mov.valor_entrada) || 0;
+      } else if (mov.tipo_movimentacao === 'saida') {
+        saldoAtual -= parseFloat(mov.valor_saida) || 0;
+      } else if (mov.tipo_movimentacao === 'transferencia') {
+        if (parseFloat(mov.valor_entrada) > 0) {
+          saldoAtual += parseFloat(mov.valor_entrada);
+        } else {
+          saldoAtual -= parseFloat(mov.valor_saida) || 0;
+        }
+      }
+    }
+
+    return saldoAtual;
+  }
+
+  async atualizarSaldoAtual(contaId: string): Promise<number> {
+    const saldoAtual = await this.calcularSaldoAtual(contaId);
+    
+    // Atualizar o saldo_atual na tabela
+    await this.updateSaldoAtual(contaId, saldoAtual);
+    
+
+    return saldoAtual;
   }
 
   async getContaById(id: string): Promise<ContaFinanceira | null> {
@@ -110,7 +150,7 @@ export class ContasService {
 
     if (filters.company_id) {
       paramCount++;
-      sql += ` AND company_id = $${paramCount}`;
+      sql += ` AND "companyId" = $${paramCount}`;
       params.push(filters.company_id);
     }
 
@@ -139,8 +179,11 @@ export class ContasService {
     }
 
     sql += ' ORDER BY created_at DESC';
-
-    if (filters.limit) {
+    
+    // ✅ Adicionar LIMIT padrão se não especificado para melhor performance
+    if (!filters.limit) {
+      sql += ' LIMIT 100'; // Limitar a 100 contas por padrão
+    } else {
       paramCount++;
       sql += ` LIMIT $${paramCount}`;
       params.push(filters.limit);
@@ -256,7 +299,7 @@ export class ContasService {
       throw new Error('company_id deve ser um UUID válido');
     }
 
-    const sql = 'SELECT * FROM contas_financeiras WHERE company_id = $1 ORDER BY created_at DESC';
+    const sql = 'SELECT * FROM contas_financeiras WHERE "companyId" = $1 ORDER BY created_at DESC';
     const result = await query(sql, [companyId]);
     return result.rows;
   }
@@ -269,7 +312,7 @@ export class ContasService {
       if (!validateUUID(companyId)) {
         throw new Error('company_id deve ser um UUID válido');
       }
-      sql += ' AND company_id = $2';
+      sql += ' AND "companyId" = $2';
       params.push(companyId);
     }
 
@@ -294,7 +337,7 @@ export class ContasService {
         COUNT(CASE WHEN status = 'ativo' THEN 1 END) as contas_ativas,
         COALESCE(SUM(saldo_atual), 0) as saldo_total
       FROM contas_financeiras 
-      WHERE company_id = $1
+      WHERE "companyId" = $1
     `;
 
     const result = await query(sql, [companyId]);
@@ -341,5 +384,36 @@ export class ContasService {
     }
 
     return result.rows[0];
+  }
+
+  async atualizarTodosSaldos(companyId: string): Promise<void> {
+    if (!validateUUID(companyId)) {
+      throw new Error('company_id deve ser um UUID válido');
+    }
+
+    console.log(`🔄 Atualizando saldos para empresa ${companyId}...`);
+
+    // Buscar todas as contas da empresa
+    const contasResult = await query(
+      'SELECT id, descricao FROM contas_financeiras WHERE "companyId" = $1',
+      [companyId]
+    );
+
+    let contasAtualizadas = 0;
+    let totalSaldo = 0;
+
+    for (const conta of contasResult.rows) {
+      try {
+        const saldoAtual = await this.calcularSaldoAtual(conta.id);
+        await this.updateSaldoAtual(conta.id, saldoAtual);
+        
+        contasAtualizadas++;
+        totalSaldo += saldoAtual;
+      } catch (error) {
+        console.error(`❌ Erro ao atualizar saldo da conta ${conta.descricao}:`, error);
+      }
+    }
+
+    console.log(`📊 Resumo: ${contasAtualizadas} contas atualizadas, Saldo total: R$ ${totalSaldo.toFixed(2)}`);
   }
 }
