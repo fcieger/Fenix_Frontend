@@ -1,79 +1,80 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useContasContabeis } from '@/hooks/useContasContabeis';
 import { ContaContabil, CreateContaContabilRequest, UpdateContaContabilRequest } from '@/types/conta-contabil';
-import { ListaContasContabeis } from '@/components/contas-contabeis/ListaContasContabeis';
-import { ModalContaContabil } from '@/components/contas-contabeis/ModalContaContabil';
 import Layout from '@/components/Layout';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Plus,
-  Search,
-  RefreshCw,
-  Calculator,
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-} from 'lucide-react';
+import { ModalContaContabil } from '@/components/contas-contabeis/ModalContaContabil';
+import { ListaContasContabeis } from '@/components/contas-contabeis/ListaContasContabeis';
+import { Plus, RefreshCw, Search, Calculator, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context';
 
 export default function ContasContabeisPage() {
+  // Hook de autenticação
+  const { activeCompanyId, isAuthenticated } = useAuth();
+  
   // Estados do modal
   const [showModal, setShowModal] = useState(false);
   const [contaEditando, setContaEditando] = useState<ContaContabil | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Company ID fixo para teste (em produção viria do contexto de autenticação)
-  const companyId = '123e4567-e89b-12d3-a456-426614174001';
+  // Estados dos dados
+  const [contas, setContas] = useState<ContaContabil[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Hook para gerenciar contas contábeis
-  const {
-    contas,
-    stats,
-    loading,
-    error,
-    createConta,
-    updateConta,
-    deleteConta,
-    refreshContas,
-    refreshStats,
-  } = useContasContabeis(companyId);
+  // Company ID do contexto de autenticação
+  const companyId = activeCompanyId;
 
-  // Debug: Verificar se o hook está funcionando
-  console.log('ContasContabeisPage - companyId:', companyId);
-  console.log('ContasContabeisPage - contas:', contas);
-  console.log('ContasContabeisPage - loading:', loading);
-  console.log('ContasContabeisPage - error:', error);
+  // Função para buscar contas
+  const fetchContas = async () => {
+    if (!companyId) {
+      console.log('⚠️ Company ID não disponível, aguardando...');
+      return;
+    }
 
-  // Função para achatar a lista hierárquica de contas
-  const achatarContas = (contasHierarquicas: ContaContabil[]): ContaContabil[] => {
-    const resultado: ContaContabil[] = [];
-    
-    const processarConta = (conta: ContaContabil) => {
-      resultado.push(conta);
-      if (conta.contas_filhas && conta.contas_filhas.length > 0) {
-        conta.contas_filhas.forEach(processarConta);
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('🔍 Buscando contas para company_id:', companyId);
+      const response = await fetch(`/api/contas-contabeis?company_id=${companyId}`);
+      const data = await response.json();
+      
+      if (response.ok) {
+        console.log('✅ Contas carregadas:', data.data?.length || 0, 'registros');
+        setContas(data.data || []);
+      } else {
+        throw new Error(data.error || 'Erro ao buscar contas contábeis');
       }
-    };
-    
-    contasHierarquicas.forEach(processarConta);
-    return resultado;
+    } catch (err) {
+      console.error('Erro ao buscar contas contábeis:', err);
+      setError(err instanceof Error ? err.message : 'Erro desconhecido');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Lista achatada de todas as contas para o dropdown
-  const todasAsContas = achatarContas(contas);
+  // Carregar dados iniciais
+  useEffect(() => {
+    if (companyId) {
+      fetchContas();
+    }
+  }, [companyId]);
 
-  // Filtra as contas contábeis com base no termo de busca
-  const contasFiltradas = contas.filter(conta =>
-    conta.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    conta.descricao.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Calcular estatísticas
+  const stats = {
+    total: contas.length,
+    ativos: contas.filter(c => c.ativo).length,
+    inativos: contas.filter(c => !c.ativo).length,
+  };
 
-  // Funções de manipulação
-  const handleNovaConta = () => {
+  // Lista de todas as contas para o dropdown (já é uma lista simples)
+  const todasAsContas = contas;
+
+  const handleNovoConta = () => {
     setContaEditando(null);
     setShowModal(true);
   };
@@ -86,120 +87,204 @@ export default function ContasContabeisPage() {
   const handleSaveConta = async (data: CreateContaContabilRequest | UpdateContaContabilRequest) => {
     try {
       if (contaEditando) {
-        await updateConta(contaEditando.id, data as UpdateContaContabilRequest);
-        alert('Conta contábil atualizada com sucesso!');
+        // Implementar update se necessário
+        alert('Funcionalidade de edição será implementada em breve');
       } else {
-        await createConta({ ...data as CreateContaContabilRequest, company_id: companyId });
-        alert('Conta contábil criada com sucesso!');
+        const response = await fetch('/api/contas-contabeis', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ ...data as CreateContaContabilRequest, company_id: companyId }),
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+          alert('Conta contábil criada com sucesso!');
+          await fetchContas(); // Recarregar a lista
+        } else {
+          throw new Error(result.error || 'Erro ao criar conta contábil');
+        }
       }
       setShowModal(false);
-      setContaEditando(null);
     } catch (err) {
-      alert(`Erro ao salvar conta contábil: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+      console.error('Erro ao criar conta contábil:', err);
+      alert(`Erro ao criar conta contábil: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
     }
-  };
-
-  const handleExcluirConta = async (conta: ContaContabil) => {
-    if (confirm(`Tem certeza que deseja ${conta.ativo ? 'inativar' : 'excluir'} a conta contábil "${conta.descricao}"?`)) {
-      try {
-        await deleteConta(conta.id, conta.ativo);
-        alert(`Conta contábil ${conta.ativo ? 'inativada' : 'excluída'} com sucesso!`);
-      } catch (err) {
-        alert(`Erro ao ${conta.ativo ? 'inativar' : 'excluir'} conta contábil: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
-      }
-    }
-  };
-
-  const handleCloseModal = () => {
-    setShowModal(false);
-    setContaEditando(null);
   };
 
   const handleAtualizar = async () => {
-    await refreshContas();
-    await refreshStats();
+    await fetchContas();
   };
+
+  const handleDeleteConta = async (conta: ContaContabil) => {
+    if (confirm(`Tem certeza que deseja excluir a conta "${conta.descricao}"?`)) {
+      try {
+        const response = await fetch(`/api/contas-contabeis/${conta.id}`, {
+          method: 'DELETE',
+        });
+        
+        if (response.ok) {
+          alert('Conta contábil excluída com sucesso!');
+          await fetchContas(); // Recarregar a lista
+        } else {
+          const result = await response.json();
+          throw new Error(result.error || 'Erro ao excluir conta contábil');
+        }
+      } catch (err) {
+        console.error('Erro ao excluir conta contábil:', err);
+        alert(`Erro ao excluir conta contábil: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+      }
+    }
+  };
+
+  // Filtrar contas baseado no termo de busca
+  const contasFiltradas = contas.filter(conta =>
+    conta.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    conta.codigo.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Se não estiver autenticado ou não tiver company_id, mostrar mensagem
+  if (!isAuthenticated) {
+    return (
+      <Layout>
+        <div className="p-6">
+          <div className="text-center py-12">
+            <h2 className="text-xl font-semibold text-slate-900 mb-2">Acesso Negado</h2>
+            <p className="text-slate-600">Você precisa estar logado para acessar esta página.</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!companyId) {
+    return (
+      <Layout>
+        <div className="p-6">
+          <div className="text-center py-12">
+            <h2 className="text-xl font-semibold text-slate-900 mb-2">Carregando...</h2>
+            <p className="text-slate-600">Aguardando seleção da empresa...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
       <div className="p-6">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                <Calculator className="h-8 w-8 text-blue-600 mr-3" />
-                Contas Contábeis
-              </h1>
-              <p className="text-gray-600 mt-2">Gerencie seu plano de contas com hierarquia de grupos e subgrupos</p>
+              <h1 className="text-2xl font-bold text-slate-900">Contas Contábeis</h1>
+              <p className="text-sm text-slate-600 mt-1">Gerencie seu plano de contas</p>
+              <p className="text-xs text-slate-500 mt-1">Empresa ID: {companyId}</p>
             </div>
-            <Button
-              onClick={handleNovaConta}
-              disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Conta
-            </Button>
+            
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={handleAtualizar}
+                disabled={loading}
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Atualizar</span>
+              </Button>
+              
+              <Button
+                onClick={handleNovoConta}
+                disabled={loading}
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">Nova Conta</span>
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Calculator className="h-6 w-6 text-blue-600" />
+        {/* Cards de Estatísticas */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white rounded-lg p-6 shadow-sm border border-slate-200"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600 mb-1">Total</p>
+                <h3 className="text-2xl font-bold text-slate-900">{stats.total}</h3>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total</p>
-                <p className="text-2xl font-bold text-gray-900">{stats?.total || 0}</p>
+              <div className="h-12 w-12 bg-slate-100 rounded-lg flex items-center justify-center">
+                <Calculator className="h-5 w-5 text-slate-600" />
               </div>
             </div>
-          </Card>
+          </motion.div>
 
-          <Card className="p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <TrendingUp className="h-6 w-6 text-green-600" />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white rounded-lg p-6 shadow-sm border border-slate-200"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600 mb-1">Ativas</p>
+                <h3 className="text-2xl font-bold text-green-600">{stats.ativos}</h3>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Ativas</p>
-                <p className="text-2xl font-bold text-green-600">{stats?.ativos || 0}</p>
+              <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <TrendingUp className="h-5 w-5 text-green-600" />
               </div>
             </div>
-          </Card>
+          </motion.div>
 
-          <Card className="p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <TrendingDown className="h-6 w-6 text-red-600" />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white rounded-lg p-6 shadow-sm border border-slate-200"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600 mb-1">Inativas</p>
+                <h3 className="text-2xl font-bold text-red-600">{stats.inativos}</h3>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Inativas</p>
-                <p className="text-2xl font-bold text-red-600">{stats?.inativos || 0}</p>
+              <div className="h-12 w-12 bg-red-100 rounded-lg flex items-center justify-center">
+                <TrendingDown className="h-5 w-5 text-red-600" />
               </div>
             </div>
-          </Card>
+          </motion.div>
 
-          <Card className="p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-gray-100 rounded-lg">
-                <RefreshCw className="h-6 w-6 text-gray-600" />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="bg-white rounded-lg p-6 shadow-sm border border-slate-200"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600 mb-1">Última Atualização</p>
+                <h3 className="text-sm font-bold text-slate-900">Agora</h3>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Última Atualização</p>
-                <p className="text-sm font-medium text-gray-900">Agora</p>
+              <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <RefreshCw className="h-5 w-5 text-blue-600" />
               </div>
             </div>
-          </Card>
+          </motion.div>
         </div>
 
-        {/* Search and Filters */}
-        <Card className="p-6 mb-6">
-          <div className="flex items-center justify-between space-x-4">
+        {/* Barra de Pesquisa */}
+        <div className="bg-white rounded-lg p-6 shadow-sm border border-slate-200 mb-6">
+          <div className="flex items-center gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
               <Input
                 type="text"
                 placeholder="Buscar contas contábeis..."
@@ -208,82 +293,43 @@ export default function ContasContabeisPage() {
                 className="pl-10"
               />
             </div>
-            {searchTerm && (
-              <Button
-                variant="outline"
-                onClick={() => setSearchTerm('')}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                Limpar
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              onClick={handleAtualizar}
-              disabled={loading}
-              className="flex items-center"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Atualizar
-            </Button>
           </div>
-        </Card>
+        </div>
 
-        {/* Debug: Mostrar contas carregadas */}
-        <Card className="p-4 mb-4">
-          <h3 className="text-lg font-semibold mb-2">Debug - Contas Carregadas</h3>
-          <p>Loading: {loading ? 'Sim' : 'Não'}</p>
-          <p>Error: {error || 'Nenhum'}</p>
-          <p>Total de contas hierárquicas: {contas.length}</p>
-          <p>Total de contas achatadas: {todasAsContas.length}</p>
-          <p>Contas filtradas: {contasFiltradas.length}</p>
-          <div className="mt-2">
-            <h4 className="font-medium">Primeiras 3 contas achatadas:</h4>
-            <pre className="text-xs bg-gray-100 p-2 rounded">
-              {JSON.stringify(todasAsContas.slice(0, 3), null, 2)}
-            </pre>
+        {/* Exibição de Erro */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              <p className="text-red-800 font-medium">Erro ao carregar contas contábeis</p>
+            </div>
+            <p className="text-red-700 mt-1">{error}</p>
           </div>
-        </Card>
+        )}
 
-        {/* Lista de Contas Contábeis */}
+        {/* Lista de Contas */}
         <ListaContasContabeis
           contas={contasFiltradas}
-          onEditar={handleEditarConta}
-          onExcluir={handleExcluirConta}
           loading={loading}
           searchTerm={searchTerm}
+          onEditar={handleEditarConta}
+          onExcluir={handleDeleteConta}
         />
 
-        {/* Modal de Conta Contábil */}
-        <ModalContaContabil
-          isOpen={showModal}
-          onClose={handleCloseModal}
-          onSave={handleSaveConta}
-          conta={contaEditando}
-          loading={loading}
-          contasDisponiveis={todasAsContas}
-        />
-
-        {/* Error Message */}
+        {/* Modal */}
         <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              className="fixed bottom-6 right-6 bg-red-500 text-white px-6 py-4 rounded-xl shadow-lg z-50"
-            >
-              <div className="flex items-center space-x-3">
-                <span className="text-xl">❌</span>
-                <span>{error}</span>
-              </div>
-            </motion.div>
+          {showModal && (
+            <ModalContaContabil
+              isOpen={showModal}
+              onClose={() => setShowModal(false)}
+              onSave={handleSaveConta}
+              conta={contaEditando}
+              loading={loading}
+              contasDisponiveis={todasAsContas}
+            />
           )}
         </AnimatePresence>
       </div>
     </Layout>
   );
 }
-
-
-
