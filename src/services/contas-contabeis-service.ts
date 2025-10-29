@@ -6,10 +6,10 @@ export class ContasContabeisService {
   async getContas(companyId: string): Promise<ContaContabil[]> {
     const result = await query(
       `SELECT 
-        id, codigo, descricao, tipo, conta_pai_id, nivel, ativo, company_id, 
+        id, codigo, descricao, tipo, conta_pai_id, nivel, ativo, "companyId", 
         created_at, updated_at
        FROM contas_contabeis 
-       WHERE company_id = $1 
+       WHERE "companyId" = $1 
        ORDER BY codigo, descricao`,
       [companyId]
     );
@@ -29,7 +29,7 @@ export class ContasContabeisService {
         COUNT(CASE WHEN tipo = 'DESPESA_VARIAVEL' THEN 1 END) as despesa_variavel,
         COUNT(CASE WHEN tipo = 'PATRIMONIO' THEN 1 END) as patrimonio
        FROM contas_contabeis 
-       WHERE company_id = $1`,
+       WHERE "companyId" = $1`,
       [companyId]
     );
     
@@ -63,7 +63,7 @@ export class ContasContabeisService {
 
     const result = await query(
       `INSERT INTO contas_contabeis 
-       (id, codigo, descricao, tipo, conta_pai_id, nivel, ativo, company_id, created_at, updated_at)
+       (id, codigo, descricao, tipo, conta_pai_id, nivel, ativo, "companyId", created_at, updated_at)
        VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
        RETURNING *`,
       [data.codigo, data.descricao, data.tipo, data.conta_pai_id || null, nivel, data.ativo, data.company_id]
