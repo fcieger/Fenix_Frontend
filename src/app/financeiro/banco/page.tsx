@@ -8,8 +8,11 @@ import CriarCartaoCreditoModal from '@/components/CriarCartaoCreditoModal';
 import CriarInvestimentoModal from '@/components/CriarInvestimentoModal';
 import CriarAplicacaoAutomaticaModal from '@/components/CriarAplicacaoAutomaticaModal';
 import CriarOutroTipoModal from '@/components/CriarOutroTipoModal';
+import { EditarContaModal } from '@/components/EditarContaModal';
+import ResumoFinanceiro from '@/components/ResumoFinanceiro';
 import { useContas } from '@/hooks/useContas';
-import { motion } from 'framer-motion';
+import { useAuth } from '@/contexts/auth-context';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { 
   Building2, 
@@ -47,7 +50,15 @@ import {
   Sparkles,
   EyeOff,
   ArrowUpDown,
-  History
+  History,
+  Wallet,
+  Banknote,
+  Coins,
+  Target,
+  Zap,
+  Shield,
+  Activity,
+  Receipt
 } from 'lucide-react';
 
 interface Banco {
@@ -70,6 +81,8 @@ interface Banco {
 }
 
 export default function BancoPage() {
+  const { activeCompanyId } = useAuth();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('Todos');
   const [filterTipo, setFilterTipo] = useState('Todos');
@@ -87,9 +100,10 @@ export default function BancoPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editFormData, setEditFormData] = useState<any>({});
   const [editLoading, setEditLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Hook para gerenciar contas
-  const { contas, loading: contasLoading, error: contasError, refreshContas, deleteConta, updateConta } = useContas('123e4567-e89b-12d3-a456-426614174000');
+  const { contas, loading: contasLoading, error: contasError, refreshContas, deleteConta, updateConta } = useContas(activeCompanyId || '');
 
   // Lista atualizada dos principais bancos brasileiros
   const bancos: Banco[] = [
@@ -98,1306 +112,722 @@ export default function BancoPage() {
       codigo: '001',
       nome: 'Banco do Brasil S.A.',
       cnpj: '00.000.000/0001-91',
-      endereco: 'SBS Quadra 1, Bloco A, Edifício Sede',
+      endereco: 'Setor Bancário Sul, Quadra 1',
       cidade: 'Brasília',
       estado: 'DF',
       cep: '70073-900',
       telefone: '(61) 3214-5000',
-      email: 'atendimento@bb.com.br',
+      email: 'contato@bb.com.br',
       website: 'www.bb.com.br',
       status: 'Ativo',
       tipo: 'Público',
-      saldo: 125000.50,
-      dataCadastro: '2024-01-15',
-      ultimaAtualizacao: '2024-01-20'
+      saldo: 0,
+      dataCadastro: '2024-01-01',
+      ultimaAtualizacao: '2024-01-01'
     },
     {
       id: '2',
-      codigo: '104',
-      nome: 'Caixa Econômica Federal',
-      cnpj: '00.360.305/0001-04',
-      endereco: 'SBS Quadra 4, Bloco A',
-      cidade: 'Brasília',
-      estado: 'DF',
-      cep: '70092-900',
-      telefone: '(61) 3206-1000',
-      email: 'atendimento@caixa.gov.br',
-      website: 'www.caixa.gov.br',
-      status: 'Ativo',
-      tipo: 'Público',
-      saldo: 87500.25,
-      dataCadastro: '2024-01-10',
-      ultimaAtualizacao: '2024-01-18'
-    },
-    {
-      id: '3',
-      codigo: '237',
-      nome: 'Banco Bradesco S.A.',
-      cnpj: '60.746.948/0001-12',
-      endereco: 'Cidade de Deus, s/n',
-      cidade: 'Osasco',
-      estado: 'SP',
-      cep: '06029-900',
-      telefone: '(11) 3684-2000',
-      email: 'atendimento@bradesco.com.br',
-      website: 'www.bradesco.com.br',
-      status: 'Ativo',
-      tipo: 'Privado',
-      saldo: 250000.75,
-      dataCadastro: '2024-01-12',
-      ultimaAtualizacao: '2024-01-19'
-    },
-    {
-      id: '4',
       codigo: '341',
-      nome: 'Banco Itaú Unibanco S.A.',
+      nome: 'Itaú Unibanco S.A.',
       cnpj: '60.701.190/0001-04',
-      endereco: 'Praça Alfredo Egydio de Souza Aranha, 100',
+      endereco: 'Praça Alfredo Egydio de Souza Aranha',
       cidade: 'São Paulo',
       estado: 'SP',
       cep: '04344-902',
-      telefone: '(11) 3003-3000',
-      email: 'atendimento@itau.com.br',
+      telefone: '(11) 3003-3030',
+      email: 'contato@itau.com.br',
       website: 'www.itau.com.br',
       status: 'Ativo',
       tipo: 'Privado',
-      saldo: 180000.00,
-      dataCadastro: '2024-01-08',
-      ultimaAtualizacao: '2024-01-17'
+      saldo: 0,
+      dataCadastro: '2024-01-01',
+      ultimaAtualizacao: '2024-01-01'
     },
     {
-      id: '5',
+      id: '3',
+      codigo: '104',
+      nome: 'Caixa Econômica Federal',
+      cnpj: '00.360.305/0001-04',
+      endereco: 'Setor Bancário Sul, Quadra 4',
+      cidade: 'Brasília',
+      estado: 'DF',
+      cep: '70040-020',
+      telefone: '(61) 3214-5000',
+      email: 'contato@caixa.gov.br',
+      website: 'www.caixa.gov.br',
+      status: 'Ativo',
+      tipo: 'Público',
+      saldo: 0,
+      dataCadastro: '2024-01-01',
+      ultimaAtualizacao: '2024-01-01'
+    },
+    {
+      id: '4',
       codigo: '033',
       nome: 'Banco Santander (Brasil) S.A.',
       cnpj: '90.400.888/0001-42',
-      endereco: 'Rua Amador Bueno, 474',
+      endereco: 'Rua Amador Bueno',
       cidade: 'São Paulo',
       estado: 'SP',
       cep: '04752-900',
       telefone: '(11) 3553-5000',
-      email: 'atendimento@santander.com.br',
+      email: 'contato@santander.com.br',
       website: 'www.santander.com.br',
       status: 'Ativo',
       tipo: 'Privado',
-      saldo: 95000.30,
-      dataCadastro: '2024-01-05',
-      ultimaAtualizacao: '2024-01-16'
+      saldo: 0,
+      dataCadastro: '2024-01-01',
+      ultimaAtualizacao: '2024-01-01'
+    },
+    {
+      id: '5',
+      codigo: '237',
+      nome: 'Banco Bradesco S.A.',
+      cnpj: '60.746.948/0001-12',
+      endereco: 'Cidade de Deus',
+      cidade: 'Osasco',
+      estado: 'SP',
+      cep: '06029-900',
+      telefone: '(11) 3684-5000',
+      email: 'contato@bradesco.com.br',
+      website: 'www.bradesco.com.br',
+      status: 'Ativo',
+      tipo: 'Privado',
+      saldo: 0,
+      dataCadastro: '2024-01-01',
+      ultimaAtualizacao: '2024-01-01'
     },
     {
       id: '6',
       codigo: '422',
       nome: 'Banco Safra S.A.',
       cnpj: '58.160.789/0001-28',
-      endereco: 'Alameda Santos, 2.100',
+      endereco: 'Av. Paulista',
       cidade: 'São Paulo',
       estado: 'SP',
-      cep: '01418-200',
-      telefone: '(11) 3179-2000',
-      email: 'atendimento@safra.com.br',
+      cep: '01310-100',
+      telefone: '(11) 3018-5000',
+      email: 'contato@safra.com.br',
       website: 'www.safra.com.br',
       status: 'Ativo',
       tipo: 'Privado',
-      saldo: 75000.00,
-      dataCadastro: '2024-01-03',
-      ultimaAtualizacao: '2024-01-15'
+      saldo: 0,
+      dataCadastro: '2024-01-01',
+      ultimaAtualizacao: '2024-01-01'
     },
     {
       id: '7',
-      codigo: '070',
-      nome: 'Banco de Brasília S.A.',
-      cnpj: '00.000.208/0001-00',
-      endereco: 'SBS Quadra 1, Bloco J',
-      cidade: 'Brasília',
-      estado: 'DF',
-      cep: '70073-900',
-      telefone: '(61) 3214-1000',
-      email: 'atendimento@brb.com.br',
-      website: 'www.brb.com.br',
-      status: 'Ativo',
-      tipo: 'Público',
-      saldo: 45000.00,
-      dataCadastro: '2024-01-20',
-      ultimaAtualizacao: '2024-01-22'
-    },
-    {
-      id: '8',
       codigo: '756',
       nome: 'Sicoob',
-      cnpj: '02.038.232/0001-64',
-      endereco: 'SBS Quadra 1, Bloco J',
+      cnpj: '02.992.446/0001-75',
+      endereco: 'SGAN 601',
       cidade: 'Brasília',
       estado: 'DF',
-      cep: '70073-900',
-      telefone: '(61) 3214-1000',
-      email: 'atendimento@sicoob.com.br',
+      cep: '70830-010',
+      telefone: '(61) 3214-5000',
+      email: 'contato@sicoob.com.br',
       website: 'www.sicoob.com.br',
       status: 'Ativo',
       tipo: 'Cooperativo',
-      saldo: 32000.00,
-      dataCadastro: '2024-01-18',
-      ultimaAtualizacao: '2024-01-21'
+      saldo: 0,
+      dataCadastro: '2024-01-01',
+      ultimaAtualizacao: '2024-01-01'
     },
     {
-      id: '9',
-      codigo: '748',
-      nome: 'Sicredi',
-      cnpj: '92.122.021/0001-83',
-      endereco: 'Rua Cândido Mendes, 297',
-      cidade: 'Porto Alegre',
-      estado: 'RS',
-      cep: '90010-150',
-      telefone: '(51) 3214-1000',
-      email: 'atendimento@sicredi.com.br',
-      website: 'www.sicredi.com.br',
-      status: 'Ativo',
-      tipo: 'Cooperativo',
-      saldo: 28000.00,
-      dataCadastro: '2024-01-16',
-      ultimaAtualizacao: '2024-01-20'
-    },
-    {
-      id: '10',
+      id: '8',
       codigo: '260',
       nome: 'Nu Pagamentos S.A.',
       cnpj: '18.236.120/0001-58',
-      endereco: 'Rua Capote Valente, 39',
+      endereco: 'Av. Brigadeiro Faria Lima',
       cidade: 'São Paulo',
       estado: 'SP',
-      cep: '05409-001',
-      telefone: '(11) 3003-3000',
-      email: 'atendimento@nubank.com.br',
+      cep: '04538-132',
+      telefone: '(11) 3003-6110',
+      email: 'contato@nubank.com.br',
       website: 'www.nubank.com.br',
       status: 'Ativo',
       tipo: 'Privado',
-      saldo: 150000.00,
-      dataCadastro: '2024-01-14',
-      ultimaAtualizacao: '2024-01-19'
-    },
-    {
-      id: '11',
-      codigo: '336',
-      nome: 'Banco C6 S.A.',
-      cnpj: '31.872.495/0001-72',
-      endereco: 'Rua Funchal, 538',
-      cidade: 'São Paulo',
-      estado: 'SP',
-      cep: '04551-060',
-      telefone: '(11) 3003-3000',
-      email: 'atendimento@c6bank.com.br',
-      website: 'www.c6bank.com.br',
-      status: 'Ativo',
-      tipo: 'Privado',
-      saldo: 85000.00,
-      dataCadastro: '2024-01-12',
-      ultimaAtualizacao: '2024-01-18'
-    },
-    {
-      id: '12',
-      codigo: '290',
-      nome: 'PagSeguro Digital Ltd.',
-      cnpj: '08.561.701/0001-01',
-      endereco: 'Rua Funchal, 538',
-      cidade: 'São Paulo',
-      estado: 'SP',
-      cep: '04551-060',
-      telefone: '(11) 3003-3000',
-      email: 'atendimento@pagseguro.com.br',
-      website: 'www.pagseguro.com.br',
-      status: 'Ativo',
-      tipo: 'Privado',
-      saldo: 65000.00,
-      dataCadastro: '2024-01-10',
-      ultimaAtualizacao: '2024-01-17'
-    },
-    {
-      id: '13',
-      codigo: '077',
-      nome: 'Banco Inter S.A.',
-      cnpj: '00.765.295/0001-41',
-      endereco: 'Rua Bandeira Paulista, 520',
-      cidade: 'São Paulo',
-      estado: 'SP',
-      cep: '04532-001',
-      telefone: '(11) 3003-3000',
-      email: 'atendimento@bancointer.com.br',
-      website: 'www.bancointer.com.br',
-      status: 'Ativo',
-      tipo: 'Privado',
-      saldo: 120000.00,
-      dataCadastro: '2024-01-08',
-      ultimaAtualizacao: '2024-01-16'
-    },
-    {
-      id: '14',
-      codigo: '341',
-      nome: 'Banco Original S.A.',
-      cnpj: '90.400.888/0001-42',
-      endereco: 'Rua Amador Bueno, 474',
-      cidade: 'São Paulo',
-      estado: 'SP',
-      cep: '04752-900',
-      telefone: '(11) 3553-5000',
-      email: 'atendimento@original.com.br',
-      website: 'www.original.com.br',
-      status: 'Ativo',
-      tipo: 'Privado',
-      saldo: 55000.00,
-      dataCadastro: '2024-01-06',
-      ultimaAtualizacao: '2024-01-15'
-    },
-    {
-      id: '15',
-      codigo: '336',
-      nome: 'Banco BTG Pactual S.A.',
-      cnpj: '30.306.294/0001-45',
-      endereco: 'Rua Funchal, 538',
-      cidade: 'São Paulo',
-      estado: 'SP',
-      cep: '04551-060',
-      telefone: '(11) 3003-3000',
-      email: 'atendimento@btgpactual.com',
-      website: 'www.btgpactual.com',
-      status: 'Ativo',
-      tipo: 'Privado',
-      saldo: 200000.00,
-      dataCadastro: '2024-01-04',
-      ultimaAtualizacao: '2024-01-14'
-    },
-    {
-      id: '16',
-      codigo: '422',
-      nome: 'Banco Safra S.A.',
-      cnpj: '58.160.789/0001-28',
-      endereco: 'Alameda Santos, 2.100',
-      cidade: 'São Paulo',
-      estado: 'SP',
-      cep: '01418-200',
-      telefone: '(11) 3179-2000',
-      email: 'atendimento@safra.com.br',
-      website: 'www.safra.com.br',
-      status: 'Ativo',
-      tipo: 'Privado',
-      saldo: 75000.00,
-      dataCadastro: '2024-01-03',
-      ultimaAtualizacao: '2024-01-15'
-    },
-    {
-      id: '17',
-      codigo: '104',
-      nome: 'Banco do Nordeste do Brasil S.A.',
-      cnpj: '07.237.373/0001-20',
-      endereco: 'Rua Senador Pompeu, 1375',
-      cidade: 'Fortaleza',
-      estado: 'CE',
-      cep: '60125-000',
-      telefone: '(85) 3206-1000',
-      email: 'atendimento@bnb.gov.br',
-      website: 'www.bnb.gov.br',
-      status: 'Ativo',
-      tipo: 'Público',
-      saldo: 40000.00,
-      dataCadastro: '2024-01-02',
-      ultimaAtualizacao: '2024-01-13'
-    },
-    {
-      id: '18',
-      codigo: '033',
-      nome: 'Banco do Estado do Rio Grande do Sul S.A.',
-      cnpj: '92.741.490/0001-10',
-      endereco: 'Rua Sete de Setembro, 1375',
-      cidade: 'Porto Alegre',
-      estado: 'RS',
-      cep: '90010-191',
-      telefone: '(51) 3214-1000',
-      email: 'atendimento@banrisul.com.br',
-      website: 'www.banrisul.com.br',
-      status: 'Ativo',
-      tipo: 'Público',
-      saldo: 60000.00,
+      saldo: 0,
       dataCadastro: '2024-01-01',
-      ultimaAtualizacao: '2024-01-12'
+      ultimaAtualizacao: '2024-01-01'
     }
   ];
 
-  const formatCurrency = (value: number) => {
-    // Corrigir problemas de precisão de ponto flutuante
-    const roundedValue = Math.round(value * 100) / 100;
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(roundedValue);
-  };
+  const tiposConta = [
+    { id: 'conta_corrente', nome: 'Conta Corrente', icone: Building2, cor: 'bg-blue-500', descricao: 'Conta para movimentação diária' },
+    { id: 'caixinha', nome: 'Caixinha', icone: PiggyBank, cor: 'bg-green-500', descricao: 'Poupança para objetivos específicos' },
+    { id: 'cartao_credito', nome: 'Cartão de Crédito', icone: CreditCard, cor: 'bg-purple-500', descricao: 'Cartão para compras a prazo' },
+    { id: 'investimento', nome: 'Investimento', icone: TrendingUp, cor: 'bg-orange-500', descricao: 'Aplicações financeiras' },
+    { id: 'aplicacao_automatica', nome: 'Poupança', icone: Zap, cor: 'bg-cyan-500', descricao: 'Conta poupança tradicional' },
+    { id: 'outro', nome: 'Outro Tipo', icone: Settings, cor: 'bg-gray-500', descricao: 'Outros tipos de conta' }
+  ];
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+  const getTipoContaInfo = (tipo: string) => {
+    return tiposConta.find(t => t.id === tipo) || tiposConta[0];
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Ativo':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'Inativo':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-      case 'Suspenso':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'ativo': return 'bg-green-100 text-green-800 border-green-200';
+      case 'inativo': return 'bg-red-100 text-red-800 border-red-200';
+      case 'suspenso': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
-  const getTipoColor = (tipo: string) => {
-    switch (tipo) {
-      case 'conta_corrente':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'caixinha':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'cartao_credito':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'poupanca':
-        return 'bg-indigo-100 text-indigo-800 border-indigo-200';
-      case 'investimento':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'outro_tipo':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
+  const formatCurrency = (value: number | string) => {
+    const numValue = typeof value === 'string' ? parseFloat(value) : value;
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(numValue);
   };
 
-
-  // Filtrar contas reais
-  const filteredContas = contas.filter(conta => {
-    const matchesSearch = conta.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         conta.banco_nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         conta.banco_codigo.includes(searchTerm);
-    const matchesStatus = filterStatus === 'Todos' || conta.status === filterStatus;
-    const matchesTipo = filterTipo === 'Todos' || conta.tipo_conta === filterTipo;
-    
-    return matchesSearch && matchesStatus && matchesTipo;
-  });
-
-  const handleRefresh = async () => {
-    setLoading(true);
-    await refreshContas();
-    setLoading(false);
-  };
-
-
-  const handleNovoBanco = () => {
-    setShowTipoContaModal(true);
-  };
-
-  const handleTipoContaSelecionado = (tipo: string) => {
-    // Mapear tipos com hífen para underscore (formato do backend)
-    const tipoMapeado = tipo.replace(/-/g, '_');
-    setTipoContaSelecionado(tipoMapeado);
+  const handleTipoContaClick = (tipo: string) => {
+    setTipoContaSelecionado(tipo);
     setShowTipoContaModal(false);
 
-    if (tipo === 'caixinha') {
+    switch (tipo) {
+      case 'conta_corrente':
+        setShowCriarContaModal(true);
+        break;
+      case 'caixinha':
       setShowCriarCaixinhaModal(true);
-    } else if (tipo === 'cartao-credito') {
+        break;
+      case 'cartao_credito':
       setShowCriarCartaoCreditoModal(true);
-    } else if (tipo === 'investimento') {
+        break;
+      case 'investimento':
       setShowCriarInvestimentoModal(true);
-    } else if (tipo === 'poupanca') {
+        break;
+      case 'aplicacao_automatica':
       setShowCriarAplicacaoAutomaticaModal(true);
-    } else if (tipo === 'outro-tipo') {
+        break;
+      case 'outro':
       setShowCriarOutroTipoModal(true);
-    } else {
-      setShowCriarContaModal(true);
+        break;
     }
-  };
-
-  const handleVoltarParaSelecao = () => {
-    // Fecha todos os modais
-    setShowCriarContaModal(false);
-    setShowCriarCaixinhaModal(false);
-    setShowCriarCartaoCreditoModal(false);
-    setShowCriarInvestimentoModal(false);
-    setShowCriarAplicacaoAutomaticaModal(false);
-    setShowCriarOutroTipoModal(false);
-    
-    // Abre a tela de seleção de tipos de conta
-    setShowTipoContaModal(true);
   };
 
   const handleEditConta = (conta: any) => {
-    console.log('Editar conta:', conta);
     setContaParaEditar(conta);
-    
-    // Carregar dados da conta no formulário
     setEditFormData({
       descricao: conta.descricao,
       banco_id: conta.banco_id,
       banco_nome: conta.banco_nome,
       banco_codigo: conta.banco_codigo,
-      numero_agencia: conta.numero_agencia || '',
-      numero_conta: conta.numero_conta || '',
-      tipo_pessoa: conta.tipo_pessoa || 'fisica',
-      ultimos_4_digitos: conta.ultimos_4_digitos || '',
-      bandeira_cartao: conta.bandeira_cartao || '',
-      emissor_cartao: conta.emissor_cartao || '',
-      conta_padrao_pagamento: conta.conta_padrao_pagamento || '',
-      dia_fechamento: conta.dia_fechamento || '',
-      dia_vencimento: conta.dia_vencimento || '',
-      modalidade: conta.modalidade || '',
-      conta_corrente_vinculada: conta.conta_corrente_vinculada || '',
-      saldo_inicial: conta.saldo_inicial || 0,
-      data_saldo: conta.data_saldo ? conta.data_saldo.split('T')[0] : '',
-      status: conta.status || 'ativo'
+      numero_agencia: conta.numero_agencia,
+      numero_conta: conta.numero_conta,
+      tipo_pessoa: conta.tipo_pessoa,
+      ultimos_4_digitos: conta.ultimos_4_digitos,
+      bandeira_cartao: conta.bandeira_cartao,
+      emissor_cartao: conta.emissor_cartao,
+      conta_padrao_pagamento: conta.conta_padrao_pagamento,
+      dia_fechamento: conta.dia_fechamento,
+      dia_vencimento: conta.dia_vencimento,
+      modalidade: conta.modalidade,
+      conta_corrente_vinculada: conta.conta_corrente_vinculada,
+      saldo_inicial: conta.saldo_inicial,
+      data_saldo: conta.data_saldo,
+      data_abertura: conta.data_abertura
     });
-    
     setShowEditModal(true);
   };
 
-  const handleLancamentos = (conta: any) => {
-    console.log('Lançamentos da conta:', conta);
-    // Navegar para a página de lançamentos da conta
-    window.location.href = `/financeiro/banco/lancamentos/${conta.id}?nome=${encodeURIComponent(conta.descricao)}`;
-  };
-
-  const handleDeleteConta = async (conta: any) => {
-    const confirmMessage = conta.status === 'inativo' 
-      ? `A conta "${conta.descricao}" já está inativa. Deseja excluí-la permanentemente?\n\nEsta ação não pode ser desfeita.`
-      : `Tem certeza que deseja excluir a conta "${conta.descricao}"?\n\nSe a conta possuir movimentações financeiras, ela será inativada ao invés de excluída.`;
-
-    if (confirm(confirmMessage)) {
+  const handleDeleteConta = async (id: string) => {
+    if (window.confirm('Tem certeza que deseja excluir esta conta?')) {
       try {
-        console.log('Excluindo conta:', conta);
-        const result = await deleteConta(conta.id);
-        
-        if (result.action === 'deleted') {
-          alert(`✅ ${result.message}`);
-        } else if (result.action === 'inactivated') {
-          alert(`⚠️ ${result.message}`);
-        }
-        
+        await deleteConta(id);
         await refreshContas();
       } catch (error) {
         console.error('Erro ao excluir conta:', error);
-        alert(`❌ Erro ao excluir conta: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
       }
     }
   };
 
-  const handleEditFormChange = (field: string, value: any) => {
-    setEditFormData((prev: any) => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleSaveEdit = async () => {
+  const handleUpdateConta = async () => {
     if (!contaParaEditar) return;
 
     setEditLoading(true);
     try {
-      console.log('Salvando edição:', editFormData);
-      
-      // Preparar dados para atualização
-      const updateData = {
-        descricao: editFormData.descricao,
-        banco_id: editFormData.banco_id,
-        banco_nome: editFormData.banco_nome,
-        banco_codigo: editFormData.banco_codigo,
-        numero_agencia: editFormData.numero_agencia || null,
-        numero_conta: editFormData.numero_conta || null,
-        tipo_pessoa: editFormData.tipo_pessoa,
-        ultimos_4_digitos: editFormData.ultimos_4_digitos || null,
-        bandeira_cartao: editFormData.bandeira_cartao || null,
-        emissor_cartao: editFormData.emissor_cartao || null,
-        conta_padrao_pagamento: editFormData.conta_padrao_pagamento || null,
-        dia_fechamento: editFormData.dia_fechamento ? parseInt(editFormData.dia_fechamento) : null,
-        dia_vencimento: editFormData.dia_vencimento ? parseInt(editFormData.dia_vencimento) : null,
-        modalidade: editFormData.modalidade || null,
-        conta_corrente_vinculada: editFormData.conta_corrente_vinculada || null,
-        saldo_inicial: parseFloat(editFormData.saldo_inicial) || 0,
-        data_saldo: editFormData.data_saldo,
-        status: editFormData.status,
-        updated_by: '123e4567-e89b-12d3-a456-426614174001'
-      };
-
-      await updateConta(contaParaEditar.id, updateData);
-      
-      alert('Conta atualizada com sucesso!');
-      setShowEditModal(false);
+      await updateConta(contaParaEditar.id, editFormData);
       await refreshContas();
-      
+      setShowEditModal(false);
+      setContaParaEditar(null);
     } catch (error) {
-      console.error('Erro ao salvar edição:', error);
-      alert(`Erro ao salvar alterações: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      console.error('Erro ao atualizar conta:', error);
     } finally {
       setEditLoading(false);
     }
   };
 
+  const handleAtualizarSaldos = async () => {
+    if (!activeCompanyId) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/contas?action=atualizar-saldos&company_id=${activeCompanyId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log('✅ Saldos atualizados com sucesso');
+        await refreshContas(); // Atualizar a lista de contas
+      } else {
+        throw new Error(result.error || 'Erro ao atualizar saldos');
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar saldos:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredContas = contas.filter(conta => {
+    const matchesSearch = conta.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         conta.banco_nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         conta.banco_codigo.includes(searchTerm);
+    const matchesStatus = filterStatus === 'Todos' || conta.status === filterStatus.toLowerCase();
+    const matchesTipo = filterTipo === 'Todos' || conta.tipo_conta === filterTipo.toLowerCase();
+    
+    return matchesSearch && matchesStatus && matchesTipo;
+  });
+
+  const totalSaldo = contas.reduce((acc, conta) => {
+    const saldo = typeof conta.saldo_atual === 'string' ? parseFloat(conta.saldo_atual) : conta.saldo_atual;
+    return acc + (saldo || 0);
+  }, 0);
+  const contasAtivas = contas.filter(conta => conta.status === 'ativo').length;
+  const contasInativas = contas.filter(conta => conta.status === 'inativo').length;
+
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
         {/* Header */}
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6"
-        >
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center">
-                <Building2 className="h-8 w-8 mr-3 text-purple-600" />
-                Gestão de Bancos
-              </h1>
-              <p className="text-gray-600">Cadastro e gestão de instituições bancárias</p>
+              <h1 className="text-2xl font-bold text-slate-900">Bancos e Contas</h1>
+              <p className="text-sm text-slate-600 mt-1">Gerencie suas contas financeiras</p>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex items-center gap-2">
               <Button
                 onClick={() => setMostrarSaldo(!mostrarSaldo)}
                 variant="outline"
-                className="bg-white text-purple-700 hover:bg-purple-50 border-purple-200"
+                size="sm"
+                className="flex items-center gap-2"
               >
-                {mostrarSaldo ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
-                {mostrarSaldo ? 'Ocultar Saldo' : 'Mostrar Saldo'}
+                {mostrarSaldo ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                <span className="hidden sm:inline">{mostrarSaldo ? 'Ocultar' : 'Mostrar'} Saldos</span>
               </Button>
+              
               <Button
-                onClick={handleRefresh}
+                onClick={() => setShowTipoContaModal(true)}
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">Nova Conta</span>
+              </Button>
+              
+              <Button
+                onClick={handleAtualizarSaldos}
+                size="sm"
+                variant="outline"
+                className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200 hover:border-green-300"
                 disabled={loading}
-                variant="outline"
-                className="bg-white text-gray-700 hover:bg-gray-50 border-gray-200"
               >
-                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                Atualizar
-              </Button>
-              <Button
-                variant="outline"
-                className="bg-white text-gray-700 hover:bg-gray-50 border-gray-200"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Exportar
-              </Button>
-              <Button
-                onClick={handleNovoBanco}
-                className="bg-purple-600 hover:bg-purple-700 text-white"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Novo Banco
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline ml-2">Atualizar Saldos</span>
               </Button>
             </div>
           </div>
-        </motion.div>
+        </div>
 
-        <div className="px-6">
-          {/* Filtros e Busca */}
-          <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-              {/* Busca */}
-              <div className="lg:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Buscar Banco
-                </label>
+        {/* Stats Cards */}
+        <ResumoFinanceiro contas={contas} mostrarSaldo={mostrarSaldo} />
+
+        {/* Filters and Search */}
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 mb-6">
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
                   <input
                     type="text"
-                    placeholder="Nome, código ou CNPJ do banco..."
+                  placeholder="Buscar contas..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
               </div>
 
-              {/* Filtro Status */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
+            <div className="flex gap-4">
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="Todos">Todos</option>
+                <option value="Todos">Todos os Status</option>
                   <option value="ativo">Ativo</option>
                   <option value="inativo">Inativo</option>
                   <option value="suspenso">Suspenso</option>
                 </select>
-              </div>
 
-              {/* Filtro Tipo */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tipo
-                </label>
                 <select
                   value={filterTipo}
                   onChange={(e) => setFilterTipo(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="Todos">Todos</option>
+                <option value="Todos">Todos os Tipos</option>
                   <option value="conta_corrente">Conta Corrente</option>
                   <option value="caixinha">Caixinha</option>
                   <option value="cartao_credito">Cartão de Crédito</option>
-                  <option value="poupanca">Poupança</option>
                   <option value="investimento">Investimento</option>
-                  <option value="outro_tipo">Outro Tipo</option>
+                <option value="aplicacao_automatica">Poupança</option>
+                <option value="outro">Outro</option>
                 </select>
+              
+              <div className="flex border border-slate-300 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`px-3 py-2 ${viewMode === 'grid' ? 'bg-blue-500 text-white' : 'bg-white text-slate-600'}`}
+                >
+                  <BarChart3 className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 py-2 ${viewMode === 'list' ? 'bg-blue-500 text-white' : 'bg-white text-slate-600'}`}
+                >
+                  <FileText className="h-4 w-4" />
+                </button>
+                </div>
+                </div>
+              </div>
+            </div>
+
+        {/* Contas Grid/List */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+          {contasLoading ? (
+            <div className="p-8 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="text-slate-600 mt-2">Carregando contas...</p>
+                </div>
+          ) : filteredContas.length === 0 ? (
+            <div className="p-8 text-center">
+              <Building2 className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-slate-900 mb-2">Nenhuma conta encontrada</h3>
+              <p className="text-slate-600 mb-4">Comece criando sua primeira conta bancária</p>
+              <Button
+                onClick={() => setShowTipoContaModal(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Criar Primeira Conta
+              </Button>
+                </div>
+          ) : (
+            <div className={viewMode === 'grid' ? 'p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'divide-y divide-slate-200'}>
+              <AnimatePresence>
+                {filteredContas.map((conta, index) => {
+                  const tipoInfo = getTipoContaInfo(conta.tipo_conta);
+                  const Icone = tipoInfo.icone;
+                  
+                  return (
+                    <motion.div
+                      key={conta.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ delay: index * 0.1 }}
+                      className={viewMode === 'grid' ? 
+                        'bg-gradient-to-br from-white to-slate-50 rounded-xl p-6 border border-slate-200 hover:shadow-lg transition-all duration-200' :
+                        'p-6 hover:bg-slate-50 transition-colors duration-200'
+                      }
+                    >
+                      {viewMode === 'grid' ? (
+                        // Grid View
+                        <div className="space-y-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className={`h-12 w-12 ${tipoInfo.cor} rounded-lg flex items-center justify-center`}>
+                                <Icone className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                                <h3 className="font-semibold text-slate-900">{conta.descricao}</h3>
+                                <p className="text-sm text-slate-600">{conta.banco_nome}</p>
+                </div>
+                </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(conta.status)}`}>
+                                {conta.status}
+                  </span>
+                              <div className="relative">
+                                <button className="p-1 hover:bg-slate-100 rounded">
+                                  <MoreVertical className="h-4 w-4 text-slate-400" />
+                                </button>
               </div>
             </div>
           </div>
 
-          {/* Cards de Resumo */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total de Contas</p>
-                  <p className="text-2xl font-bold text-gray-900">{contas.length}</p>
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-slate-600">Agência:</span>
+                              <span className="font-medium">{conta.numero_agencia}</span>
                 </div>
-                <div className="p-3 bg-blue-100 rounded-lg">
-                  <Building2 className="h-5 w-5 text-blue-600" />
-                </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-slate-600">Conta:</span>
+                              <span className="font-medium">{conta.numero_conta}</span>
               </div>
-              <div className="mt-3 flex items-center text-sm text-green-600">
-                <TrendingUp className="h-4 w-4 mr-1" />
-                <span>+{contas.length} cadastradas</span>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Contas Ativas</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {contas.filter(c => c.status === 'ativo').length}
-                  </p>
-                </div>
-                <div className="p-3 bg-green-100 rounded-lg">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                </div>
-              </div>
-              <div className="mt-3 flex items-center text-sm text-green-600">
-                <span>{Math.round((contas.filter(c => c.status === 'ativo').length / contas.length) * 100)}% ativas</span>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Caixinhas</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {contas.filter(c => c.tipo_conta === 'caixinha').length}
-                  </p>
-                </div>
-                <div className="p-3 bg-green-100 rounded-lg">
-                  <PiggyBank className="h-5 w-5 text-green-600" />
-                </div>
-              </div>
-              <div className="mt-3 flex items-center text-sm text-green-600">
-                <span>Reservas de emergência</span>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Saldo Total</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {mostrarSaldo ? formatCurrency(contas.reduce((acc, c) => acc + (parseFloat(c.saldo_atual?.toString() || '0') || 0), 0)) : '••••••••'}
-                  </p>
-                </div>
-                <div className="p-3 bg-green-100 rounded-lg">
-                  <DollarSign className="h-5 w-5 text-green-600" />
-                </div>
-              </div>
-              <div className="mt-3 flex items-center justify-between text-sm">
-                <span className="text-green-600">Valor atual em contas</span>
-                {mostrarSaldo && (
-                  <span className="text-gray-500">
-                    Inicial: {formatCurrency(contas.reduce((acc, c) => acc + (parseFloat(c.saldo_inicial?.toString() || '0') || 0), 0))}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Lista de Bancos */}
-          <div className="bg-white rounded-lg shadow-sm border">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">Bancos Cadastrados</h3>
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-500">
-                    {filteredContas.length} de {contas.length} contas
-                  </span>
-                </div>
-              </div>
-            </div>
-          
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Banco
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Código
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Agência / Conta
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tipo
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Saldo Atual
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Saldo Inicial
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ações
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredContas.map((conta) => (
-                    <tr key={conta.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="h-10 w-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                            <Building2 className="h-5 w-5 text-white" />
-                          </div>
-                          <div className="ml-3">
-                            <div className="text-sm font-medium text-gray-900">
-                              {conta.descricao}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {conta.banco_nome}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {conta.banco_codigo}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {conta.numero_agencia} / {conta.numero_conta}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full border ${getTipoColor(conta.tipo_conta)}`}>
-                          {conta.tipo_conta.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            <div className="flex justify-between text-sm">
+                              <span className="text-slate-600">Saldo:</span>
+                              <span className={`font-bold ${parseFloat(String(conta.saldo_atual || '0')) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {mostrarSaldo ? formatCurrency(String(conta.saldo_atual || '0')) : '••••••'}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {mostrarSaldo ? formatCurrency(parseFloat(conta.saldo_atual?.toString() || '0') || 0) : '••••••••'}
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {mostrarSaldo ? formatCurrency(parseFloat(conta.saldo_inicial?.toString() || '0') || 0) : '••••••••'}
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full border ${getStatusColor(conta.status)}`}>
-                          {conta.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex items-center space-x-2">
-                          <button
+                          
+                          <div className="flex gap-2 pt-4 border-t border-slate-200">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(`/financeiro/banco/lancamentos/${conta.id}?nome=${encodeURIComponent(conta.descricao)}`, '_blank')}
+                              className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 hover:border-blue-300"
+                            >
+                              <Receipt className="h-4 w-4 mr-1" />
+                              Lançamentos
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
                             onClick={() => handleEditConta(conta)}
-                            className="flex items-center space-x-1 text-indigo-600 hover:text-indigo-900 px-3 py-2 rounded-lg hover:bg-indigo-50 transition-colors border border-indigo-200 hover:border-indigo-300"
-                            title="Editar conta"
-                          >
-                            <Edit className="h-4 w-4" />
-                            <span className="text-xs font-medium">Editar</span>
-                          </button>
-                          <button
-                            onClick={() => handleLancamentos(conta)}
-                            className="flex items-center space-x-1 text-green-600 hover:text-green-900 px-3 py-2 rounded-lg hover:bg-green-50 transition-colors border border-green-200 hover:border-green-300"
-                            title="Gerenciar lançamentos"
-                          >
-                            <ArrowUpDown className="h-4 w-4" />
-                            <span className="text-xs font-medium">Lançamentos</span>
-                          </button>
-                          <button
-                            onClick={() => handleDeleteConta(conta)}
-                            className="flex items-center space-x-1 text-red-600 hover:text-red-900 px-3 py-2 rounded-lg hover:bg-red-50 transition-colors border border-red-200 hover:border-red-300"
-                            title="Excluir conta"
+                              className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 border-green-200 hover:border-green-300"
+                            >
+                              <Edit className="h-4 w-4 mr-1" />
+                              Editar
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteConta(conta.id)}
+                              className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200 hover:border-red-300"
                           >
                             <Trash2 className="h-4 w-4" />
-                            <span className="text-xs font-medium">Excluir</span>
-                          </button>
+                            Excluir
+                          </Button>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
+                      ) : (
+                        // List View
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className={`h-10 w-10 ${tipoInfo.cor} rounded-lg flex items-center justify-center`}>
+                              <Icone className="h-5 w-5 text-white" />
           </div>
+                    <div>
+                              <h3 className="font-semibold text-slate-900">{conta.descricao}</h3>
+                              <p className="text-sm text-slate-600">{conta.banco_nome} • {conta.numero_agencia} • {conta.numero_conta}</p>
+                    </div>
+                  </div>
+                
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <p className={`font-bold ${parseFloat(String(conta.saldo_atual || '0')) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {mostrarSaldo ? formatCurrency(String(conta.saldo_atual || '0')) : '••••••'}
+                              </p>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(conta.status)}`}>
+                                {conta.status}
+                              </span>
+                          </div>
+                            
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open(`/financeiro/banco/lancamentos/${conta.id}?nome=${encodeURIComponent(conta.descricao)}`, '_blank')}
+                                className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 hover:border-blue-300"
+                              >
+                                <Receipt className="h-4 w-4 mr-1" />
+                                Lançamentos
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditConta(conta)}
+                                className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200 hover:border-green-300"
+                              >
+                                <Edit className="h-4 w-4 mr-1" />
+                                Editar
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDeleteConta(conta.id)}
+                                className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200 hover:border-red-300"
+                              >
+                                <Trash2 className="h-4 w-4 mr-1" />
+                                Excluir
+                              </Button>
+                          </div>
+                          </div>
+                    </div>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
+          )}
+                  </div>
 
-
-        {/* Modal de Seleção de Tipo de Conta */}
-        {showTipoContaModal && (
-          <div className="fixed inset-0 bg-white bg-opacity-95 overflow-y-auto h-full w-full z-20">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white w-full h-full overflow-y-auto"
+        {/* Modals */}
+        <AnimatePresence>
+          {showTipoContaModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-gradient-to-br from-slate-900/80 via-slate-800/90 to-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
             >
-              <div className="p-6 h-full flex flex-col">
-                  <div className="flex items-center justify-between mb-4 flex-shrink-0">
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">
-                        Selecione o tipo de conta que você quer cadastrar
-                      </h3>
-                      <p className="text-gray-600 text-sm">Escolha o tipo de conta bancária que melhor se adequa às suas necessidades</p>
-                    </div>
-                    <button
-                      onClick={() => setShowTipoContaModal(false)}
-                      className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-lg hover:bg-gray-100"
-                    >
-                      <XCircle className="h-5 w-5" />
-                    </button>
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.8, opacity: 0, y: 20 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className="bg-white/95 backdrop-blur-xl rounded-2xl p-8 w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-2xl border border-white/20"
+              >
+                {/* Header moderno */}
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h2 className="text-3xl font-bold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-900 bg-clip-text text-transparent">
+                      Escolha o Tipo de Conta
+                    </h2>
+                    <p className="text-slate-600 mt-2">Selecione o tipo de conta que melhor se adequa às suas necessidades</p>
                   </div>
+                  <motion.button
+                    onClick={() => setShowTipoContaModal(false)}
+                    className="p-3 hover:bg-slate-100 rounded-xl transition-all duration-200 group"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <XCircle className="h-6 w-6 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                  </motion.button>
+                </div>
                 
-                  <div className="space-y-6 flex-1 overflow-y-auto">
-                    {/* Contas bancárias e contas de movimentação */}
-                    <div>
-                      <h4 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                        <Building2 className="h-5 w-5 mr-2 text-purple-600" />
-                        Contas bancárias e contas de movimentação
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-                        <button
-                          onClick={() => handleTipoContaSelecionado('conta-corrente')}
-                          className="group flex flex-col items-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border-2 border-transparent hover:border-blue-300 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
-                        >
-                          <div className="p-3 bg-white rounded-lg shadow-md group-hover:shadow-lg transition-shadow duration-300 mb-3">
-                            <Building2 className="h-6 w-6 text-blue-600" />
-                          </div>
-                          <span className="text-sm font-bold text-gray-800 text-center">Conta Corrente</span>
-                          <p className="text-xs text-gray-600 text-center mt-1">Movimentações diárias</p>
-                        </button>
-
-                        <button
-                          onClick={() => handleTipoContaSelecionado('caixinha')}
-                          className="group flex flex-col items-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border-2 border-transparent hover:border-green-300 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
-                        >
-                          <div className="p-3 bg-white rounded-lg shadow-md group-hover:shadow-lg transition-shadow duration-300 mb-3">
-                            <DollarSign className="h-6 w-6 text-green-600" />
-                          </div>
-                          <span className="text-sm font-bold text-gray-800 text-center">Caixinha</span>
-                          <p className="text-xs text-gray-600 text-center mt-1">Reserva de emergência</p>
-                        </button>
-
-                        <button
-                          onClick={() => handleTipoContaSelecionado('cartao-credito')}
-                          className="group flex flex-col items-center p-4 bg-gradient-to-br from-red-50 to-red-100 rounded-xl border-2 border-transparent hover:border-red-300 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
-                        >
-                          <div className="p-3 bg-white rounded-lg shadow-md group-hover:shadow-lg transition-shadow duration-300 mb-3">
-                            <CreditCard className="h-6 w-6 text-red-600" />
-                          </div>
-                          <span className="text-sm font-bold text-gray-800 text-center">Cartão de Crédito</span>
-                          <p className="text-xs text-gray-600 text-center mt-1">Despesas com cartão</p>
-                        </button>
-
-
-                        <button
-                          onClick={() => handleTipoContaSelecionado('investimento')}
-                          className="group flex flex-col items-center p-4 bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl border-2 border-transparent hover:border-yellow-300 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
-                        >
-                          <div className="p-3 bg-white rounded-lg shadow-md group-hover:shadow-lg transition-shadow duration-300 mb-3">
-                            <Calculator className="h-6 w-6 text-yellow-600" />
-                          </div>
-                          <span className="text-sm font-bold text-gray-800 text-center">Investimento</span>
-                          <p className="text-xs text-gray-600 text-center mt-1">Aplicações financeiras</p>
-                        </button>
-
-                        <button
-                          onClick={() => handleTipoContaSelecionado('poupanca')}
-                          className="group flex flex-col items-center p-4 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl border-2 border-transparent hover:border-indigo-300 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
-                        >
-                          <div className="p-3 bg-white rounded-lg shadow-md group-hover:shadow-lg transition-shadow duration-300 mb-3">
-                            <RotateCcw className="h-6 w-6 text-indigo-600" />
-                          </div>
-                          <span className="text-sm font-bold text-gray-800 text-center">Poupança</span>
-                          <p className="text-xs text-gray-600 text-center mt-1">Conta poupança</p>
-                        </button>
-                    </div>
-                  </div>
-
-
-                    {/* Outros tipos de conta */}
-                    <div>
-                      <h4 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                        <HelpCircle className="h-5 w-5 mr-2 text-orange-600" />
-                        Outros tipos de conta
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-                        <button
-                          onClick={() => handleTipoContaSelecionado('outro-tipo')}
-                          className="group flex flex-col items-center p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border-2 border-transparent hover:border-orange-300 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
-                        >
-                          <div className="p-3 bg-white rounded-lg shadow-md group-hover:shadow-lg transition-shadow duration-300 mb-3">
-                            <HelpCircle className="h-6 w-6 text-orange-600" />
-                          </div>
-                          <span className="text-sm font-bold text-gray-800 text-center">Outro tipo de conta</span>
-                          <p className="text-xs text-gray-600 text-center mt-1">Personalizado</p>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                {/* Grid moderno */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {tiposConta.map((tipo, index) => {
+                    const Icone = tipo.icone;
+                    return (
+                      <motion.button
+                        key={tipo.id}
+                        onClick={() => handleTipoContaClick(tipo.id)}
+                        className="relative p-8 border border-slate-200/60 rounded-2xl hover:border-slate-300 hover:shadow-xl transition-all duration-300 text-left group bg-gradient-to-br from-white to-slate-50/50 overflow-hidden"
+                        whileHover={{ 
+                          scale: 1.03,
+                          y: -5,
+                          transition: { duration: 0.2 }
+                        }}
+                        whileTap={{ scale: 0.98 }}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                      >
+                        {/* Efeito de brilho no hover */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                        
+                        {/* Ícone com gradiente */}
+                        <div className={`relative h-16 w-16 ${tipo.cor} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-all duration-300 shadow-lg group-hover:shadow-xl`}>
+                          <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-2xl"></div>
+                          <Icone className="h-8 w-8 text-white relative z-10" />
+                        </div>
+                        
+                        {/* Conteúdo */}
+                        <h3 className="font-bold text-slate-900 mb-3 text-lg group-hover:text-slate-700 transition-colors">
+                          {tipo.nome}
+                        </h3>
+                        <p className="text-slate-600 text-sm leading-relaxed group-hover:text-slate-500 transition-colors">
+                          {tipo.descricao}
+                        </p>
+                        
+                        {/* Indicador de seleção */}
+                        <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                          <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                        </div>
+                      </motion.button>
+                    );
+                  })}
+                </div>
                 
-                  {/* Botão Flutuante */}
-                  <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-30">
-                    <Button
-                      onClick={() => setShowTipoContaModal(false)}
-                      variant="outline"
-                      className="px-6 py-3 text-gray-700 bg-white hover:bg-gray-50 border-gray-300 shadow-lg hover:shadow-xl transition-all duration-200"
-                    >
-                      Cancelar
-                    </Button>
+                {/* Footer com informações adicionais */}
+                <div className="mt-8 pt-6 border-t border-slate-200/60">
+                  <div className="flex items-center justify-center space-x-2 text-slate-500 text-sm">
+                    <div className="h-1 w-1 bg-slate-400 rounded-full"></div>
+                    <span>Você pode alterar essas configurações posteriormente</span>
+                    <div className="h-1 w-1 bg-slate-400 rounded-full"></div>
                   </div>
                 </div>
               </motion.div>
-          </div>
+            </motion.div>
         )}
+        </AnimatePresence>
 
-        {/* Modal de Criação de Conta */}
+        {/* Render all modals */}
         <CriarContaModal
           isOpen={showCriarContaModal}
           onClose={() => setShowCriarContaModal(false)}
-          onVoltarParaSelecao={handleVoltarParaSelecao}
-          tipoConta={tipoContaSelecionado}
+          onVoltarParaSelecao={() => setShowCriarContaModal(false)}
+          tipoConta="conta_corrente"
         />
 
-        {/* Modal de Criação de Caixinha */}
         <CriarCaixinhaModal
           isOpen={showCriarCaixinhaModal}
           onClose={() => setShowCriarCaixinhaModal(false)}
-          onVoltarParaSelecao={handleVoltarParaSelecao}
+          onVoltarParaSelecao={() => setShowCriarCaixinhaModal(false)}
         />
 
-        {/* Modal de Criação de Cartão de Crédito */}
         <CriarCartaoCreditoModal
           isOpen={showCriarCartaoCreditoModal}
           onClose={() => setShowCriarCartaoCreditoModal(false)}
-          onVoltarParaSelecao={handleVoltarParaSelecao}
+          onVoltarParaSelecao={() => setShowCriarCartaoCreditoModal(false)}
         />
 
-        {/* Modal de Criação de Investimento */}
         <CriarInvestimentoModal
           isOpen={showCriarInvestimentoModal}
           onClose={() => setShowCriarInvestimentoModal(false)}
-          onVoltarParaSelecao={handleVoltarParaSelecao}
+          onVoltarParaSelecao={() => setShowCriarInvestimentoModal(false)}
         />
 
-        {/* Modal de Criação de Poupança */}
         <CriarAplicacaoAutomaticaModal
           isOpen={showCriarAplicacaoAutomaticaModal}
           onClose={() => setShowCriarAplicacaoAutomaticaModal(false)}
-          onVoltarParaSelecao={handleVoltarParaSelecao}
+          onVoltarParaSelecao={() => setShowCriarAplicacaoAutomaticaModal(false)}
         />
 
-        {/* Modal de Criação de Outro Tipo */}
         <CriarOutroTipoModal
           isOpen={showCriarOutroTipoModal}
           onClose={() => setShowCriarOutroTipoModal(false)}
-          onVoltarParaSelecao={handleVoltarParaSelecao}
+          onVoltarParaSelecao={() => setShowCriarOutroTipoModal(false)}
         />
 
-        {/* Modal de Edição de Conta - Design Moderno */}
-        {showEditModal && contaParaEditar && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl max-h-[95vh] overflow-hidden"
-            >
-              {/* Header Moderno */}
-              <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-8 py-6 text-white">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
-                      <Edit className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <h2 className="text-2xl font-bold">Editar Conta</h2>
-                      <p className="text-purple-100 text-sm mt-1">
-                        {contaParaEditar.descricao} • {contaParaEditar.tipo_conta.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowEditModal(false)}
-                    className="p-2 hover:bg-white/20 rounded-xl transition-colors duration-200"
-                  >
-                    <XCircle className="h-6 w-6" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Conteúdo com Scroll */}
-              <div className="overflow-y-auto max-h-[calc(95vh-120px)]">
-                <div className="p-8 space-y-8">
-                  {/* Informações Básicas */}
-                  <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl p-6 border border-slate-200">
-                    <div className="flex items-center space-x-3 mb-6">
-                      <div className="p-2 bg-slate-600 rounded-lg">
-                        <Settings className="h-5 w-5 text-white" />
-                      </div>
-                      <h3 className="text-xl font-bold text-slate-800">Informações Básicas</h3>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-slate-700">Descrição *</label>
-                        <input
-                          type="text"
-                          value={editFormData.descricao || ''}
-                          onChange={(e) => handleEditFormChange('descricao', e.target.value)}
-                          className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 shadow-sm"
-                          placeholder="Nome da conta"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-slate-700">Tipo de Pessoa</label>
-                        <select
-                          value={editFormData.tipo_pessoa || 'fisica'}
-                          onChange={(e) => handleEditFormChange('tipo_pessoa', e.target.value)}
-                          className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 shadow-sm"
-                        >
-                          <option value="fisica">Pessoa Física</option>
-                          <option value="juridica">Pessoa Jurídica</option>
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-slate-700">Status</label>
-                        <select
-                          value={editFormData.status || 'ativo'}
-                          onChange={(e) => handleEditFormChange('status', e.target.value)}
-                          className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 shadow-sm"
-                        >
-                          <option value="ativo">Ativo</option>
-                          <option value="inativo">Inativo</option>
-                          <option value="suspenso">Suspenso</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Informações Bancárias */}
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-200">
-                    <div className="flex items-center space-x-3 mb-6">
-                      <div className="p-2 bg-blue-600 rounded-lg">
-                        <Building2 className="h-5 w-5 text-white" />
-                      </div>
-                      <h3 className="text-xl font-bold text-slate-800">Informações Bancárias</h3>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-slate-700">Banco</label>
-                        <input
-                          type="text"
-                          value={editFormData.banco_nome || ''}
-                          onChange={(e) => handleEditFormChange('banco_nome', e.target.value)}
-                          className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 shadow-sm"
-                          placeholder="Nome do banco"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-slate-700">Código do Banco</label>
-                        <input
-                          type="text"
-                          value={editFormData.banco_codigo || ''}
-                          onChange={(e) => handleEditFormChange('banco_codigo', e.target.value)}
-                          className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 shadow-sm"
-                          placeholder="Código do banco"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-slate-700">Agência</label>
-                        <input
-                          type="text"
-                          value={editFormData.numero_agencia || ''}
-                          onChange={(e) => handleEditFormChange('numero_agencia', e.target.value)}
-                          className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 shadow-sm"
-                          placeholder="Número da agência"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-slate-700">Conta</label>
-                        <input
-                          type="text"
-                          value={editFormData.numero_conta || ''}
-                          onChange={(e) => handleEditFormChange('numero_conta', e.target.value)}
-                          className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 shadow-sm"
-                          placeholder="Número da conta"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Informações Financeiras */}
-                  <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl p-6 border border-emerald-200">
-                    <div className="flex items-center space-x-3 mb-6">
-                      <div className="p-2 bg-emerald-600 rounded-lg">
-                        <DollarSign className="h-5 w-5 text-white" />
-                      </div>
-                      <h3 className="text-xl font-bold text-slate-800">Informações Financeiras</h3>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-slate-700">Saldo Inicial</label>
-                        <div className="relative">
-                          <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500 font-semibold">R$</span>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={editFormData.saldo_inicial || 0}
-                            onChange={(e) => handleEditFormChange('saldo_inicial', e.target.value)}
-                            className="w-full pl-12 pr-4 py-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 shadow-sm"
-                            placeholder="0.00"
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-slate-700">Data do Saldo</label>
-                        <input
-                          type="date"
-                          value={editFormData.data_saldo || ''}
-                          onChange={(e) => handleEditFormChange('data_saldo', e.target.value)}
-                          className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 shadow-sm"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Campos específicos para cartão de crédito */}
-                  {contaParaEditar.tipo_conta === 'cartao_credito' && (
-                    <div className="bg-gradient-to-br from-red-50 to-pink-50 rounded-2xl p-6 border border-red-200">
-                      <div className="flex items-center space-x-3 mb-6">
-                        <div className="p-2 bg-red-600 rounded-lg">
-                          <CreditCard className="h-5 w-5 text-white" />
-                        </div>
-                        <h3 className="text-xl font-bold text-slate-800">Informações do Cartão</h3>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-slate-700">Últimos 4 Dígitos</label>
-                          <input
-                            type="text"
-                            maxLength="4"
-                            value={editFormData.ultimos_4_digitos || ''}
-                            onChange={(e) => handleEditFormChange('ultimos_4_digitos', e.target.value)}
-                            className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 shadow-sm"
-                            placeholder="1234"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-slate-700">Bandeira</label>
-                          <input
-                            type="text"
-                            value={editFormData.bandeira_cartao || ''}
-                            onChange={(e) => handleEditFormChange('bandeira_cartao', e.target.value)}
-                            className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 shadow-sm"
-                            placeholder="Visa, Mastercard, etc."
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-slate-700">Dia de Fechamento</label>
-                          <input
-                            type="number"
-                            min="1"
-                            max="31"
-                            value={editFormData.dia_fechamento || ''}
-                            onChange={(e) => handleEditFormChange('dia_fechamento', e.target.value)}
-                            className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 shadow-sm"
-                            placeholder="15"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-slate-700">Dia de Vencimento</label>
-                          <input
-                            type="number"
-                            min="1"
-                            max="31"
-                            value={editFormData.dia_vencimento || ''}
-                            onChange={(e) => handleEditFormChange('dia_vencimento', e.target.value)}
-                            className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 shadow-sm"
-                            placeholder="20"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Campos específicos para poupança */}
-                  {contaParaEditar.tipo_conta === 'poupanca' && (
-                    <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-6 border border-indigo-200">
-                      <div className="flex items-center space-x-3 mb-6">
-                        <div className="p-2 bg-indigo-600 rounded-lg">
-                          <PiggyBank className="h-5 w-5 text-white" />
-                        </div>
-                        <h3 className="text-xl font-bold text-slate-800">Informações da Poupança</h3>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-slate-700">Modalidade</label>
-                          <select
-                            value={editFormData.modalidade || ''}
-                            onChange={(e) => handleEditFormChange('modalidade', e.target.value)}
-                            className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 shadow-sm"
-                          >
-                            <option value="">Selecione a modalidade</option>
-                            <option value="pf">Pessoa Física (PF)</option>
-                            <option value="pj">Pessoa Jurídica (PJ)</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Botões de Ação - Dentro do Conteúdo */}
-                  <div className="bg-gradient-to-r from-slate-50 to-gray-50 rounded-2xl p-6 border border-slate-200">
-                    <div className="flex items-center justify-center space-x-4">
-                      <button
-                        onClick={() => setShowEditModal(false)}
-                        className="px-8 py-3 text-sm font-semibold text-slate-700 bg-white border-2 border-slate-300 rounded-xl hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 shadow-sm flex items-center space-x-2"
-                        disabled={editLoading}
-                      >
-                        <XCircle className="h-4 w-4" />
-                        <span>Cancelar</span>
-                      </button>
-                      <button 
-                        onClick={handleSaveEdit}
-                        disabled={editLoading}
-                        className="px-8 py-3 text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 shadow-lg"
-                      >
-                        {editLoading && <RefreshCw className="h-4 w-4 animate-spin" />}
-                        <span>{editLoading ? 'Salvando...' : 'Salvar Alterações'}</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </div>
+        <EditarContaModal
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setContaParaEditar(null);
+          }}
+          conta={contaParaEditar}
+          formData={editFormData}
+          onFormDataChange={setEditFormData}
+          loading={editLoading}
+        />
       </div>
     </Layout>
   );
