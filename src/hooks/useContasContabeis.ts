@@ -156,26 +156,10 @@ export function useContasContabeis(companyId: string) {
     console.log('useContasContabeis - useEffect executado, companyId:', companyId);
     if (companyId) {
       console.log('useContasContabeis - Executando fetchContas e fetchStats');
-      // Executar diretamente sem useCallback para testar
-      const testFetch = async () => {
-        try {
-          console.log('useContasContabeis - Teste direto iniciado');
-          const response = await fetch(`/api/contas-contabeis?company_id=${companyId}`);
-          console.log('useContasContabeis - Teste direto response:', response.status);
-          const data = await response.json();
-          console.log('useContasContabeis - Teste direto data:', data);
-          if (response.ok) {
-            setContas(data.data || []);
-            console.log('useContasContabeis - Teste direto contas definidas:', data.data);
-          }
-        } catch (err) {
-          console.error('useContasContabeis - Teste direto erro:', err);
-        }
-      };
-      testFetch();
+      fetchContas();
       fetchStats();
     }
-  }, [companyId]);
+  }, [companyId, fetchContas, fetchStats]);
 
   return {
     contas,
