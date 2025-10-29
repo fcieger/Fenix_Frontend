@@ -6,10 +6,10 @@ const movimentacoesService = new MovimentacoesService();
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     const movimentacao = await movimentacoesService.getMovimentacaoById(id);
     
@@ -38,10 +38,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body: UpdateMovimentacaoRequest = await request.json();
     
     const movimentacao = await movimentacoesService.updateMovimentacao(id, body);
@@ -65,10 +65,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     const deleted = await movimentacoesService.deleteMovimentacao(id);
     
