@@ -1,19 +1,39 @@
 import { Pool } from 'pg';
 
-// Configuração do banco de dados
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  user: process.env.POSTGRES_USER || process.env.DB_USERNAME || 'postgres',
-  password: process.env.POSTGRES_PASSWORD || process.env.DB_PASSWORD || 'fenix123',
-  database: process.env.POSTGRES_DB || process.env.DB_DATABASE || 'fenix',
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
+// Lazy initialization - só cria o pool quando necessário
+// Isso evita tentativas de conexão durante o build/SSR
+let pool: Pool | null = null;
+
+function getPool(): Pool {
+  if (!pool) {
+    // Priorizar DATABASE_URL se disponível (para produção/Vercel)
+    if (process.env.DATABASE_URL) {
+      pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        max: 20,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 2000,
+      });
+    } else {
+      // Fallback para configuração manual (desenvolvimento local)
+      pool = new Pool({
+        host: process.env.DB_HOST || 'localhost',
+        port: parseInt(process.env.DB_PORT || '5432'),
+        user: process.env.POSTGRES_USER || process.env.DB_USERNAME || 'postgres',
+        password: process.env.POSTGRES_PASSWORD || process.env.DB_PASSWORD || 'fenix123',
+        database: process.env.POSTGRES_DB || process.env.DB_DATABASE || 'fenix',
+        max: 20,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 2000,
+      });
+    }
+  }
+  return pool;
+}
 
 // Função para executar queries
 export async function query(text: string, params?: any[]) {
+  const pool = getPool();
   const client = await pool.connect();
   try {
     const result = await client.query(text, params);
@@ -25,6 +45,7 @@ export async function query(text: string, params?: any[]) {
 
 // Função para executar transações
 export async function transaction(callback: (client: any) => Promise<any>) {
+  const pool = getPool();
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -69,4 +90,7 @@ export async function initializeTables() {
   }
 }
 
-export default pool;
+// Exportar função para obter o pool (mantendo compatibilidade)
+export default function getPoolInstance() {
+  return getPool();
+}
