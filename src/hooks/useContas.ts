@@ -36,7 +36,7 @@ export function useContas(companyId?: string): UseContasReturn {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
-      console.error('Erro ao buscar contas:', err);
+      console.error('❌ Erro ao buscar contas:', err);
     } finally {
       setLoading(false);
     }
@@ -146,7 +146,9 @@ export function useContas(companyId?: string): UseContasReturn {
   };
 
   const refreshContas = async () => {
+    console.log('🔄 DEBUG - refreshContas chamado');
     await fetchContas();
+    console.log('✅ DEBUG - refreshContas concluído');
   };
 
   useEffect(() => {
