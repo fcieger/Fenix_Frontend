@@ -71,6 +71,7 @@ export default function LancamentosPage() {
   const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [showNovoLancamentoModal, setShowNovoLancamentoModal] = useState(false);
+  const [recalcLoading, setRecalcLoading] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   
   // Estados para filtros avançados
@@ -258,6 +259,22 @@ export default function LancamentosPage() {
     (mov.descricao_detalhada?.toLowerCase() || '').includes(searchTerm.toLowerCase())
   );
 
+  const handleRecalcularSaldoConta = async () => {
+    if (!contaId) return;
+    try {
+      setRecalcLoading(true);
+      const res = await fetch(`/api/movimentacoes?action=recalcular-saldo-dia&conta_id=${encodeURIComponent(contaId)}`, {
+        method: 'PATCH'
+      });
+      // Mesmo que a API não retorne dados ricos, atualizamos a UI
+      await refreshMovimentacoes();
+    } catch (e) {
+      console.error('Erro ao recalcular saldo da conta:', e);
+    } finally {
+      setRecalcLoading(false);
+    }
+  };
+
   // Tratar erro de carregamento
   if (error) {
     return (
@@ -316,6 +333,15 @@ export default function LancamentosPage() {
             </div>
           </div>
           <div className="flex items-center space-x-3">
+            <button
+              onClick={handleRecalcularSaldoConta}
+              disabled={recalcLoading}
+              className="flex items-center space-x-2 px-4 py-2 border border-green-200 text-green-700 rounded-lg hover:bg-green-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              title="Recalcular saldo deste banco (lançamento por lançamento)"
+            >
+              <RefreshCw className={`h-4 w-4 ${recalcLoading ? 'animate-spin' : ''}`} />
+              <span>Recalcular saldo</span>
+            </button>
             <button 
               onClick={() => setShowNovoLancamentoModal(true)}
               className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
