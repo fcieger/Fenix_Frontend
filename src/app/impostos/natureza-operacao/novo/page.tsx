@@ -17,6 +17,7 @@ import {
   CheckCircle,
   AlertCircle
 } from 'lucide-react';
+import { useFeedback } from '@/contexts/feedback-context';
 
 interface FormData {
   nome: string;
@@ -48,6 +49,7 @@ function NaturezaOperacaoForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, token, activeCompanyId } = useAuth();
+  const { openSuccess } = useFeedback();
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -166,14 +168,12 @@ function NaturezaOperacaoForm() {
 
         if (isEditMode) {
           await apiService.updateNaturezaOperacao(naturezaId, naturezaData, token);
-          alert('Natureza de operação atualizada com sucesso!');
+          openSuccess({ title: 'Atualizado com sucesso', message: 'Natureza de operação atualizada.', onClose: () => router.push('/impostos/natureza-operacao') });
         } else {
           await apiService.createNaturezaOperacao(naturezaData, token);
-          alert('Natureza de operação criada com sucesso!');
+          openSuccess({ title: 'Salvo com sucesso', message: 'Natureza de operação criada.', onClose: () => router.push('/impostos/natureza-operacao') });
         }
         
-        // Redirecionar para a listagem
-        router.push('/impostos/natureza-operacao');
       }
     } catch (error) {
       console.error('Erro ao salvar natureza:', error);
