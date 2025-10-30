@@ -40,10 +40,12 @@ import {
   CheckSquare,
   FileText
 } from 'lucide-react';
+import { useFeedback } from '@/contexts/feedback-context';
 
 export default function NovaListaPrecosPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading, token } = useAuth();
+  const { openSuccess } = useFeedback();
   
   // Debug: Log inicial
   console.log('🚀 NovaListaPrecosPage renderizado');
@@ -318,9 +320,7 @@ export default function NovaListaPrecosPage() {
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       console.log('💾 Lista de preços salva:', formData);
-      
-      // Redirecionar para a lista
-      router.push('/configuracoes/lista-precos');
+      openSuccess({ title: 'Lista salva', message: 'Lista de preços salva com sucesso.', onClose: () => router.push('/configuracoes/lista-precos') });
     } catch (error) {
       console.error('Erro ao salvar lista:', error);
     } finally {
