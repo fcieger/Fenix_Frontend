@@ -35,6 +35,7 @@ interface Parcela {
   valor_parcela: number;
   valor_total: number;
   status: 'pendente' | 'pago';
+  conta_corrente_id?: string;
 }
 
 interface ContaPagar {
@@ -43,7 +44,7 @@ interface ContaPagar {
   descricao: string;
   valor: number;
   vencimento: string;
-  status: 'Vencida' | 'Pendente' | 'Paga';
+  status: 'Vencida' | 'Pendente' | 'Paga' | 'PARCIAL' | 'QUITADO';
   categoria: string;
   dataPagamento?: string;
   contaContabil?: string;
@@ -82,22 +83,26 @@ export default function ContasPagarPage() {
 
       const rows = Array.isArray(json.data) ? json.data : [];
       const mapped: ContaPagar[] = rows.map((row: any) => {
-        // Determinar status baseado nas parcelas
+        // Priorizar status do banco de dados, depois calcular baseado nas parcelas
         let statusUi: ContaPagar['status'] = 'Pendente';
         const parcelasPendentes = Number(row.parcelas_pendentes || 0);
         const parcelasPagas = Number(row.parcelas_pagas || 0);
         const totalParcelas = Number(row.total_parcelas || 0);
         const temVencida = Boolean(row.tem_parcela_vencida);
+        const statusDb = typeof row.status === 'string' ? row.status.toUpperCase() : '';
         
-        if (temVencida && parcelasPendentes > 0) {
+        // Primeiro verificar status do banco (prioridade)
+        if (statusDb === 'QUITADO' || statusDb === 'PAGO' || statusDb === 'PAGA') {
+          statusUi = 'Paga';
+        } else if (statusDb === 'PARCIAL') {
+          // Se for PARCIAL, ainda pode ter vencidas
+          statusUi = temVencida && parcelasPendentes > 0 ? 'Vencida' : 'Pendente';
+        } else if (temVencida && parcelasPendentes > 0) {
           statusUi = 'Vencida';
         } else if (parcelasPagas === totalParcelas && totalParcelas > 0) {
           statusUi = 'Paga';
         } else if (parcelasPendentes > 0) {
           statusUi = 'Pendente';
-        } else if (typeof row.status === 'string') {
-          const s = row.status.toUpperCase();
-          if (s === 'PAGO' || s === 'PAGA') statusUi = 'Paga';
         }
 
         // Fornecedor: usar nomeRazaoSocial ou nomeFantasia
@@ -124,6 +129,7 @@ export default function ContasPagarPage() {
           valor_parcela: Number(p.valor_parcela || 0),
           valor_total: Number(p.valor_total || p.valor_parcela || 0),
           status: (p.status || 'pendente').toLowerCase() as 'pendente' | 'pago',
+          conta_corrente_id: p.conta_corrente_id || undefined,
         }));
 
         return {
@@ -177,7 +183,10 @@ export default function ContasPagarPage() {
       case 'Pendente':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'Paga':
+      case 'QUITADO':
         return 'bg-green-100 text-green-800 border-green-200';
+      case 'PARCIAL':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -188,8 +197,10 @@ export default function ContasPagarPage() {
       case 'Vencida':
         return <AlertTriangle className="h-3 w-3 mr-1" />;
       case 'Pendente':
+      case 'PARCIAL':
         return <Clock className="h-3 w-3 mr-1" />;
       case 'Paga':
+      case 'QUITADO':
         return <TrendingUp className="h-3 w-3 mr-1" />;
       default:
         return null;
@@ -199,12 +210,12 @@ export default function ContasPagarPage() {
   // Calcular estatísticas
   const stats = {
     vencidas: contasPagar.filter(c => c.status === 'Vencida').reduce((sum, c) => sum + c.valor, 0),
-    pendentes: contasPagar.filter(c => c.status === 'Pendente').reduce((sum, c) => sum + c.valor, 0),
-    pagas: contasPagar.filter(c => c.status === 'Paga').reduce((sum, c) => sum + c.valor, 0),
+    pendentes: contasPagar.filter(c => c.status === 'Pendente' || c.status === 'PARCIAL').reduce((sum, c) => sum + c.valor, 0),
+    pagas: contasPagar.filter(c => c.status === 'Paga' || c.status === 'QUITADO').reduce((sum, c) => sum + c.valor, 0),
     total: contasPagar.reduce((sum, c) => sum + c.valor, 0),
     countVencidas: contasPagar.filter(c => c.status === 'Vencida').length,
-    countPendentes: contasPagar.filter(c => c.status === 'Pendente').length,
-    countPagas: contasPagar.filter(c => c.status === 'Paga').length,
+    countPendentes: contasPagar.filter(c => c.status === 'Pendente' || c.status === 'PARCIAL').length,
+    countPagas: contasPagar.filter(c => c.status === 'Paga' || c.status === 'QUITADO').length,
   };
 
   const handleNovaConta = () => {
@@ -212,7 +223,7 @@ export default function ContasPagarPage() {
   };
 
   const handleEditarConta = (conta: ContaPagar) => {
-    alert(`Editar conta: ${conta.fornecedor}`);
+    window.location.href = `/financeiro/contas-pagar/nova?id=${encodeURIComponent(conta.id)}`;
   };
 
   const handleExcluirConta = (conta: ContaPagar) => {
@@ -247,6 +258,31 @@ export default function ContasPagarPage() {
       }
       return newSet;
     });
+  };
+
+  const handleMarcarParcelaPaga = async (contaId: string, parcela: Parcela) => {
+    try {
+      if (!parcela.conta_corrente_id) {
+        alert('Selecione a conta bancária desta parcela antes de marcar como paga.');
+        return;
+      }
+      const res = await fetch(`/api/contas-pagar/parcelas/${parcela.id}/pagar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conta_corrente_id: parcela.conta_corrente_id,
+          data_pagamento: new Date().toISOString().slice(0,10),
+          valor_pago: parcela.valor_total || parcela.valor_parcela || 0,
+          descricao: `Pagamento parcela ${parcela.titulo_parcela}`,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || 'Falha ao pagar parcela');
+      // Atualizar UI: recarregar a lista para refletir status do título e parcela
+      await fetchContasPagar();
+    } catch (e: any) {
+      alert(e?.message || 'Erro ao marcar parcela como paga');
+    }
   };
 
   // Filtrar contas baseado no termo de busca
@@ -469,14 +505,14 @@ export default function ContasPagarPage() {
                 const hasParcelas = conta.parcelas && conta.parcelas.length > 0;
                 
                 return (
-                  <motion.div
-                    key={conta.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
+                <motion.div
+                  key={conta.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
                     className="p-6 hover:bg-slate-50 transition-colors border-b border-slate-200"
-                  >
-                    <div className="flex items-center justify-between">
+                >
+                  <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4 flex-1">
                         {hasParcelas && (
                           <button
@@ -493,42 +529,42 @@ export default function ContasPagarPage() {
                         )}
                         {!hasParcelas && <div className="w-5" />}
                         
-                        <div className="flex-shrink-0">
-                          <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
-                            conta.status === 'Vencida' ? 'bg-red-100' : 
-                            conta.status === 'Pendente' ? 'bg-yellow-100' : 'bg-green-100'
-                          }`}>
-                            <CreditCard className={`h-5 w-5 ${
-                              conta.status === 'Vencida' ? 'text-red-600' : 
-                              conta.status === 'Pendente' ? 'text-yellow-600' : 'text-green-600'
-                            }`} />
-                          </div>
+                      <div className="flex-shrink-0">
+                        <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                          conta.status === 'Vencida' ? 'bg-red-100' : 
+                          conta.status === 'Pendente' ? 'bg-yellow-100' : 'bg-green-100'
+                        }`}>
+                          <CreditCard className={`h-5 w-5 ${
+                            conta.status === 'Vencida' ? 'text-red-600' : 
+                            conta.status === 'Pendente' ? 'text-yellow-600' : 'text-green-600'
+                          }`} />
+                        </div>
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2">
+                          <h4 className="text-lg font-semibold text-slate-900 truncate">
+                            {conta.fornecedor}
+                          </h4>
+                          <Badge variant="outline" className={`text-xs ${getStatusColor(conta.status)}`}>
+                            {getStatusIcon(conta.status)}
+                              {conta.status === 'QUITADO' ? 'Quitado' : conta.status === 'PARCIAL' ? 'Parcial' : conta.status}
+                          </Badge>
                         </div>
                         
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2">
-                            <h4 className="text-lg font-semibold text-slate-900 truncate">
-                              {conta.fornecedor}
-                            </h4>
-                            <Badge variant="outline" className={`text-xs ${getStatusColor(conta.status)}`}>
-                              {getStatusIcon(conta.status)}
-                              {conta.status}
-                            </Badge>
-                          </div>
-                          
-                          <p className="text-sm text-slate-600 mt-1 truncate">
-                            {conta.descricao}
-                          </p>
-                          
+                        <p className="text-sm text-slate-600 mt-1 truncate">
+                          {conta.descricao}
+                        </p>
+                        
                           <div className="flex items-center flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-slate-500">
-                            <div className="flex items-center space-x-1">
-                              <Calendar className="h-3 w-3" />
-                              <span>Vence em {formatDate(conta.vencimento)}</span>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                              <DollarSign className="h-3 w-3" />
-                              <span className="font-semibold">{formatCurrency(conta.valor)}</span>
-                            </div>
+                          <div className="flex items-center space-x-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>Vence em {formatDate(conta.vencimento)}</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <DollarSign className="h-3 w-3" />
+                            <span className="font-semibold">{formatCurrency(conta.valor)}</span>
+                          </div>
                             {conta.contaContabil && (
                               <>
                                 <span>•</span>
@@ -547,27 +583,27 @@ export default function ContasPagarPage() {
                             )}
                             {!conta.contaContabil && !conta.centroCusto && (
                               <>
-                                <span>•</span>
-                                <span>{conta.categoria}</span>
+                          <span>•</span>
+                          <span>{conta.categoria}</span>
                               </>
                             )}
                           </div>
-                        </div>
                       </div>
-                      
+                    </div>
+                    
                       <div className="flex items-center space-x-2 ml-4">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleVisualizarConta(conta)}
-                          className="flex items-center gap-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                          title="Visualizar conta"
-                        >
-                          <Eye className="h-4 w-4" />
-                          <span className="hidden sm:inline">Ver</span>
-                        </Button>
-                        
-                        <Button
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleVisualizarConta(conta)}
+                        className="flex items-center gap-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                        title="Visualizar conta"
+                      >
+                        <Eye className="h-4 w-4" />
+                        <span className="hidden sm:inline">Ver</span>
+                      </Button>
+                      
+                      <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleEditarConta(conta)}
@@ -588,8 +624,8 @@ export default function ContasPagarPage() {
                         <Trash2 className="h-4 w-4" />
                         <span className="hidden sm:inline">Excluir</span>
                       </Button>
-                      </div>
                     </div>
+                  </div>
 
                     {/* Seção expandida com parcelas */}
                     <AnimatePresence>
@@ -655,6 +691,18 @@ export default function ContasPagarPage() {
                                             Total: {formatCurrency(parcela.valor_total)}
                                           </div>
                                         )}
+                                        {parcela.status !== 'pago' && (
+                                          <div className="mt-2">
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="text-green-700 border-green-300 hover:bg-green-50"
+                                              onClick={() => handleMarcarParcelaPaga(conta.id, parcela)}
+                                            >
+                                              Marcar pago
+                                            </Button>
+                                          </div>
+                                        )}
                                       </div>
                                     </div>
                                   </div>
@@ -665,7 +713,7 @@ export default function ContasPagarPage() {
                         </motion.div>
                       )}
                     </AnimatePresence>
-                  </motion.div>
+                </motion.div>
                 );
               })
             )}
@@ -674,14 +722,29 @@ export default function ContasPagarPage() {
           {/* Footer */}
           {contasFiltradas.length > 0 && (
             <div className="bg-slate-50 px-6 py-4 border-t border-slate-200">
-              <div className="flex items-center justify-between text-sm text-slate-600">
+              {(() => {
+                let totalPago = 0;
+                let totalEmAberto = 0;
+                contasFiltradas.forEach(c => {
+                  (c.parcelas || []).forEach(p => {
+                    if (p.status === 'pago') totalPago += p.valor_total || p.valor_parcela || 0;
+                    else totalEmAberto += p.valor_parcela || 0;
+                  });
+                });
+                const totalGeral = contasFiltradas.reduce((sum, c) => sum + c.valor, 0);
+                return (
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between text-sm text-slate-600 gap-2">
                 <span>
                   Mostrando {contasFiltradas.length} conta{contasFiltradas.length !== 1 ? 's' : ''} a pagar
                 </span>
-                <span>
-                  Total: {formatCurrency(contasFiltradas.reduce((sum, c) => sum + c.valor, 0))}
-                </span>
+                    <div className="flex flex-wrap items-center gap-4">
+                      <span>Pago: <strong className="text-green-700">{formatCurrency(totalPago)}</strong></span>
+                      <span>Em aberto: <strong className="text-yellow-700">{formatCurrency(totalEmAberto)}</strong></span>
+                      <span>Total: <strong className="text-blue-700">{formatCurrency(totalGeral)}</strong></span>
+                    </div>
               </div>
+                );
+              })()}
             </div>
           )}
         </div>
