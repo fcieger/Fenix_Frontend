@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRef } from 'react';
+import { useFeedback } from '@/contexts/feedback-context';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/auth-context';
 import { apiService } from '@/lib/api';
@@ -80,6 +82,7 @@ interface ContaPagar {
 
 export default function NovaContaPagarPage() {
   const { user, token, activeCompanyId } = useAuth();
+  const [urlId, setUrlId] = useState<string | null>(null);
   
   // Estados para consulta de cadastros
   const [cadastros, setCadastros] = useState<any[]>([]);
@@ -137,6 +140,22 @@ export default function NovaContaPagarPage() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('titulos');
 
+  // Definir base de API dinamicamente para suportar contas-receber sem hacks de fetch
+  const getApiBase = (): '/api/contas-pagar' | '/api/contas-receber' => {
+    if (typeof window !== 'undefined' && window.location.pathname.includes('/financeiro/contas-receber')) {
+      return '/api/contas-receber';
+    }
+    return '/api/contas-pagar';
+  };
+  const getParcelasAction = (action: 'pagar' | 'estornar') => {
+    const base = getApiBase();
+    if (base === '/api/contas-receber') {
+      return action === 'pagar' ? 'receber' : 'estornar';
+    }
+    return action;
+  };
+  const isReceber = typeof window !== 'undefined' && window.location.pathname.includes('/financeiro/contas-receber');
+
   // Estados para rateio de conta contábil
   const [showRateioModal, setShowRateioModal] = useState(false);
   const [rateioItems, setRateioItems] = useState<any[]>([]);
@@ -150,6 +169,14 @@ export default function NovaContaPagarPage() {
   const [rateioCentroCustoTotal, setRateioCentroCustoTotal] = useState(0);
   const [showRateioCentroCustoDropdown, setShowRateioCentroCustoDropdown] = useState(false);
   const [rateioCentroCustoDropdownItemId, setRateioCentroCustoDropdownItemId] = useState<string | null>(null);
+  const [parcelasErrors, setParcelasErrors] = useState<Record<string, { comp?: boolean; forma?: boolean; conta?: boolean }>>({});
+  const [autoParcelasEnabled, setAutoParcelasEnabled] = useState(true);
+  const [autoStatusEnabled, setAutoStatusEnabled] = useState(true);
+  const autoStatusRef = useRef(true);
+  useEffect(() => {
+    autoStatusRef.current = autoStatusEnabled;
+  }, [autoStatusEnabled]);
+  const { openSuccess, openConfirm } = useFeedback();
 
   // Fechar dropdown quando clicar fora
   useEffect(() => {
@@ -223,17 +250,18 @@ export default function NovaContaPagarPage() {
 
   // Função para filtrar contas contábeis
   const filtrarContasContabeis = (term: string) => {
-    // Primeiro filtrar por tipo (excluir RECEITA)
-    const contasSemReceita = contasContabeis.filter((conta: any) => 
-      conta.tipo?.toUpperCase() !== 'RECEITA'
+    const isReceber = getApiBase() === '/api/contas-receber';
+    // Para pagar: excluir RECEITA. Para receber: incluir somente RECEITA
+    const base = contasContabeis.filter((conta: any) =>
+      isReceber ? conta.tipo?.toUpperCase() === 'RECEITA' : conta.tipo?.toUpperCase() !== 'RECEITA'
     );
 
     if (!term) {
-      setContasContabeisFiltradas(contasSemReceita);
+      setContasContabeisFiltradas(base);
       return;
     }
 
-    const filtered = contasSemReceita.filter((conta: any) => 
+    const filtered = base.filter((conta: any) =>
       conta.descricao?.toLowerCase().includes(term.toLowerCase()) ||
       conta.codigo?.includes(term)
     );
@@ -376,6 +404,82 @@ export default function NovaContaPagarPage() {
   // Função para formatar moeda (alias para formatarValorMonetario)
   const formatCurrency = (valor: number): string => {
     return formatarValorMonetario(valor);
+  };
+
+  const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+
+  const validateParcelaPago = (parcela: Parcela) => {
+    const missing = {
+      comp: !parcela.dataCompensacao,
+      forma: !parcela.formaPagamentoId,
+      conta: !parcela.contaCorrenteId,
+    };
+    const hasAny = missing.comp || missing.forma || missing.conta;
+    setParcelasErrors(prev => ({ ...prev, [parcela.id]: hasAny ? missing : {} }));
+    return !hasAny;
+  };
+
+  const pagarParcelaSePersistida = async (parcela: Parcela) => {
+    try {
+      if (!parcela) return;
+      // Apenas paga se a parcela já existir no banco (id UUID) e tiver conta selecionada
+      if (!isUuid(parcela.id || '')) return;
+      if (!parcela.contaCorrenteId) return;
+      const body = {
+        conta_corrente_id: parcela.contaCorrenteId,
+        data_pagamento: parcela.dataPagamento || new Date().toISOString().slice(0,10),
+        ...(getApiBase() === '/api/contas-receber'
+          ? { valor_recebido: parcela.valorTotal ?? parcela.valorParcela ?? 0,
+              descricao: `Recebimento ${parcela.tituloParcela}` }
+          : { valor_pago: parcela.valorTotal ?? parcela.valorParcela ?? 0,
+              descricao: `Pagamento ${parcela.tituloParcela}` }),
+      };
+      const res = await fetch(`${getApiBase()}/parcelas/${parcela.id}/${getParcelasAction('pagar')}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        console.error('Falha ao lançar pagamento da parcela:', json?.error);
+        return;
+      }
+
+      // Atualizar status do título com a resposta do backend
+      if (json.data?.titulo) {
+        const tituloAtualizado = json.data.titulo;
+        const novoStatus = tituloAtualizado.status?.toUpperCase() || 'PENDENTE';
+        
+        // Normalizar status (QUITADO -> PAGO)
+        const statusNormalizado = novoStatus === 'QUITADO' ? 'PAGO' : 
+                                  novoStatus === 'PARCIAL' ? 'PARCIAL' :
+                                  novoStatus === 'PAGO' ? 'PAGO' : 'PENDENTE';
+        
+        setContaPagar(prev => ({
+          ...prev,
+          status: statusNormalizado as 'PENDENTE' | 'PAGO' | 'PARCIAL' | 'CANCELADO',
+          dataQuitacao: tituloAtualizado.data_quitacao ? String(tituloAtualizado.data_quitacao).split('T')[0] : prev.dataQuitacao
+        }));
+        
+        console.log('[NovaContaPagar] Status do título atualizado:', { 
+          statusNovo: statusNormalizado 
+        });
+      }
+
+      // Atualizar parcela também, se necessário
+      if (json.data?.parcela) {
+        setContaPagar(prev => ({
+          ...prev,
+          parcelas: prev.parcelas.map(p => 
+            p.id === parcela.id 
+              ? { ...p, status: 'pago' as const }
+              : p
+          )
+        }));
+      }
+    } catch (e) {
+      console.error('Erro ao pagar parcela persistida:', e);
+    }
   };
 
   // Função para converter string formatada para número (permite negativos)
@@ -561,12 +665,11 @@ export default function NovaContaPagarPage() {
       if (response.ok && data.success) {
         const contas = data.data || [];
         setContasContabeis(contas);
-        
-        // Filtrar contas sem RECEITA na inicialização
-        const contasSemReceita = contas.filter((conta: any) => 
-          conta.tipo?.toUpperCase() !== 'RECEITA'
+        const isReceber = getApiBase() === '/api/contas-receber';
+        const inicial = contas.filter((conta: any) =>
+          isReceber ? conta.tipo?.toUpperCase() === 'RECEITA' : conta.tipo?.toUpperCase() !== 'RECEITA'
         );
-        setContasContabeisFiltradas(contasSemReceita);
+        setContasContabeisFiltradas(inicial);
       } else {
         throw new Error(data.error || 'Erro ao buscar contas contábeis');
       }
@@ -744,6 +847,7 @@ export default function NovaContaPagarPage() {
 
   // Regenerar parcelas quando valor, data de emissão ou prazo mudarem
   useEffect(() => {
+    if (!autoParcelasEnabled) return;
     if (prazoSelecionado && contaPagar.valorTotal > 0 && contaPagar.dataEmissao) {
       const novasParcelas = gerarParcelas(contaPagar.valorTotal, contaPagar.dataEmissao, prazoSelecionado);
       
@@ -756,10 +860,11 @@ export default function NovaContaPagarPage() {
       setContaPagar(prev => ({ ...prev, parcelas: parcelasComTitulos }));
       console.log('🔄 Parcelas regeneradas:', parcelasComTitulos.length, 'parcelas');
     }
-  }, [contaPagar.valorTotal, contaPagar.dataEmissao, prazoSelecionado, contaPagar.titulo]);
+  }, [contaPagar.valorTotal, contaPagar.dataEmissao, prazoSelecionado, contaPagar.titulo, autoParcelasEnabled]);
 
   // Atualizar status automaticamente quando parcelas mudarem
   useEffect(() => {
+    if (!autoStatusRef.current) return;
     const novoStatus = calcularStatusAutomatico(contaPagar.parcelas);
     if (novoStatus !== contaPagar.status) {
       setContaPagar(prev => ({ ...prev, status: novoStatus }));
@@ -1031,14 +1136,56 @@ export default function NovaContaPagarPage() {
         return;
       }
 
-      const response = await fetch('/api/contas-pagar', {
-        method: 'POST',
+      // Validar parcelas marcadas como PAGO possuem campos obrigatórios
+      let hasParcelasInvalidas = false;
+      const novasErros: Record<string, { comp?: boolean; forma?: boolean; conta?: boolean }> = {};
+      contaPagar.parcelas.forEach((p) => {
+        if (p.status === 'pago') {
+          const missing = {
+            comp: !p.dataCompensacao,
+            forma: !p.formaPagamentoId,
+            conta: !p.contaCorrenteId,
+          };
+          if (missing.comp || missing.forma || missing.conta) {
+            novasErros[p.id] = missing;
+            hasParcelasInvalidas = true;
+          }
+        }
+      });
+      if (hasParcelasInvalidas) {
+        setParcelasErrors(prev => ({ ...prev, ...novasErros }));
+        return; // erros destacados visualmente nos campos
+      }
+
+      // Ler ID da URL diretamente para garantir sincronização
+      let currentId: string | null = null;
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        currentId = params.get('id');
+      }
+      // Usar urlId do estado ou da URL como fallback
+      const idToUse = urlId || currentId;
+      
+      const method = idToUse ? 'PUT' : 'POST';
+      const endpoint = idToUse ? `${getApiBase()}/${idToUse}` : getApiBase();
+
+      console.log('[NovaContaPagar] Salvando:', { method, endpoint, idToUse, urlId, currentId });
+
+      // Calcular status automaticamente no momento do salvamento
+      const statusCalculado = calcularStatusAutomatico(contaPagar.parcelas);
+      if (statusCalculado !== contaPagar.status) {
+        setContaPagar(prev => ({ ...prev, status: statusCalculado }));
+      }
+
+      const response = await fetch(endpoint, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           ...contaPagar,
+          status: statusCalculado,
           companyId: activeCompanyId,
           cadastroId: cadastroSelecionado?.id || null,
           parcelamentoId: prazoSelecionado?.id || null,
@@ -1063,9 +1210,45 @@ export default function NovaContaPagarPage() {
       }
 
       const data = await response.json();
-
       if (data.success) {
-      alert('Conta a pagar salva com sucesso!');
+        // Atualizar header com status final usado
+        setContaPagar(prev => ({ ...prev, status: statusCalculado }));
+        // Se foi um POST (criação), atualizar URL e estado para modo de edição
+        if (method === 'POST' && data.data?.id) {
+          const newId = data.data.id;
+          if (typeof window !== 'undefined') {
+            const url = new URL(window.location.href);
+            url.searchParams.set('id', newId);
+            window.history.replaceState({}, '', url.toString());
+          }
+          setUrlId(newId);
+          console.log('[NovaContaPagar] Título criado, atualizando para modo edição:', { id: newId });
+        }
+        openSuccess({ title: 'Salvo com sucesso', message: getApiBase() === '/api/contas-receber' ? 'A conta a receber foi salva com êxito.' : 'A conta a pagar foi salva com êxito.' });
+      } else {
+        console.error('Erro ao salvar:', data.error);
+      }
+    } catch (error) {
+      console.error('Erro ao salvar conta a pagar:', error);
+      alert('Erro ao salvar conta a pagar');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVoltar = () => {
+    window.history.back();
+  };
+
+  const handleNovo = () => {
+    // Limpar ID da URL para garantir que não seja salvo como edição
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('id');
+      window.history.replaceState({}, '', url.toString());
+    }
+    setUrlId(null);
+    
         // Limpar formulário completamente
         setContaPagar({
           titulo: '',
@@ -1080,47 +1263,223 @@ export default function NovaContaPagarPage() {
           status: 'PENDENTE',
           parcelas: []
         });
-        
-        // Limpar estados dos dropdowns
+    // Limpar estados auxiliares
         setCadastroSelecionado(null);
         setPrazoSelecionado(null);
         setContaContabilSelecionada(null);
         setCentroCustoSelecionado(null);
-        
-        // Limpar filtros
         setCadastrosFiltrados([]);
         setContasContabeisFiltradas([]);
         setCentrosCustoFiltrados([]);
         setFormasPagamentoMetodosFiltradas([]);
         setContasBancariasFiltradas([]);
-        
-        // Limpar rateio de conta contábil
         setRateioItems([]);
         setRateioTotal(0);
         setShowRateioModal(false);
         setShowRateioDropdown(false);
         setRateioDropdownItemId(null);
-        
-        // Limpar rateio de centro de custo
         setRateioCentroCustoItems([]);
         setRateioCentroCustoTotal(0);
         setShowRateioCentroCustoModal(false);
         setShowRateioCentroCustoDropdown(false);
         setRateioCentroCustoDropdownItemId(null);
-      } else {
-        alert(`Erro ao salvar: ${data.error}`);
-      }
-    } catch (error) {
-      console.error('Erro ao salvar conta a pagar:', error);
-      alert('Erro ao salvar conta a pagar');
-    } finally {
-      setLoading(false);
-    }
+    setParcelasErrors({});
+    setAutoParcelasEnabled(true);
+    setAutoStatusEnabled(true);
+    autoStatusRef.current = true;
   };
 
-  const handleVoltar = () => {
-    window.history.back();
-  };
+  // Carregar dados ao entrar em modo edição via ?id=
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    setUrlId(id);
+    if (!id) return;
+
+    (async () => {
+      try {
+        console.log('[NovaContaPagar] Carregando título para edição', { id });
+        const res = await fetch(`${getApiBase()}/${id}`);
+        console.log('[NovaContaPagar] Resposta HTTP', { status: res.status, ok: res.ok, url: res.url });
+        const json = await res.json();
+        console.log('[NovaContaPagar] JSON recebido', json);
+        if (!res.ok || !json.success) return;
+        const data = json.data;
+        console.log('[NovaContaPagar] Dados do título', {
+          id: data?.id,
+          titulo: data?.titulo,
+          valor_total: data?.valor_total,
+          parcelas_count: Array.isArray(data?.parcelas) ? data.parcelas.length : 'N/A',
+          has_rateio_conta: Array.isArray(json?.data?.rateioContaContabil),
+          has_rateio_cc: Array.isArray(json?.data?.rateioCentroCusto),
+        });
+        // Montar estado do título
+        const normalizeStatus = (s: any) => {
+          const up = String(s || '').toUpperCase();
+          if (up === 'QUITADO') return 'PAGO';
+          if (up === 'PAGO' || up === 'PARCIAL' || up === 'CANCELADO') return up;
+          return 'PENDENTE';
+        };
+        const novoTitulo = {
+          titulo: data.titulo || '',
+          valorTotal: Number(data.valor_total || 0),
+          contaContabil: data.conta_contabil_id || '',
+          dataEmissao: data.data_emissao ? String(data.data_emissao).split('T')[0] : new Date().toISOString().split('T')[0],
+          dataQuitacao: data.data_quitacao ? String(data.data_quitacao).split('T')[0] : '',
+          competencia: data.competencia || '',
+          centroCusto: data.centro_custo_id || '',
+          origem: data.origem || '',
+          observacoes: data.observacoes || '',
+          status: normalizeStatus(data.status) as 'PENDENTE' | 'PAGO' | 'PARCIAL' | 'CANCELADO',
+          parcelas: (data.parcelas || []).map((p: any) => ({
+            id: String(p.id),
+            tituloParcela: p.titulo_parcela || '',
+            dataVencimento: p.data_vencimento ? String(p.data_vencimento).split('T')[0] : '',
+            dataPagamento: p.data_pagamento ? String(p.data_pagamento).split('T')[0] : '',
+            dataCompensacao: p.data_compensacao ? String(p.data_compensacao).split('T')[0] : '',
+            formaPagamentoId: p.forma_pagamento_id || '',
+            formaPagamentoNome: p.forma_pagamento_nome || '',
+            contaCorrenteId: p.conta_corrente_id || '',
+            contaCorrenteNome: p.conta_corrente_nome || '',
+            valorParcela: Number(p.valor_parcela || 0),
+            diferenca: Number(p.diferenca || 0),
+            valorTotal: Number(p.valor_total || p.valor_parcela || 0),
+            status: (p.status || 'pendente') as 'pendente' | 'pago' | 'atrasado',
+          })),
+        };
+        console.log('[NovaContaPagar] Estado calculado para setar', novoTitulo);
+        setContaPagar(novoTitulo as any);
+
+        // Carregar rateio de conta contábil (edição)
+        if (Array.isArray((data as any).rateioContaContabil)) {
+          const itens = (data as any).rateioContaContabil.map((r: any) => ({
+            id: r.id || `rateio-conta-${r.conta_contabil_id}`,
+            contaContabilId: r.conta_contabil_id || r.contaContabilId || '',
+            contaContabilNome: r.conta_contabil_descricao || r.contaContabilNome || '',
+            valor: Number(r.valor || 0),
+            percentual: Number(r.percentual || 0),
+          }));
+          setRateioItems(itens);
+          const total = itens.reduce((sum: number, it: any) => sum + (Number(it.valor) || 0), 0);
+          setRateioTotal(total);
+        }
+
+        // Carregar rateio de centro de custo (edição)
+        if (Array.isArray((data as any).rateioCentroCusto)) {
+          const itensCC = (data as any).rateioCentroCusto.map((r: any) => ({
+            id: r.id || `rateio-centro-${r.centro_custo_id}`,
+            centroCustoId: r.centro_custo_id || r.centroCustoId || '',
+            centroCustoNome: r.centro_custo_descricao || r.centroCustoNome || '',
+            valor: Number(r.valor || 0),
+            percentual: Number(r.percentual || 0),
+          }));
+          setRateioCentroCustoItems(itensCC);
+          const totalCC = itensCC.reduce((sum: number, it: any) => sum + (Number(it.valor) || 0), 0);
+          setRateioCentroCustoTotal(totalCC);
+        }
+        if (Array.isArray(data.parcelas) && data.parcelas.length > 0) {
+          setAutoParcelasEnabled(false);
+        }
+        setAutoStatusEnabled(false);
+
+        // Estado mínimo para validação de cadastro (se existir)
+        if (data.cadastro_id) setCadastroSelecionado({ id: data.cadastro_id });
+        if (data.parcelamento_id) {
+          setPrazoSelecionado({ 
+            id: data.parcelamento_id,
+            nome: data.parcelamento_nome || ''
+          });
+          console.log('[NovaContaPagar] Definindo prazoSelecionado', { 
+            id: data.parcelamento_id, 
+            nome: data.parcelamento_nome 
+          });
+        }
+      } catch (e) {
+        console.error('Erro ao carregar título para edição:', e);
+      }
+    })();
+  }, []);
+
+  // Enriquecer seleções com nomes quando listas carregarem
+  useEffect(() => {
+    if (cadastroSelecionado?.id && cadastros?.length) {
+      const found = cadastros.find((c: any) => c.id === cadastroSelecionado.id);
+      if (found && (!cadastroSelecionado.nomeRazaoSocial && !cadastroSelecionado.nomeFantasia)) {
+        setCadastroSelecionado({ ...found });
+      }
+    }
+  }, [cadastros, cadastroSelecionado?.id]);
+
+  useEffect(() => {
+    if (contaPagar?.contaContabil && contasContabeis?.length) {
+      const found = contasContabeis.find((cc: any) => cc.id === contaPagar.contaContabil);
+      if (found) setContaContabilSelecionada(found);
+    }
+  }, [contasContabeis, contaPagar?.contaContabil]);
+
+  useEffect(() => {
+    if (contaPagar?.centroCusto && centrosCusto?.length) {
+      const found = centrosCusto.find((cc: any) => cc.id === contaPagar.centroCusto);
+      if (found) setCentroCustoSelecionado(found);
+    }
+  }, [centrosCusto, contaPagar?.centroCusto]);
+
+  useEffect(() => {
+    if (prazoSelecionado?.id && formasPagamento?.length) {
+      const found = formasPagamento.find((p: any) => p.id === prazoSelecionado.id);
+      if (found && !prazoSelecionado.nome) {
+        setPrazoSelecionado(found);
+      }
+    }
+  }, [formasPagamento, prazoSelecionado?.id]);
+
+  // Enriquecer parcelas com nomes quando as listas carregarem
+  useEffect(() => {
+    if (contaPagar.parcelas.length > 0 && formasPagamentoMetodos.length > 0) {
+      const parcelasAtualizadas = contaPagar.parcelas.map(parcela => {
+        if (parcela.formaPagamentoId && !parcela.formaPagamentoNome) {
+          const forma = formasPagamentoMetodos.find((f: any) => f.id === parcela.formaPagamentoId);
+          if (forma) {
+            return { ...parcela, formaPagamentoNome: forma.nome };
+          }
+        }
+        return parcela;
+      });
+      
+      // Só atualiza se houver mudanças
+      const temMudancas = parcelasAtualizadas.some((p, i) => 
+        p.formaPagamentoNome !== contaPagar.parcelas[i].formaPagamentoNome
+      );
+      
+      if (temMudancas) {
+        setContaPagar(prev => ({ ...prev, parcelas: parcelasAtualizadas }));
+      }
+    }
+  }, [formasPagamentoMetodos, contaPagar.parcelas]);
+
+  useEffect(() => {
+    if (contaPagar.parcelas.length > 0 && contasBancarias.length > 0) {
+      const parcelasAtualizadas = contaPagar.parcelas.map(parcela => {
+        if (parcela.contaCorrenteId && !parcela.contaCorrenteNome) {
+          const conta = contasBancarias.find((c: any) => c.id === parcela.contaCorrenteId);
+          if (conta) {
+            return { ...parcela, contaCorrenteNome: conta.descricao };
+          }
+        }
+        return parcela;
+      });
+      
+      // Só atualiza se houver mudanças
+      const temMudancas = parcelasAtualizadas.some((p, i) => 
+        p.contaCorrenteNome !== contaPagar.parcelas[i].contaCorrenteNome
+      );
+      
+      if (temMudancas) {
+        setContaPagar(prev => ({ ...prev, parcelas: parcelasAtualizadas }));
+      }
+    }
+  }, [contasBancarias, contaPagar.parcelas]);
 
   return (
     <Layout>
@@ -1139,52 +1498,44 @@ export default function NovaContaPagarPage() {
                     <Receipt className="h-8 w-8 text-white" />
                   </div>
                   <div className="flex-1">
-                    <h1 className="text-4xl font-bold text-white">Nova Conta a Pagar</h1>
+                    <h1 className="text-4xl font-bold text-white">{isReceber ? 'Nova Conta a Receber' : 'Nova Conta a Pagar'}</h1>
                     <p className="text-purple-100 mt-1 text-lg">
-                      Cadastre uma nova obrigação financeira com parcelas e configurações
+                      {isReceber ? 'Cadastre um novo recebimento com parcelas e configurações' : 'Cadastre uma nova obrigação financeira com parcelas e configurações'}
                     </p>
                   </div>
                   
                   {/* Status da Conta */}
                   <div className="flex items-center space-x-3">
                     <span className="text-white font-medium">Status:</span>
-                    <Select
-                      value={contaPagar.status}
-                      onValueChange={(value: 'PENDENTE' | 'PAGO' | 'PARCIAL' | 'CANCELADO') => {
-                        setContaPagar(prev => ({ ...prev, status: value }));
-                      }}
+                    {/* Destaque visual do status (somente leitura) */}
+                    <div
+                      className={
+                        `flex items-center gap-2 px-4 py-1.5 rounded-xl text-sm font-semibold uppercase tracking-wide border shadow-sm ring-1 ring-white/40 backdrop-blur-md ` +
+                        (contaPagar.status === 'PAGO'
+                          ? 'bg-green-500/20 border-green-300/40 text-green-100'
+                          : contaPagar.status === 'PARCIAL'
+                          ? 'bg-blue-500/20 border-blue-300/40 text-blue-100'
+                          : contaPagar.status === 'CANCELADO'
+                          ? 'bg-red-500/20 border-red-300/40 text-red-100'
+                          : 'bg-yellow-500/20 border-yellow-300/40 text-yellow-100')
+                      }
+                      title="Status do título (definido automaticamente)"
                     >
-                      <SelectTrigger className="w-40 bg-white/20 border-white/30 text-white focus:ring-white/50">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="PENDENTE">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-                            <span>Pendente</span>
+                      {contaPagar.status === 'PAGO' && <CheckCircle className="h-4 w-4" />}
+                      {contaPagar.status === 'PARCIAL' && <TrendingUp className="h-4 w-4" />}
+                      {contaPagar.status === 'CANCELADO' && <AlertCircle className="h-4 w-4" />}
+                      {contaPagar.status === 'PENDENTE' && <Clock className="h-4 w-4" />}
+                      <span>
+                        {contaPagar.status === 'PAGO'
+                          ? 'Pago'
+                          : contaPagar.status === 'PARCIAL'
+                          ? 'Parcial'
+                          : contaPagar.status === 'CANCELADO'
+                          ? 'Cancelado'
+                          : 'Pendente'}
+                      </span>
                           </div>
-                        </SelectItem>
-                        <SelectItem value="PAGO">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                            <span>Pago</span>
                           </div>
-                        </SelectItem>
-                        <SelectItem value="PARCIAL">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                            <span>Parcial</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="CANCELADO">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-red-400 rounded-full"></div>
-                            <span>Cancelado</span>
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </div>
               </div>
               
@@ -1203,9 +1554,18 @@ export default function NovaContaPagarPage() {
                     Voltar
                   </Button>
                   <Button
-                    onClick={handleSalvar}
+                    variant="outline"
+                    onClick={handleNovo}
                     disabled={loading}
-                    className="bg-white text-purple-600 hover:bg-purple-50 shadow-lg hover:shadow-xl transition-all duration-200 font-semibold"
+                    className="bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm"
+                  >
+                    Novo
+                  </Button>
+                  <Button
+                    onClick={handleSalvar}
+                    disabled={loading || contaPagar.status === 'PAGO'}
+                    className="bg-white text-purple-600 hover:bg-purple-50 shadow-lg hover:shadow-xl transition-all duration-200 font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+                    title={contaPagar.status === 'PAGO' ? 'Título quitado não pode ser editado' : ''}
                   >
                     {loading ? (
                       <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -1235,8 +1595,8 @@ export default function NovaContaPagarPage() {
                   <FileText className="h-6 w-6 text-purple-600" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Configurações da Conta</h2>
-                  <p className="text-gray-600 mt-1">Configure as informações básicas da conta a pagar</p>
+                  <h2 className="text-2xl font-bold text-gray-900">{isReceber ? 'Configurações do Recebimento' : 'Configurações da Conta'}</h2>
+                  <p className="text-gray-600 mt-1">{isReceber ? 'Configure as informações básicas do Contas a Receber' : 'Configure as informações básicas da conta a pagar'}</p>
                 </div>
               </div>
             </div>
@@ -1260,7 +1620,7 @@ export default function NovaContaPagarPage() {
                     <div className="relative cadastro-dropdown">
                       <Input
                         id="cadastro"
-                        value={cadastroSelecionado ? (cadastroSelecionado.nomeRazaoSocial || cadastroSelecionado.nomeFantasia) : ''}
+                        value={cadastroSelecionado?.nomeRazaoSocial || cadastroSelecionado?.nomeFantasia || ''}
                         onChange={(e) => {
                           filtrarCadastros(e.target.value);
                           setShowCadastroDropdown(true);
@@ -1517,7 +1877,7 @@ export default function NovaContaPagarPage() {
                       <div className="relative prazo-pagamento-dropdown">
                         <Input
                           id="parcelamento"
-                          value={prazoSelecionado ? prazoSelecionado.nome : ''}
+                          value={prazoSelecionado?.nome || ''}
                           onChange={(e) => {
                             filtrarFormasPagamento(e.target.value);
                             setShowPrazoPagamentoDropdown(true);
@@ -1684,9 +2044,9 @@ export default function NovaContaPagarPage() {
                   <div className="mb-6">
                     <Label className="text-lg font-semibold text-gray-700 flex items-center gap-2">
                       <CreditCard className="h-5 w-5 text-blue-600" />
-                        Parcelas da Conta
+                        {isReceber ? 'Parcelas do Recebimento' : 'Parcelas da Conta'}
                       </Label>
-                    <p className="text-gray-600 mt-1">Configure as parcelas de pagamento</p>
+                    <p className="text-gray-600 mt-1">{isReceber ? 'Configure as parcelas do recebimento' : 'Configure as parcelas de pagamento'}</p>
                     </div>
 
                   {/* Tabela de Parcelas Compacta */}
@@ -1800,8 +2160,11 @@ export default function NovaContaPagarPage() {
                                         novasParcelas[index].dataCompensacao = e.target.value;
                                         setContaPagar(prev => ({ ...prev, parcelas: novasParcelas }));
                                       }}
-                                        className="border border-gray-200 rounded px-2 py-1 text-xs text-gray-700 focus:ring-1 focus:ring-orange-500 focus:border-transparent transition-all duration-200 bg-white w-full"
+                                        className={`border rounded px-2 py-1 text-xs text-gray-700 focus:ring-1 transition-all duration-200 bg-white w-full ${parcelasErrors[parcela.id]?.comp ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-orange-500 focus:border-transparent'}`}
                                     />
+                                    {parcelasErrors[parcela.id]?.comp && (
+                                      <div className="text-[10px] text-red-600 mt-1">Obrigatório quando status = PAGO</div>
+                                    )}
                                   </td>
                                   <td className="px-3 py-2">
                                     <Input
@@ -1815,9 +2178,12 @@ export default function NovaContaPagarPage() {
                                             dropdown.classList.remove('hidden');
                                           }
                                         }}
-                                        className="border border-gray-200 rounded px-2 py-1 text-xs text-gray-700 focus:ring-1 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white w-full"
+                                        className={`border rounded px-2 py-1 text-xs text-gray-700 focus:ring-1 transition-all duration-200 bg-white w-full ${parcelasErrors[parcela.id]?.forma ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-purple-500 focus:border-transparent'}`}
                                       placeholder="Ex: PIX"
                                     />
+                                    {parcelasErrors[parcela.id]?.forma && (
+                                      <div className="text-[10px] text-red-600 mt-1">Obrigatório quando status = PAGO</div>
+                                    )}
                                       
                                       {/* Dropdown de formas de pagamento melhorado */}
                                       <div className={`forma-pagamento-dropdown-${index} absolute z-50 w-80 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto hidden`}>
@@ -1854,9 +2220,13 @@ export default function NovaContaPagarPage() {
                                                 
                                                 // Perguntar se quer aplicar para todas as parcelas
                                                 if (contaPagar.parcelas.length > 1) {
-                                                  const aplicarTodas = confirm(
-                                                    `Deseja aplicar "${forma.nome}" para todas as ${contaPagar.parcelas.length} parcelas?`
-                                                  );
+                                                  (async () => {
+                                                    const aplicarTodas = await openConfirm({
+                                                      title: 'Aplicar forma de pagamento',
+                                                      message: `Deseja aplicar "${forma.nome}" para todas as ${contaPagar.parcelas.length} parcelas?`,
+                                                      confirmText: 'Sim, aplicar',
+                                                      cancelText: 'Cancelar'
+                                                    });
                                                   
                                                   if (aplicarTodas) {
                                                     setContaPagar(prev => ({
@@ -1868,6 +2238,7 @@ export default function NovaContaPagarPage() {
                                                       }))
                                                     }));
                                                   }
+                                                  })();
                                                 }
                                               }}
                                             >
@@ -1901,9 +2272,12 @@ export default function NovaContaPagarPage() {
                                             dropdown.classList.remove('hidden');
                                           }
                                         }}
-                                        className="border border-gray-200 rounded px-2 py-1 text-xs text-gray-700 focus:ring-1 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white w-full"
+                                        className={`border rounded px-2 py-1 text-xs text-gray-700 focus:ring-1 transition-all duration-200 bg-white w-full ${parcelasErrors[parcela.id]?.conta ? 'border-red-500 focus:ring-red-500' : 'border-gray-200 focus:ring-green-500 focus:border-transparent'}`}
                                       placeholder="Ex: Banco ABC"
                                     />
+                                    {parcelasErrors[parcela.id]?.conta && (
+                                      <div className="text-[10px] text-red-600 mt-1">Obrigatório quando status = PAGO</div>
+                                    )}
                                       
                                       {/* Dropdown de contas bancárias melhorado */}
                                       <div className={`conta-corrente-dropdown-${index} absolute z-50 w-80 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto hidden`}>
@@ -1937,9 +2311,13 @@ export default function NovaContaPagarPage() {
                                                 
                                                 // Perguntar se quer aplicar para todas as parcelas
                                                 if (contaPagar.parcelas.length > 1) {
-                                                  const aplicarTodas = confirm(
-                                                    `Deseja aplicar "${conta.descricao}" para todas as ${contaPagar.parcelas.length} parcelas?`
-                                                  );
+                                                  (async () => {
+                                                    const aplicarTodas = await openConfirm({
+                                                      title: 'Aplicar conta corrente',
+                                                      message: `Deseja aplicar "${conta.descricao}" para todas as ${contaPagar.parcelas.length} parcelas?`,
+                                                      confirmText: 'Sim, aplicar',
+                                                      cancelText: 'Cancelar'
+                                                    });
                                                   
                                                   if (aplicarTodas) {
                                                     setContaPagar(prev => ({
@@ -1951,6 +2329,7 @@ export default function NovaContaPagarPage() {
                                                       }))
                                                     }));
                                                   }
+                                                  })();
                                                 }
                                               }}
                                             >
@@ -2005,10 +2384,56 @@ export default function NovaContaPagarPage() {
                                   <td className="px-3 py-2">
                                     <Select
                                       value={parcela.status}
-                                      onValueChange={(value: 'pendente' | 'pago' | 'atrasado') => {
+                                      onValueChange={async (value: 'pendente' | 'pago' | 'atrasado') => {
                                         const novasParcelas = [...contaPagar.parcelas];
+                                        const statusAnterior = novasParcelas[index].status;
+                                        if (value === 'pago') {
+                                          // Validar campos obrigatórios quando marcar como pago
+                                          const ok = validateParcelaPago(novasParcelas[index]);
+                                          if (!ok) {
+                                            return; // não altera status, erros já destacados na UI
+                                          }
+                                        } else {
+                                          // Limpamos erros visuais se retornar de pago
+                                          setParcelasErrors(prev => ({ ...prev, [novasParcelas[index].id]: {} }));
+                                        }
+                                        // Caso esteja revertendo de 'pago' para 'pendente', confirmar e estornar
+                                        if (statusAnterior === 'pago' && value === 'pendente' && isUuid(novasParcelas[index].id || '')) {
+                                          const confirmou = await openConfirm({
+                                            title: 'Desfazer pagamento da parcela?',
+                                            message: 'Essa ação vai reverter o lançamento na movimentação bancária e marcar a parcela como pendente. Deseja continuar?',
+                                            confirmText: 'Sim, desfazer',
+                                            cancelText: 'Cancelar'
+                                          });
+                                          if (!confirmou) {
+                                            return; // não altera
+                                          }
+                                          try {
+                                            const res = await fetch(`${getApiBase()}/parcelas/${novasParcelas[index].id}/${getParcelasAction('estornar')}`, { method: 'POST' });
+                                            const json = await res.json();
+                                            if (!res.ok || !json.success) {
+                                              console.error('Falha ao estornar pagamento da parcela:', json?.error);
+                                              return;
+                                            }
+                                            // Atualizar estados com a resposta
+                                            novasParcelas[index].status = 'pendente';
+                                            setContaPagar(prev => ({
+                                              ...prev,
+                                              parcelas: novasParcelas,
+                                              status: ((json.data?.titulo?.status || 'PENDENTE').toUpperCase() === 'QUITADO'
+                                                ? 'PAGO'
+                                                : (json.data?.titulo?.status || 'PENDENTE').toUpperCase()) as 'PENDENTE' | 'PAGO' | 'PARCIAL' | 'CANCELADO',
+                                              dataQuitacao: json.data?.titulo?.data_quitacao ? String(json.data.titulo.data_quitacao).split('T')[0] : ''
+                                            }));
+                                          } catch (e) {
+                                            console.error('Erro ao estornar parcela:', e);
+                                            return;
+                                          }
+                                        } else {
+                                          // Apenas troca local de status
                                         novasParcelas[index].status = value;
                                         setContaPagar(prev => ({ ...prev, parcelas: novasParcelas }));
+                                        }
                                       }}
                                     >
                                       <SelectTrigger className="border border-gray-200 rounded px-2 py-1 h-auto bg-white focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-xs w-full">
@@ -2120,9 +2545,18 @@ export default function NovaContaPagarPage() {
                   Voltar
                 </Button>
                 <Button
-                  onClick={handleSalvar}
+                  variant="outline"
+                  onClick={handleNovo}
                   disabled={loading}
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                  className="px-6 py-3 hover:bg-gray-50 transition-all duration-200"
+                >
+                  Novo
+                </Button>
+                <Button
+                  onClick={handleSalvar}
+                  disabled={loading || contaPagar.status === 'PAGO'}
+                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                  title={contaPagar.status === 'PAGO' ? 'Título quitado não pode ser editado' : ''}
                 >
                   {loading ? (
                     <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -2718,6 +3152,7 @@ export default function NovaContaPagarPage() {
           </motion.div>
         </div>
       )}
+      {/* Modal de sucesso agora é global via FeedbackProvider */}
     </Layout>
   );
 }
