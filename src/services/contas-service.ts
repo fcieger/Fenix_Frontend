@@ -38,11 +38,12 @@ export class ContasService {
         data.banco_id || null,
         data.banco_nome || null,
         data.banco_codigo || null,
-        data.numero_agencia || null,
-        data.numero_conta || null,
+        data.numero_agencia ?? '',
+        data.numero_conta ?? '',
         data.tipo_pessoa || null,
         data.saldo_inicial || 0,
-        data.data_abertura || new Date().toISOString().split('T')[0]
+        // Usar data_saldo como data de abertura quando informada pelo front
+        (data as any).data_saldo || data.data_abertura || new Date().toISOString().split('T')[0]
       ];
 
       console.log('🔧 Campos filtrados - apenas campos que existem na tabela:', contaParams);
@@ -347,7 +348,7 @@ export class ContasService {
     const sqlTipos = `
       SELECT tipo_conta, COUNT(*) as quantidade
       FROM contas_financeiras 
-      WHERE company_id = $1
+      WHERE "companyId" = $1
       GROUP BY tipo_conta
     `;
 
