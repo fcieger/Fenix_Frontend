@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { MovimentacoesService } from '@/services/movimentacoes-service';
+import { ContasService } from '@/services/contas-service';
 import { CreateMovimentacaoRequest, MovimentacaoFilters } from '@/types/movimentacao';
 import { query } from '@/lib/database';
 
 const movimentacoesService = new MovimentacoesService();
+const contasService = new ContasService();
 
 export async function GET(request: NextRequest) {
   try {
@@ -98,6 +100,29 @@ export async function PATCH(request: NextRequest) {
       { error: 'Erro interno do servidor' },
       { status: 500 }
     );
+  }
+
+  if (action === 'recalcular-todas') {
+    // Recalcular saldos do dia e saldo_atual para todas as contas
+    try {
+      const contas = await contasService.getContas({ limit: 100000 });
+      const resultados: any[] = [];
+      for (const conta of contas) {
+        try {
+          // Atualizar saldo_atual baseado nas movimentações
+          const saldoAtual = await contasService.atualizarSaldoAtual(conta.id);
+          // Recalcular os saldos do dia para a conta
+          await query('SELECT recalcular_saldo_dia_conta($1)', [conta.id]);
+          resultados.push({ conta_id: conta.id, descricao: conta.descricao, saldoAtual });
+        } catch (e: any) {
+          resultados.push({ conta_id: conta.id, descricao: conta.descricao, erro: e?.message || 'falha' });
+        }
+      }
+      return NextResponse.json({ success: true, message: 'Recalculo aplicado a todas as contas', resultados });
+    } catch (e) {
+      console.error('Erro ao recalcular todas as contas:', e);
+      return NextResponse.json({ success: false, error: 'Erro ao recalcular todas as contas' }, { status: 500 });
+    }
   }
 }
 
