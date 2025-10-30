@@ -300,7 +300,19 @@ export class MovimentacoesService {
       throw new Error('Movimentação não encontrada');
     }
 
-    return result.rows[0];
+    const atualizada = result.rows[0];
+
+    // Recalcular saldos do dia e saldo atual da(s) conta(s) envolvida(s)
+    const contaAntiga = movimentacaoAtual.conta_id;
+    const contaNova = (data as any).conta_id || movimentacaoAtual.conta_id;
+    await this.contasService.atualizarSaldoAtual(contaNova);
+    await query('SELECT recalcular_saldo_dia_conta($1)', [contaNova]);
+    if (contaNova !== contaAntiga) {
+      await this.contasService.atualizarSaldoAtual(contaAntiga);
+      await query('SELECT recalcular_saldo_dia_conta($1)', [contaAntiga]);
+    }
+
+    return atualizada;
   }
 
   async deleteMovimentacao(id: string): Promise<boolean> {
@@ -331,8 +343,9 @@ export class MovimentacoesService {
         return false;
       }
 
-      // Atualizar saldo da conta usando o método do serviço
+      // Atualizar saldo da conta usando o método do serviço e recalc saldo do dia
       await this.contasService.atualizarSaldoAtual(movimentacao.conta_id);
+      await client.query('SELECT recalcular_saldo_dia_conta($1)', [movimentacao.conta_id]);
 
       return true;
     });
