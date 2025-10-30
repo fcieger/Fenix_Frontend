@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRef } from 'react';
 import { useFeedback } from '@/contexts/feedback-context';
@@ -140,9 +141,10 @@ export default function NovaContaPagarPage() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('titulos');
 
-  // Definir base de API dinamicamente para suportar contas-receber sem hacks de fetch
+  // Definir base de API dinamicamente para suportar contas-receber com pathname estável (SSR/CSR)
+  const pathname = usePathname?.() as string | null;
   const getApiBase = (): '/api/contas-pagar' | '/api/contas-receber' => {
-    if (typeof window !== 'undefined' && window.location.pathname.includes('/financeiro/contas-receber')) {
+    if (pathname && pathname.includes('/financeiro/contas-receber')) {
       return '/api/contas-receber';
     }
     return '/api/contas-pagar';
@@ -154,7 +156,7 @@ export default function NovaContaPagarPage() {
     }
     return action;
   };
-  const isReceber = typeof window !== 'undefined' && window.location.pathname.includes('/financeiro/contas-receber');
+  const isReceber = !!(pathname && pathname.includes('/financeiro/contas-receber'));
 
   // Estados para rateio de conta contábil
   const [showRateioModal, setShowRateioModal] = useState(false);

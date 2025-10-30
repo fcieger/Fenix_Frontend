@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import { logHistory } from '@/lib/history';
 import { ensureCoreSchema } from '@/lib/migrations';
+import { validateUUID } from '@/utils/validations';
 
 let pool: Pool | null = null;
 function getPool(): Pool {
@@ -44,9 +45,34 @@ export async function POST(request: NextRequest) {
       rateioCentroCusto,
     } = body;
 
-    const cadastroValido = cadastroId || cadastro;
-    if (!titulo || !valorTotal || !dataEmissao || !companyId || !cadastroValido) {
+    // Normalizar strings vazias para null
+    const norm = (v: any) => (v === '' || v === undefined ? null : v);
+    const companyIdNorm = norm(companyId);
+    const contaContabilNorm = norm(contaContabil);
+    const centroCustoNorm = norm(centroCusto);
+    const cadastroIdNorm = norm(cadastroId);
+    const parcelamentoIdNorm = norm(parcelamentoId ?? parcelamento);
+
+    const cadastroValido = cadastroIdNorm || cadastro;
+    if (!titulo || !valorTotal || !dataEmissao || !companyIdNorm || !cadastroValido) {
       return NextResponse.json({ success: false, error: 'Dados obrigatórios não fornecidos' }, { status: 400 });
+    }
+
+    // Validar UUIDs obrigatórios e opcionais
+    if (!validateUUID(companyIdNorm)) {
+      return NextResponse.json({ success: false, error: 'companyId inválido' }, { status: 400 });
+    }
+    if (contaContabilNorm && !validateUUID(contaContabilNorm)) {
+      return NextResponse.json({ success: false, error: 'contaContabil inválido' }, { status: 400 });
+    }
+    if (centroCustoNorm && !validateUUID(centroCustoNorm)) {
+      return NextResponse.json({ success: false, error: 'centroCusto inválido' }, { status: 400 });
+    }
+    if (cadastroIdNorm && !validateUUID(cadastroIdNorm)) {
+      return NextResponse.json({ success: false, error: 'cadastroId inválido' }, { status: 400 });
+    }
+    if (parcelamentoIdNorm && !validateUUID(parcelamentoIdNorm)) {
+      return NextResponse.json({ success: false, error: 'parcelamentoId inválido' }, { status: 400 });
     }
 
     await client.query('BEGIN');
@@ -62,17 +88,17 @@ export async function POST(request: NextRequest) {
       [
         titulo,
         valorTotal,
-        contaContabil,
+        contaContabilNorm,
         dataEmissao,
         dataQuitacao || null,
         competencia,
-        centroCusto,
+        centroCustoNorm,
         origem,
         observacoes,
         status,
-        companyId,
-        (cadastroId || cadastro) || null,
-        parcelamentoId || parcelamento || null,
+        companyIdNorm,
+        (cadastroIdNorm || cadastro) || null,
+        parcelamentoIdNorm || null,
       ],
     );
     const contaId = contaRes.rows[0].id;
@@ -88,6 +114,16 @@ export async function POST(request: NextRequest) {
     // parcelas_contas_receber
     if (Array.isArray(parcelas) && parcelas.length > 0) {
       for (const p of parcelas) {
+        const formaPagamentoIdNorm = norm(p.formaPagamentoId);
+        const contaCorrenteIdNorm = norm(p.contaCorrenteId);
+        if (formaPagamentoIdNorm && !validateUUID(formaPagamentoIdNorm)) {
+          await client.query('ROLLBACK');
+          return NextResponse.json({ success: false, error: 'formaPagamentoId inválido' }, { status: 400 });
+        }
+        if (contaCorrenteIdNorm && !validateUUID(contaCorrenteIdNorm)) {
+          await client.query('ROLLBACK');
+          return NextResponse.json({ success: false, error: 'contaCorrenteId inválido' }, { status: 400 });
+        }
         await client.query(
           `INSERT INTO parcelas_contas_receber (
              conta_receber_id, titulo_parcela, data_vencimento, data_pagamento,
@@ -104,8 +140,8 @@ export async function POST(request: NextRequest) {
             p.diferenca,
             p.valorTotal,
             p.status,
-            p.formaPagamentoId || null,
-            p.contaCorrenteId || null,
+            formaPagamentoIdNorm || null,
+            contaCorrenteIdNorm || null,
           ],
         );
       }
