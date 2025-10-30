@@ -6,12 +6,14 @@ import { Package, Sparkles, X, FileText, DollarSign, Settings, ArrowLeft, Check,
 import { apiService, ProdutoData } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
 import ProdutosAIAssistant from '@/components/ProdutosAIAssistant';
+import { useFeedback } from '@/contexts/feedback-context';
 
 // Componente que usa useSearchParams
 function NovoProdutoForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, activeCompanyId } = useAuth();
+  const { openSuccess } = useFeedback();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
@@ -194,9 +196,8 @@ function NovoProdutoForm() {
       
       const token = localStorage.getItem('fenix_token') || '';
       await apiService.updateProduto(editId, updateData, token);
-      
-      // Redirecionar para a listagem após sucesso
-      router.push('/produtos');
+      // Mostrar modal de sucesso e navegar após confirmação
+      openSuccess({ title: 'Produto atualizado', message: 'Produto atualizado com sucesso.', onClose: () => router.push('/produtos') });
     } catch (error) {
       console.error('Erro ao atualizar produto:', error);
       setError('Erro ao atualizar produto. Tente novamente.');
@@ -295,9 +296,8 @@ function NovoProdutoForm() {
       } else {
         // Modo de criação - criar novo produto
         await apiService.createProduto(produtoData, token);
-        
-        // Redirecionar para a lista de produtos
-        router.push('/produtos');
+        // Mostrar modal de sucesso e navegar após confirmação
+        openSuccess({ title: 'Produto salvo', message: 'Produto criado com sucesso.', onClose: () => router.push('/produtos') });
       }
     } catch (error) {
       console.error('Erro ao salvar produto:', error);
