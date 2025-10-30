@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { ensureCoreSchema } from '@/lib/migrations';
+import { logHistory } from '@/lib/history';
 
 // Lazy initialization do pool - só cria quando necessário
 let pool: Pool | null = null;
@@ -32,6 +34,7 @@ export async function POST(request: NextRequest) {
   const client = await pool.connect();
   
   try {
+    await ensureCoreSchema(client);
     const body = await request.json();
     
     const { 
@@ -55,8 +58,9 @@ export async function POST(request: NextRequest) {
       rateioCentroCusto
     } = body;
 
-    // Validar dados obrigatórios
-    if (!titulo || !cadastro || !valorTotal || !dataEmissao || !companyId) {
+    // Validar dados obrigatórios (aceita cadastroId ou cadastro)
+    const cadastroValido = cadastroId || cadastro;
+    if (!titulo || !valorTotal || !dataEmissao || !companyId || !cadastroValido) {
       return NextResponse.json(
         { success: false, error: 'Dados obrigatórios não fornecidos' },
         { status: 400 }
@@ -76,10 +80,20 @@ export async function POST(request: NextRequest) {
     `, [
       titulo, valorTotal, contaContabil, dataEmissao, dataQuitacao || null, 
       competencia, centroCusto, origem, observacoes, status, 
-      companyId, cadastroId || null, parcelamentoId || null
+      companyId, (cadastroId || cadastro) || null, parcelamentoId || parcelamento || null
     ]);
 
     const contaPagarId = contaPagarResult.rows[0].id;
+
+    // Histórico
+    await logHistory(client, {
+      company_id: companyId,
+      action: 'create',
+      entity: 'contas_pagar',
+      entity_id: contaPagarId,
+      description: `Criado título a pagar: "${titulo}" (valor ${valorTotal})`,
+      metadata: { titulo, valorTotal }
+    });
 
     // Inserir parcelas
     if (parcelas && parcelas.length > 0) {
@@ -95,6 +109,60 @@ export async function POST(request: NextRequest) {
           parcela.dataCompensacao || null, parcela.valorParcela, parcela.diferenca, parcela.valorTotal, 
           parcela.status, parcela.formaPagamentoId || null, parcela.contaCorrenteId || null
         ]);
+      }
+    }
+
+    // Se alguma parcela já foi criada como 'pago', criar movimentação bancária correspondente
+    // Garantir colunas extras e índice único para idempotência
+    await client.query(`
+      ALTER TABLE movimentacoes_financeiras
+        ADD COLUMN IF NOT EXISTS id_origem UUID,
+        ADD COLUMN IF NOT EXISTS tela_origem TEXT,
+        ADD COLUMN IF NOT EXISTS parcela_id UUID;
+      CREATE UNIQUE INDEX IF NOT EXISTS uniq_mov_parcela
+        ON movimentacoes_financeiras (tela_origem, parcela_id)
+        WHERE parcela_id IS NOT NULL;
+    `);
+    const pagasRes = await client.query(`
+      SELECT id, conta_pagar_id, titulo_parcela, data_compensacao, data_pagamento,
+             valor_parcela, valor_total, conta_corrente_id
+      FROM parcelas_contas_pagar
+      WHERE conta_pagar_id = $1 AND status = 'pago'
+    `, [contaPagarId]);
+
+    for (const p of pagasRes.rows) {
+      const valor = Number(p.valor_total ?? p.valor_parcela ?? 0);
+      const dataMov = p.data_compensacao || p.data_pagamento || new Date().toISOString();
+      // Buscar razão social do fornecedor
+      const fornecedorRes = await client.query(`
+        SELECT COALESCE(c."nomeRazaoSocial", c."nomeFantasia", '') AS fornecedor
+          FROM contas_pagar cp
+          LEFT JOIN cadastros c ON cp.cadastro_id = c.id
+         WHERE cp.id = $1
+      `, [p.conta_pagar_id]);
+      const fornecedor = fornecedorRes.rows[0]?.fornecedor || '';
+      const desc = `pagamento titulo "${p.titulo_parcela || 'parcela'}" de "${fornecedor}"`;
+      if (p.conta_corrente_id) {
+        await client.query(`
+          INSERT INTO movimentacoes_financeiras
+            (conta_id, tipo_movimentacao, valor_entrada, valor_saida, descricao, descricao_detalhada,
+             data_movimentacao, saldo_anterior, saldo_posterior, situacao, created_by,
+             id_origem, tela_origem, parcela_id)
+           VALUES
+            ($1, 'saida', 0, $2, $3, $4, $5, 0, 0, 'pago', NULL,
+             $6, $7, $8)
+          ON CONFLICT (tela_origem, parcela_id) WHERE parcela_id IS NOT NULL DO NOTHING
+        `, [p.conta_corrente_id, valor, 'Pagamento de conta a pagar', desc, dataMov, p.conta_pagar_id, 'contas_pagar_parcelas', p.id]);
+        // Recalcular saldo após inserir movimento
+        await client.query('SELECT recalcular_saldo_dia_conta($1)', [p.conta_corrente_id]);
+        await logHistory(client, {
+          company_id: companyId,
+          action: 'parcela_paga',
+          entity: 'parcela_contas_pagar',
+          entity_id: p.id,
+          description: `Parcela paga: "${p.titulo_parcela}" (valor ${valor})`,
+          metadata: { conta_pagar_id: p.conta_pagar_id, valor }
+        });
       }
     }
 
@@ -251,6 +319,7 @@ export async function GET(request: NextRequest) {
   const client = await pool.connect();
   
   try {
+    await ensureCoreSchema(client);
     const { searchParams } = new URL(request.url);
     const companyId = searchParams.get('company_id');
     const page = parseInt(searchParams.get('page') || '1');
