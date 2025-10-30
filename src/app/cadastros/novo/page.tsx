@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { apiService, CadastroData } from '@/lib/api';
@@ -25,11 +25,13 @@ import {
   Sparkles
 } from 'lucide-react';
 import CadastrosAIAssistant from '@/components/CadastrosAIAssistant';
+import { useFeedback } from '@/contexts/feedback-context';
 
 // Componente que usa useSearchParams
 function NovoClienteForm() {
   const router = useRouter();
   const { user, token, isAuthenticated, isLoading: authLoading, activeCompanyId } = useAuth();
+  const { openSuccess } = useFeedback();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchingCnpj, setSearchingCnpj] = useState(false);
@@ -466,7 +468,6 @@ function NovoClienteForm() {
       };
 
       await apiService.updateCadastro(editId, updateData, token);
-      
       // Verificar se foi aberto em nova janela (tem returnUrl)
       const returnUrl = searchParams.get('returnUrl');
       if (returnUrl && window.opener) {
@@ -475,8 +476,7 @@ function NovoClienteForm() {
         // Fechar a janela
         window.close();
       } else {
-        // Redirecionar de volta para a listagem
-        router.push('/cadastros');
+        openSuccess({ title: 'Atualizado com sucesso', message: 'Cadastro atualizado.', onClose: () => router.push('/cadastros') });
       }
     } catch (error: any) {
       console.error('Erro ao atualizar cadastro:', error);
@@ -643,9 +643,7 @@ function NovoClienteForm() {
       console.log('Endereços:', JSON.stringify(cadastroData.enderecos, null, 2));
       
       await apiService.createCadastro(cadastroData, token);
-      
-      // Redirecionar para a lista de cadastros
-      router.push('/cadastros');
+      openSuccess({ title: 'Salvo com sucesso', message: 'Cadastro criado.', onClose: () => router.push('/cadastros') });
     } catch (error) {
       console.error('Erro ao salvar cadastro:', error);
       setError(error instanceof Error ? error.message : 'Erro ao salvar cadastro');
