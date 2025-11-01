@@ -319,14 +319,27 @@ class ApiService {
       const response = await fetch(url, config)
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({
-          message: 'Erro desconhecido',
-          statusCode: response.status,
-        }))
-        throw new Error(errorData.message || `Erro ${response.status}`)
+        let message = `Erro ${response.status}: ${response.statusText}`
+        try {
+          const contentType = response.headers.get('content-type') || ''
+          if (contentType.includes('application/json')) {
+            const json = await response.json()
+            message = json.message || json.error || JSON.stringify(json)
+          } else {
+            const text = await response.text()
+            message = text || message
+          }
+        } catch {}
+        const err = new Error(message)
+        ;(err as any).status = response.status
+        throw err
       }
 
-      return await response.json()
+      const contentType = response.headers.get('content-type') || ''
+      if (contentType.includes('application/json')) {
+        return await response.json()
+      }
+      return await response.text()
     } catch (error) {
       console.error('Error making request:', error)
       throw error
@@ -425,12 +438,14 @@ class ApiService {
   }
 
   async getCadastro(id: string, token: string): Promise<any> {
-    return this.request<any>(`/api/companies/${id}`, {
+    const result = await this.request<any>(`/api/cadastros/${id}`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`,
       },
-    })
+    });
+    // Retornar data se estiver no formato { success: true, data: ... }
+    return result.data || result;
   }
 
   async updateCadastro(id: string, data: Partial<CadastroData>, token: string): Promise<any> {
@@ -787,22 +802,14 @@ class ApiService {
 
   // ===== PEDIDOS DE VENDA =====
   async createPedidoVenda(pedidoData: any, token: string): Promise<any> {
-    try {
-      console.log('🔄 API createPedidoVenda iniciado:', { pedidoData, token: token ? 'presente' : 'ausente' });
-      const result = await this.request<any>('/api/pedidos-venda', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(pedidoData),
-      });
-      console.log('✅ API createPedidoVenda sucesso:', result);
-      return result;
-    } catch (error) {
-      console.error('❌ API createPedidoVenda erro:', error);
-      throw error;
-    }
+    return this.request<any>('/api/pedidos-venda', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(pedidoData),
+    });
   }
 
   async getPedidosVenda(token: string, page: number = 1, limit: number = 10): Promise<any> {
@@ -857,38 +864,23 @@ class ApiService {
   }
 
   async updatePedidoVenda(id: string, pedidoData: any, token: string): Promise<any> {
-    try {
-      console.log('🔄 API updatePedidoVenda iniciado:', { id, pedidoData, token: token ? 'presente' : 'ausente' });
-      const result = await this.request<any>(`/api/pedidos-venda/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(pedidoData),
-      });
-      console.log('✅ API updatePedidoVenda sucesso:', result);
-      return result;
-    } catch (error) {
-      console.error('❌ API updatePedidoVenda erro:', error);
-      throw error;
-    }
+    return this.request<any>(`/api/pedidos-venda/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(pedidoData),
+    });
   }
 
   async deletePedidoVenda(id: string, token: string): Promise<void> {
-    try {
-      console.log('🔄 API deletePedidoVenda iniciado:', { id, token: token ? 'presente' : 'ausente' });
-      await this.request<void>(`/api/pedidos-venda/${id}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      console.log('✅ API deletePedidoVenda sucesso');
-    } catch (error) {
-      console.error('❌ API deletePedidoVenda erro:', error);
-      throw error;
-    }
+    return this.request<void>(`/api/pedidos-venda/${id}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
   }
 
   // ===== PRAZOS DE PAGAMENTO =====
