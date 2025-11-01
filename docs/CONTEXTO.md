@@ -147,6 +147,15 @@ src/
 - ✅ **Webhooks** - Notificações em tempo real
 - ✅ **SDKs** - Bibliotecas para integração fácil
 
+### Endpoints Orçamentos (interno)
+- POST `/api/orcamentos` — criar orçamento (status pendente)
+- GET `/api/orcamentos` — listar (filtros: status, clienteId, companyId, período)
+- GET `/api/orcamentos/:id` — detalhes
+- PUT `/api/orcamentos/:id` — editar (se pendente)
+- PATCH `/api/orcamentos/:id/status` — pendente/concluido
+- POST `/api/orcamentos/:id/recalcular-impostos` — recalcular (stub fiscal)
+- DELETE `/api/orcamentos/:id` — excluir
+
 ### **Casos de Uso da API**
 - 🔗 **Integração com E-commerce** - Shopify, WooCommerce, Magento
 - 🔗 **Sistemas de Pagamento** - Stripe, PagSeguro, Mercado Pago
