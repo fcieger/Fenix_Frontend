@@ -188,13 +188,17 @@ export async function POST(request: NextRequest) {
               if (parcelaResult.rows.length > 0) {
                 const parcelaId = parcelaResult.rows[0].id;
                 // Calcular valor proporcional da parcela
-                const valorParcelaRateio = (item.valor / valorTotal) * parcela.valorParcela;
-                const percentualParcelaRateio = (valorParcelaRateio / parcela.valorParcela) * 100;
+              const valorParcelaRateio = valorTotal > 0 ? (item.valor / valorTotal) * (Number(parcela.valorParcela) || 0) : 0;
+                const percentualParcelaRateio = (Number(parcela.valorParcela) || 0) > 0 
+                  ? (valorParcelaRateio / Number(parcela.valorParcela)) * 100 
+                  : 0;
+                const valorParcelaRateioRounded = Math.round(valorParcelaRateio * 100) / 100;
+                const percentualParcelaRateioRounded = Math.round(percentualParcelaRateio * 100) / 100;
                 
                 await client.query(`
                   INSERT INTO contas_pagar_conta_contabil_parcela (conta_pagar_id, parcela_id, conta_contabil_id, valor, percentual)
                   VALUES ($1, $2, $3, $4, $5)
-                `, [contaPagarId, parcelaId, item.contaContabilId, valorParcelaRateio, percentualParcelaRateio]);
+                `, [contaPagarId, parcelaId, item.contaContabilId, valorParcelaRateioRounded, percentualParcelaRateioRounded]);
               }
             }
           }
@@ -223,7 +227,7 @@ export async function POST(request: NextRequest) {
             await client.query(`
               INSERT INTO contas_pagar_conta_contabil_parcela (conta_pagar_id, parcela_id, conta_contabil_id, valor, percentual)
               VALUES ($1, $2, $3, $4, 100.00)
-            `, [contaPagarId, parcelaId, contaContabilId, parcela.valorParcela]);
+            `, [contaPagarId, parcelaId, contaContabilId, Math.round((Number(parcela.valorParcela) || 0) * 100) / 100]);
           }
         }
       }
@@ -251,13 +255,17 @@ export async function POST(request: NextRequest) {
               if (parcelaResult.rows.length > 0) {
                 const parcelaId = parcelaResult.rows[0].id;
                 // Calcular valor proporcional da parcela
-                const valorParcelaRateio = (item.valor / valorTotal) * parcela.valorParcela;
-                const percentualParcelaRateio = (valorParcelaRateio / parcela.valorParcela) * 100;
+                const valorParcelaRateio = valorTotal > 0 ? (item.valor / valorTotal) * (Number(parcela.valorParcela) || 0) : 0;
+                const percentualParcelaRateio = (Number(parcela.valorParcela) || 0) > 0 
+                  ? (valorParcelaRateio / Number(parcela.valorParcela)) * 100 
+                  : 0;
+                const valorParcelaRateioRounded = Math.round(valorParcelaRateio * 100) / 100;
+                const percentualParcelaRateioRounded = Math.round(percentualParcelaRateio * 100) / 100;
                 
                 await client.query(`
                   INSERT INTO contas_pagar_centro_custo_parcela (conta_pagar_id, parcela_id, centro_custo_id, valor, percentual)
                   VALUES ($1, $2, $3, $4, $5)
-                `, [contaPagarId, parcelaId, item.centroCustoId, valorParcelaRateio, percentualParcelaRateio]);
+                `, [contaPagarId, parcelaId, item.centroCustoId, valorParcelaRateioRounded, percentualParcelaRateioRounded]);
               }
             }
           }
@@ -286,7 +294,7 @@ export async function POST(request: NextRequest) {
             await client.query(`
               INSERT INTO contas_pagar_centro_custo_parcela (conta_pagar_id, parcela_id, centro_custo_id, valor, percentual)
               VALUES ($1, $2, $3, $4, 100.00)
-            `, [contaPagarId, parcelaId, centroCustoId, parcela.valorParcela]);
+            `, [contaPagarId, parcelaId, centroCustoId, Math.round((Number(parcela.valorParcela) || 0) * 100) / 100]);
           }
         }
       }
