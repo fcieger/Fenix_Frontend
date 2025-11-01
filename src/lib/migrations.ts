@@ -37,6 +37,176 @@ export async function ensureCoreSchema(client: PoolClient) {
     CREATE UNIQUE INDEX IF NOT EXISTS uniq_mov_parcela ON movimentacoes_financeiras (tela_origem, parcela_id) WHERE parcela_id IS NOT NULL;
   `);
 
+  // Estoque: locais_estoque
+  await applyOnce(
+    '2025-10-30_estoque_locais',
+    `
+    CREATE TABLE IF NOT EXISTS locais_estoque (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      nome TEXT NOT NULL,
+      codigo TEXT,
+      ativo BOOLEAN NOT NULL DEFAULT TRUE,
+      "companyId" UUID NOT NULL,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_locais_company ON locais_estoque("companyId");
+  `);
+
+  // Estoque: estoque_movimentos (histórico)
+  await applyOnce(
+    '2025-10-30_estoque_movimentos',
+    `
+    CREATE TABLE IF NOT EXISTS estoque_movimentos (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      "produtoId" UUID NOT NULL,
+      "localOrigemId" UUID,
+      "localDestinoId" UUID,
+      tipo TEXT NOT NULL CHECK (tipo IN ('entrada','saida','transferencia','ajuste')),
+      qtd NUMERIC(14,3) NOT NULL,
+      "custoUnitario" NUMERIC(14,6) NOT NULL DEFAULT 0,
+      "custoTotal" NUMERIC(14,2) NOT NULL DEFAULT 0,
+      origem TEXT,
+      "origemId" UUID,
+      "dataMov" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "companyId" UUID NOT NULL,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_mov_produto_data ON estoque_movimentos("produtoId","dataMov");
+    CREATE INDEX IF NOT EXISTS idx_mov_origem ON estoque_movimentos(origem,"origemId");
+  `);
+
+  // Estoque: colunas auxiliares em companies e produtos (passo 0)
+  await applyOnce(
+    '2025-10-30_estoque_passo0_cols',
+    `
+    ALTER TABLE companies
+      ADD COLUMN IF NOT EXISTS "defaultLocalEstoqueId" UUID;
+
+    ALTER TABLE produtos
+      ADD COLUMN IF NOT EXISTS "controlaEstoque" BOOLEAN NOT NULL DEFAULT TRUE,
+      ADD COLUMN IF NOT EXISTS "estoqueMinimo" NUMERIC(14,3) NOT NULL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS "localPadraoId" UUID;
+
+    CREATE INDEX IF NOT EXISTS idx_prod_controla_estoque ON produtos("controlaEstoque");
+  `);
+
+  // Inventário: tabelas básicas
+  await applyOnce(
+    '2025-10-30_estoque_inventario',
+    `
+    CREATE TABLE IF NOT EXISTS estoque_inventarios (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      "localId" UUID NOT NULL,
+      status TEXT NOT NULL DEFAULT 'aberto',
+      observacao TEXT,
+      "companyId" UUID NOT NULL,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_inv_company ON estoque_inventarios("companyId", "createdAt" DESC);
+
+    CREATE TABLE IF NOT EXISTS estoque_inventarios_itens (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      "inventarioId" UUID NOT NULL REFERENCES estoque_inventarios(id) ON DELETE CASCADE,
+      "produtoId" UUID NOT NULL,
+      "qtdSistema" NUMERIC(14,3) NOT NULL DEFAULT 0,
+      "qtdContada" NUMERIC(14,3) NOT NULL DEFAULT 0,
+      diferenca NUMERIC(14,3) NOT NULL DEFAULT 0,
+      "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE("inventarioId","produtoId")
+    );
+    CREATE INDEX IF NOT EXISTS idx_inv_itens_inv ON estoque_inventarios_itens("inventarioId");
+  `);
+
+  // Estoque: saldos persistidos + trigger de atualização
+  await applyOnce(
+    '2025-10-30_estoque_saldos_persist',
+    `
+    CREATE TABLE IF NOT EXISTS estoque_saldos (
+      "produtoId" UUID NOT NULL,
+      "localId" UUID NOT NULL,
+      "companyId" UUID NOT NULL,
+      qtd NUMERIC(14,3) NOT NULL DEFAULT 0,
+      "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY ("produtoId","companyId","localId")
+    );
+    CREATE INDEX IF NOT EXISTS idx_saldos_company_prod_local ON estoque_saldos("companyId","produtoId","localId");
+
+    CREATE OR REPLACE FUNCTION fn_upsert_estoque_saldo(p_prod uuid, p_local uuid, p_company uuid, p_delta numeric)
+    RETURNS void AS $$
+    BEGIN
+      INSERT INTO estoque_saldos ("produtoId","localId","companyId",qtd,"updatedAt")
+      VALUES (p_prod, p_local, p_company, p_delta, now())
+      ON CONFLICT ("produtoId","companyId","localId") DO UPDATE
+        SET qtd = estoque_saldos.qtd + EXCLUDED.qtd,
+            "updatedAt" = now();
+    END;
+    $$ LANGUAGE plpgsql;
+
+    CREATE OR REPLACE FUNCTION trg_estoque_movimentos_update_saldo()
+    RETURNS trigger AS $$
+    DECLARE
+      v_delta numeric;
+    BEGIN
+      -- entradas somam no destino
+      IF NEW.tipo = 'entrada' THEN
+        IF NEW."localDestinoId" IS NOT NULL THEN
+          PERFORM fn_upsert_estoque_saldo(NEW."produtoId", NEW."localDestinoId", NEW."companyId", NEW.qtd);
+        END IF;
+      ELSIF NEW.tipo = 'saida' THEN
+        IF NEW."localOrigemId" IS NOT NULL THEN
+          PERFORM fn_upsert_estoque_saldo(NEW."produtoId", NEW."localOrigemId", NEW."companyId", -NEW.qtd);
+        END IF;
+      ELSIF NEW.tipo = 'transferencia' THEN
+        IF NEW."localOrigemId" IS NOT NULL THEN
+          PERFORM fn_upsert_estoque_saldo(NEW."produtoId", NEW."localOrigemId", NEW."companyId", -NEW.qtd);
+        END IF;
+        IF NEW."localDestinoId" IS NOT NULL THEN
+          PERFORM fn_upsert_estoque_saldo(NEW."produtoId", NEW."localDestinoId", NEW."companyId", NEW.qtd);
+        END IF;
+      ELSIF NEW.tipo = 'ajuste' THEN
+        -- Ajuste: se destino informado, soma; se origem informado, subtrai; senão usa sinal de qtd
+        IF NEW."localDestinoId" IS NOT NULL THEN
+          PERFORM fn_upsert_estoque_saldo(NEW."produtoId", NEW."localDestinoId", NEW."companyId", NEW.qtd);
+        ELSIF NEW."localOrigemId" IS NOT NULL THEN
+          PERFORM fn_upsert_estoque_saldo(NEW."produtoId", NEW."localOrigemId", NEW."companyId", -NEW.qtd);
+        ELSE
+          v_delta := COALESCE(NEW.qtd,0);
+          IF v_delta >= 0 THEN
+            -- sem local definido, não há como alocar; ignorar
+          ELSE
+            -- idem
+          END IF;
+        END IF;
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+
+    DROP TRIGGER IF EXISTS trg_mov_update_saldo ON estoque_movimentos;
+    CREATE TRIGGER trg_mov_update_saldo
+      AFTER INSERT ON estoque_movimentos
+      FOR EACH ROW EXECUTE FUNCTION trg_estoque_movimentos_update_saldo();
+
+    -- Backfill saldos a partir dos movimentos existentes
+    INSERT INTO estoque_saldos ("produtoId","localId","companyId",qtd,"updatedAt")
+    SELECT t."produtoId", t."localId", t."companyId", SUM(t.delta) AS qtd, now()
+    FROM (
+      SELECT m."produtoId", m."localDestinoId" AS "localId", m."companyId", SUM(m.qtd) AS delta
+      FROM estoque_movimentos m
+      WHERE m."localDestinoId" IS NOT NULL AND m.tipo IN ('entrada','transferencia','ajuste')
+      GROUP BY m."produtoId", m."localDestinoId", m."companyId"
+      UNION ALL
+      SELECT m."produtoId", m."localOrigemId" AS "localId", m."companyId", SUM(-m.qtd) AS delta
+      FROM estoque_movimentos m
+      WHERE m."localOrigemId" IS NOT NULL AND m.tipo IN ('saida','transferencia','ajuste')
+      GROUP BY m."produtoId", m."localOrigemId", m."companyId"
+    ) t
+    GROUP BY t."produtoId", t."localId", t."companyId"
+    ON CONFLICT ("produtoId","companyId","localId") DO UPDATE SET
+      qtd = EXCLUDED.qtd,
+      "updatedAt" = now();
+    `);
+
   // Contas a receber
   await applyOnce('cr_core_tables_v1', `
     CREATE TABLE IF NOT EXISTS contas_receber (
