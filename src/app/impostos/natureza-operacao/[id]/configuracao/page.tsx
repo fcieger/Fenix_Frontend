@@ -8,6 +8,7 @@ import BandeiraEstado from '@/components/BandeiraEstado';
 import EstadoImpostoTabs from '@/components/EstadoImpostoTabs';
 import PainelAcoesEstados from '@/components/PainelAcoesEstados';
 import { apiService } from '@/lib/api';
+import { useFeedback } from '@/contexts/feedback-context';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -83,6 +84,7 @@ const estadosBrasileiros = [
 
 export default function ConfiguracaoEstadoPage() {
   const router = useRouter();
+  const { openSuccess } = useFeedback();
   const params = useParams();
   const { isAuthenticated, token } = useAuth();
   const [naturezaId, setNaturezaId] = useState<string>('');
@@ -815,7 +817,7 @@ export default function ConfiguracaoEstadoPage() {
       }
       
       await apiService.saveConfiguracaoEstados(naturezaId, configuracoesParaSalvar, token);
-      alert('Configurações salvas com sucesso!');
+      openSuccess({ title: 'Configurações salvas', message: 'Configurações salvas com sucesso!' });
       
       // Não navegar automaticamente - permanecer na página
     } catch (error) {
