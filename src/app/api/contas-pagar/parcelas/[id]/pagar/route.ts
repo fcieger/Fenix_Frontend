@@ -138,7 +138,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       );
 
       await logHistory(client, {
-        company_id: titulo.rows[0]?.company_id,
+        company_id: titulo?.company_id,
         action: 'parcela_paga',
         entity: 'parcela_contas_pagar',
         entity_id: parcelaId,
