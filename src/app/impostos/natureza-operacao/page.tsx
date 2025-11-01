@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { useFeedback } from '@/contexts/feedback-context';
 import Layout from '@/components/Layout';
 import { apiService, NaturezaOperacao } from '@/lib/api';
 import { motion } from 'framer-motion';
@@ -31,6 +32,7 @@ import {
 export default function NaturezaOperacaoPage() {
   const router = useRouter();
   const { isAuthenticated, token } = useAuth();
+  const { openConfirm } = useFeedback();
   const [naturezas, setNaturezas] = useState<NaturezaOperacao[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -99,11 +101,13 @@ export default function NaturezaOperacaoPage() {
         // Existem configurações, navegar para a tela
         router.push(`/impostos/natureza-operacao/${id}/configuracao`);
       } else {
-        // Não existem configurações, mostrar confirmação
-        const confirmar = confirm(
-          'Esta natureza de operação ainda não possui configurações por estado.\n\n' +
-          'Deseja criar as configurações agora?'
-        );
+        // Não existem configurações, mostrar confirmação no modal padrão do app
+        const confirmar = await openConfirm({
+          title: 'Configurações por estado',
+          message: 'Esta natureza de operação ainda não possui configurações por estado.\n\nDeseja criar as configurações agora?',
+          confirmText: 'OK',
+          cancelText: 'Cancelar',
+        });
         
         if (confirmar) {
           router.push(`/impostos/natureza-operacao/${id}/configuracao`);
