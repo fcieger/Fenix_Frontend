@@ -2,35 +2,64 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ShoppingCart, Plus, Save, Send } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Plus, Save, FileText, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface HeaderVendaProps {
   onBack: () => void;
   onSave: () => void;
-  onSend: () => void;
   onAddProduct: () => void;
   isSaving?: boolean;
-  isSending?: boolean;
   totalItems?: number;
   totalValue?: number;
+  title?: string;
+  description?: string;
+  progressLabel?: string;
+  // Props para status (opcional)
+  status?: string;
+  onStatusChange?: (status: string) => void;
+  showStatus?: boolean;
 }
 
 export default function HeaderVenda({
   onBack,
   onSave,
-  onSend,
   onAddProduct,
   isSaving = false,
-  isSending = false,
   totalItems = 0,
-  totalValue = 0
+  totalValue = 0,
+  title = 'Nova Venda',
+  description = 'Crie um novo pedido de venda com produtos e configurações personalizadas',
+  progressLabel = 'Progresso da Venda',
+  status,
+  onStatusChange,
+  showStatus = false
 }: HeaderVendaProps) {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
     }).format(value);
+  };
+
+  const getStatusLabel = (status?: string) => {
+    const labels: { [key: string]: string } = {
+      'rascunho': 'Rascunho',
+      'enviado': 'Enviado',
+      'perdido': 'Perdido',
+      'ganho': 'Ganho'
+    };
+    return labels[status || ''] || status || 'Rascunho';
+  };
+
+  const getStatusColor = (status?: string) => {
+    const colors: { [key: string]: string } = {
+      'rascunho': 'bg-gray-500/20 text-white border-white/30',
+      'enviado': 'bg-blue-500/20 text-white border-blue-300/50',
+      'perdido': 'bg-red-500/20 text-white border-red-300/50',
+      'ganho': 'bg-green-500/20 text-white border-green-300/50'
+    };
+    return colors[status || ''] || 'bg-gray-500/20 text-white border-white/30';
   };
 
   return (
@@ -61,6 +90,38 @@ export default function HeaderVenda({
           </motion.button>
 
           <div className="flex items-center space-x-4">
+            {/* Status Badge - Destacado */}
+            {showStatus && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.1, duration: 0.3 }}
+                className="relative"
+              >
+                {onStatusChange ? (
+                  <div className="relative">
+                    <select
+                      value={status || 'rascunho'}
+                      onChange={(e) => onStatusChange(e.target.value)}
+                      className={`px-5 py-2.5 pr-10 rounded-xl font-bold text-base border-2 transition-all duration-200 cursor-pointer appearance-none backdrop-blur-sm ${getStatusColor(status)} hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white/50 shadow-lg`}
+                    >
+                      <option value="rascunho" className="bg-gray-800 text-white">Rascunho</option>
+                      <option value="enviado" className="bg-gray-800 text-white">Enviado</option>
+                      <option value="perdido" className="bg-gray-800 text-white">Perdido</option>
+                      <option value="ganho" className="bg-gray-800 text-white">Ganho</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <ChevronDown className="w-5 h-5 text-white/80" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className={`px-5 py-2.5 rounded-xl font-bold text-base border-2 backdrop-blur-sm shadow-lg ${getStatusColor(status)}`}>
+                    {getStatusLabel(status)}
+                  </div>
+                )}
+              </motion.div>
+            )}
+            
             <motion.button
               onClick={onAddProduct}
               whileHover={{ scale: 1.05 }}
@@ -83,10 +144,10 @@ export default function HeaderVenda({
               transition={{ delay: 0.2, duration: 0.5 }}
             >
               <h1 className="text-4xl lg:text-5xl font-bold mb-2">
-                Nova Venda
+                {title}
               </h1>
               <p className="text-white/80 text-lg">
-                Crie um novo pedido de venda com produtos e configurações personalizadas
+                {description}
               </p>
             </motion.div>
 
@@ -133,23 +194,6 @@ export default function HeaderVenda({
                 )}
               </Button>
 
-              <Button
-                onClick={onSend}
-                disabled={isSending || totalItems === 0}
-                className="bg-white text-purple-600 hover:bg-white/90 px-6 py-3 rounded-xl font-medium transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSending ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 border-2 border-purple-600/30 border-t-purple-600 rounded-full animate-spin"></div>
-                    <span>Enviando...</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    <Send className="w-4 h-4" />
-                    <span>Finalizar Venda</span>
-                  </div>
-                )}
-              </Button>
             </div>
 
             {/* Progress Indicator */}
@@ -159,7 +203,7 @@ export default function HeaderVenda({
               transition={{ delay: 0.5, duration: 0.5 }}
               className="w-full lg:w-64"
             >
-              <div className="text-sm text-white/70 mb-2">Progresso da Venda</div>
+              <div className="text-sm text-white/70 mb-2">{progressLabel}</div>
               <div className="w-full bg-white/20 rounded-full h-2">
                 <motion.div
                   className="bg-white rounded-full h-2"
