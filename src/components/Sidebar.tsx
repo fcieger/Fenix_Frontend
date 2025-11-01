@@ -42,7 +42,8 @@ const menuItems = [
     icon: ShoppingCart, 
     href: '/vendas',
     submenu: [
-      { id: 'pedido-venda', label: 'Pedido de Venda', href: '/vendas' }
+      { id: 'pedido-venda', label: 'Pedido de Venda', href: '/vendas' },
+      { id: 'orcamentos', label: 'Orçamentos', href: '/orcamentos' }
     ]
   },
   { 
@@ -55,6 +56,19 @@ const menuItems = [
     ]
   },
   { id: 'nfe', label: 'Notas Fiscais', icon: FileText, href: '/nfe' },
+  { 
+    id: 'estoque',
+    label: 'Estoque',
+    icon: Package,
+    href: '/estoque',
+    submenu: [
+      { id: 'estoque-saldos', label: 'Itens e Saldos', href: '/estoque/saldos' },
+      { id: 'estoque-kardex', label: 'Lançamentos (Kardex)', href: '/estoque/kardex' },
+      { id: 'estoque-lancamento', label: 'Lançamento Manual', href: '/estoque/lancamento' },
+      { id: 'estoque-inventario', label: 'Inventário', href: '/estoque/inventario' },
+      { id: 'estoque-locais', label: 'Locais de Estoque', href: '/estoque/locais' },
+    ]
+  },
   { 
     id: 'financeiro', 
     label: 'Financeiro', 
@@ -99,6 +113,10 @@ export default function Sidebar() {
   useEffect(() => {
     if (pathname.startsWith('/financeiro')) {
       setExpandedMenus(prev => new Set([...prev, 'financeiro']));
+    }
+    // Manter menu vendas expandido quando estiver na área de vendas
+    if (pathname.startsWith('/vendas') || pathname.startsWith('/orcamentos')) {
+      setExpandedMenus(prev => new Set([...prev, 'vendas']));
     }
   }, [pathname]);
 
