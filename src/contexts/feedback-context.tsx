@@ -119,7 +119,7 @@ export const FeedbackProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     </svg>
                   </div>
                   <h3 className="text-xl font-bold text-slate-900 text-center">{(opts as ConfirmOptions)?.title || 'Confirmar ação'}</h3>
-                  <p className="mt-2 text-center text-slate-600 text-sm">{(opts as ConfirmOptions)?.message}</p>
+                  <p className="mt-2 text-center text-slate-600 text-sm whitespace-pre-line">{(opts as ConfirmOptions)?.message}</p>
                   <div className="mt-6 flex items-center justify-center gap-3">
                     <button
                       className="bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md px-5 py-2 transition-colors font-medium"
