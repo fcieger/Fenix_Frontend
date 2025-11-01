@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useFeedback } from '@/contexts/feedback-context';
 import { 
   CheckCircle,
   Settings,
@@ -50,6 +51,7 @@ const PainelAcoesEstados: React.FC<PainelAcoesEstadosProps> = ({
   const [estadoOrigem, setEstadoOrigem] = useState<string>('');
   const [estadosDestino, setEstadosDestino] = useState<string[]>([]);
   const [mostrarPainelCopiar, setMostrarPainelCopiar] = useState(false);
+  const { openSuccess } = useFeedback();
 
   // Função para habilitar/desabilitar todos os estados
   const habilitarTodosEstados = () => {
@@ -96,6 +98,12 @@ const PainelAcoesEstados: React.FC<PainelAcoesEstadosProps> = ({
     setEstadoOrigem('');
     setEstadosDestino([]);
     setMostrarPainelCopiar(false);
+
+    // Feedback de sucesso
+    openSuccess({
+      title: 'Configurações copiadas',
+      message: `Configurações copiadas para ${estadosDestino.length} estado${estadosDestino.length > 1 ? 's' : ''}.`
+    });
   };
 
   // Função para marcar todos os estados destino
