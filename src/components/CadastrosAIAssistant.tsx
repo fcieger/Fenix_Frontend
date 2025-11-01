@@ -180,10 +180,34 @@ export default function CadastrosAIAssistant({ isOpen, onClose }: CadastrosAIAss
             processedAt: new Date().toISOString()
           };
         } else {
-          console.log('❌ Nenhum dado retornado da API');
+          console.log('❌ Nenhum dado retornado da API - CNPJ pode ser inválido ou API indisponível');
+          // Continuar processamento mesmo sem dados da API
+          return {
+            userInput: extractedData.nome || userInput,
+            originalInput: userInput,
+            tiposCliente: extractedData.tiposCliente,
+            tipoPessoa: extractedData.tipoPessoa || 'Pessoa Jurídica',
+            extractedData: {
+              ...extractedData,
+              cnpj: extractedData.cnpj
+            },
+            processedAt: new Date().toISOString()
+          };
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('❌ Erro ao consultar CNPJ:', error);
+        // Continuar processamento mesmo com erro na API
+        return {
+          userInput: extractedData.nome || userInput,
+          originalInput: userInput,
+          tiposCliente: extractedData.tiposCliente,
+          tipoPessoa: extractedData.tipoPessoa || 'Pessoa Jurídica',
+          extractedData: {
+            ...extractedData,
+            cnpj: extractedData.cnpj
+          },
+          processedAt: new Date().toISOString()
+        };
       }
     } else {
       console.log('ℹ️ Nenhum CNPJ encontrado no texto');
@@ -347,8 +371,16 @@ export default function CadastrosAIAssistant({ isOpen, onClose }: CadastrosAIAss
     try {
       console.log('🔗 Consultando API CNPJ para CNPJ:', cnpj);
       
+      // Limpar CNPJ (remover formatação)
+      const cleanCnpj = cnpj.replace(/\D/g, '');
+      
+      if (cleanCnpj.length !== 14) {
+        console.warn('⚠️ CNPJ inválido:', cleanCnpj);
+        return null;
+      }
+      
       // Usar a mesma API que funciona na tela de novos cadastros
-      const response = await fetch(`https://open.cnpja.com/office/${cnpj}`, {
+      const response = await fetch(`https://open.cnpja.com/office/${cleanCnpj}`, {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -357,31 +389,53 @@ export default function CadastrosAIAssistant({ isOpen, onClose }: CadastrosAIAss
       console.log('📡 Status da resposta:', response.status);
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // Tentar obter mensagem de erro mais detalhada
+        let errorMessage = `Erro HTTP ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          const errorText = await response.text();
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        }
+        console.error('❌ Erro na consulta CNPJ:', errorMessage);
+        throw new Error(errorMessage);
       }
       
       const data = await response.json();
       console.log('✅ Dados recebidos da API CNPJ:', data);
       
+      // Verificar se os dados estão no formato esperado
+      if (!data || !data.company || !data.company.name) {
+        console.warn('⚠️ Dados da API em formato inesperado:', data);
+        return null;
+      }
+      
       // Extrair dados no mesmo formato usado na tela de novos cadastros
       return {
-        nome: data.company.name,
-        nomeFantasia: data.alias,
-        cnpj: data.taxId,
-        endereco: data.address.street,
-        numero: data.address.number,
-        bairro: data.address.district,
-        cidade: data.address.city,
-        estado: data.address.state,
-        cep: data.address.zip,
-        telefone: data.phones?.find((p: any) => p.type === 'LANDLINE')?.number || '',
-        celular: data.phones?.find((p: any) => p.type === 'MOBILE')?.number || '',
+        nome: data.company?.name || '',
+        nomeFantasia: data.alias || '',
+        cnpj: data.taxId || cleanCnpj,
+        endereco: data.address?.street || '',
+        numero: data.address?.number || '',
+        bairro: data.address?.district || '',
+        cidade: data.address?.city || '',
+        estado: data.address?.state || '',
+        cep: data.address?.zip || '',
+        telefone: data.phones?.find((p: any) => p.type === 'LANDLINE')?.number || 
+                 data.phones?.find((p: any) => p.type === 'LANDLINE')?.area + data.phones?.find((p: any) => p.type === 'LANDLINE')?.number || '',
+        celular: data.phones?.find((p: any) => p.type === 'MOBILE')?.number || 
+                data.phones?.find((p: any) => p.type === 'MOBILE')?.area + data.phones?.find((p: any) => p.type === 'MOBILE')?.number || '',
         email: data.emails?.[0]?.address || '',
         inscricaoEstadual: '', // Não disponível na API
         inscricaoMunicipal: '' // Não disponível na API
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erro ao consultar CNPJ:', error);
+      // Retornar null em vez de lançar erro para não quebrar o fluxo
+      // O erro será tratado no componente que chama esta função
       return null;
     }
   };
