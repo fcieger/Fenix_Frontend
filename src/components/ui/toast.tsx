@@ -86,7 +86,7 @@ export default function Toast({
                 {title}
               </h3>
               {message && (
-                <p className="mt-1 text-sm text-gray-600">
+                <p className="mt-1 text-sm text-gray-600 whitespace-pre-line">
                   {message}
                 </p>
               )}
