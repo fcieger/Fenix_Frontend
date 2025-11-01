@@ -374,16 +374,62 @@ class ApiService {
         body: JSON.stringify(data),
       })
 
+      // Verificar se a resposta está OK antes de tentar fazer parse do JSON
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
+        // Tentar obter o texto da resposta primeiro
+        const responseText = await response.text();
+        let errorData = {};
+        
+        try {
+          if (responseText && responseText.trim()) {
+            errorData = JSON.parse(responseText);
+          } else {
+            errorData = { message: `Erro ${response.status}: ${response.statusText}` };
+          }
+        } catch (parseError) {
+          errorData = { 
+            message: responseText || `Erro ${response.status}: ${response.statusText}`,
+            rawResponse: responseText
+          };
+        }
+        
+        console.error('❌ Erro no login:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData
+        });
+        
         throw new Error(errorData.message || `Erro ${response.status}`)
       }
 
-      const result = await response.json();
+      // Verificar se há conteúdo na resposta antes de fazer parse JSON
+      const responseText = await response.text();
+      
+      if (!responseText || !responseText.trim()) {
+        console.error('❌ Resposta vazia do servidor');
+        throw new Error('Resposta vazia do servidor');
+      }
+
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('❌ Erro ao fazer parse do JSON:', parseError);
+        console.error('📡 Resposta recebida:', responseText);
+        throw new Error('Resposta inválida do servidor');
+      }
+
       return result;
     } catch (error) {
-      console.error('Erro no login:', error);
-      throw error;
+      console.error('❌ Erro no login:', error);
+      
+      // Se o erro já é uma string, propagar
+      if (error instanceof Error) {
+        throw error;
+      }
+      
+      // Caso contrário, criar um novo erro
+      throw new Error('Erro desconhecido ao fazer login');
     }
   }
 

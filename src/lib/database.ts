@@ -67,7 +67,36 @@ export async function initializeTables() {
     await query('SELECT 1');
     console.log('✅ Conexão com banco de dados estabelecida');
     
-    // Verificar se as tabelas existem
+    // Verificar se as tabelas CORE existem (users, companies, user_companies)
+    const coreTablesResult = await query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      AND table_name IN ('users', 'companies', 'user_companies')
+    `);
+    
+    const existingCoreTables = coreTablesResult.rows.map(row => row.table_name);
+    const requiredCoreTables = ['users', 'companies', 'user_companies'];
+    const missingCoreTables = requiredCoreTables.filter(t => !existingCoreTables.includes(t));
+    
+    if (missingCoreTables.length > 0) {
+      console.log('🔧 Tabelas core não encontradas:', missingCoreTables);
+      console.log('🔧 Inicializando schema core...');
+      
+      // Ler e executar schema core
+      const { readFileSync } = await import('fs');
+      const { join } = await import('path');
+      const schemaCorePath = join(process.cwd(), 'src', 'lib', 'schema-core.sql');
+      const schemaCore = readFileSync(schemaCorePath, 'utf8');
+      
+      // Executar schema core
+      await query(schemaCore);
+      console.log('✅ Schema core inicializado com sucesso!');
+    } else {
+      console.log('✅ Tabelas core já existem:', existingCoreTables);
+    }
+    
+    // Verificar se as tabelas financeiras existem
     const tablesResult = await query(`
       SELECT table_name 
       FROM information_schema.tables 
@@ -78,11 +107,11 @@ export async function initializeTables() {
     const existingTables = tablesResult.rows.map(row => row.table_name);
     
     if (existingTables.length < 2) {
-      console.log('🔧 Tabelas não encontradas, inicializando schema...');
+      console.log('🔧 Tabelas financeiras não encontradas, inicializando schema financeiro...');
       const { initializeDatabase } = await import('./init-db');
       await initializeDatabase();
     } else {
-      console.log('✅ Tabelas já existem:', existingTables);
+      console.log('✅ Tabelas financeiras já existem:', existingTables);
     }
   } catch (error) {
     console.error('❌ Erro ao conectar com banco de dados:', error);
