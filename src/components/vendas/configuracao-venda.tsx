@@ -15,7 +15,9 @@ import {
   Pencil,
   Truck,
   CreditCard,
-  Clock
+  Clock,
+  Warehouse,
+  AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import DateInput from '@/components/ui/date-input';
@@ -47,6 +49,13 @@ interface ConfiguracaoVendaProps {
   setPrazoSelecionado: (p: any | null) => void;
   showPrazoDropdown: boolean;
   setShowPrazoDropdown: (show: boolean) => void;
+  // Props para local de estoque
+  locaisEstoque: any[];
+  localEstoqueId: string;
+  setLocalEstoqueId: (id: string) => void;
+  // Props opcionais para personalização de texto
+  title?: string;
+  description?: string;
 }
 
 export default function ConfiguracaoVenda({
@@ -75,7 +84,14 @@ export default function ConfiguracaoVenda({
   prazoSelecionado,
   setPrazoSelecionado,
   showPrazoDropdown,
-  setShowPrazoDropdown
+  setShowPrazoDropdown,
+  // Props para local de estoque
+  locaisEstoque,
+  localEstoqueId,
+  setLocalEstoqueId,
+  // Props opcionais para personalização de texto
+  title = 'Configurações da Venda',
+  description = 'Configure as informações básicas do pedido'
 }: ConfiguracaoVendaProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -107,10 +123,10 @@ export default function ConfiguracaoVenda({
       <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
         <h2 className="text-xl font-semibold text-gray-800 flex items-center">
           <FileText className="w-5 h-5 mr-2 text-purple-600" />
-          Configurações da Venda
+          {title}
         </h2>
         <p className="text-sm text-gray-600 mt-1">
-          Configure as informações básicas do pedido
+          {description}
         </p>
       </div>
 
@@ -340,9 +356,9 @@ export default function ConfiguracaoVenda({
             className="space-y-2"
           >
             <DateInput
-              value={formData.dataEntrega}
-              onChange={(value) => onInputChange('dataEntrega', value)}
-              label="Data Entrega"
+              value={formData.dataValidade}
+              onChange={(value) => onInputChange('dataValidade', value)}
+              label="Data de Validade"
               icon={<Calendar className="w-4 h-4" />}
             />
           </motion.div>
@@ -543,16 +559,20 @@ export default function ConfiguracaoVenda({
             </label>
             <input
               type="text"
-              value={formData.nfe}
-              onChange={(e) => onInputChange('nfe', e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-              placeholder="Número da NFe"
+              value={formData.nfe || ''}
+              readOnly
+              disabled
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-600 cursor-not-allowed"
+              placeholder="Será preenchido automaticamente pela venda"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Este campo será preenchido automaticamente quando o orçamento for convertido em venda
+            </p>
           </motion.div>
         </div>
 
-        {/* Seção Ordem de Compra e Lista de Preço */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Seção Pedido de Cotação */}
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -561,64 +581,94 @@ export default function ConfiguracaoVenda({
           >
             <label className="block text-sm font-semibold text-gray-700 flex items-center">
               <Hash className="w-4 h-4 mr-2 text-purple-600" />
-              N° da Ordem de Compra
+              N° do Pedido de Cotação
             </label>
             <input
               type="text"
-              value={formData.numeroOrdem}
-              onChange={(e) => onInputChange('numeroOrdem', e.target.value)}
+              value={formData.numeroPedidoCotacao || ''}
+              onChange={(e) => onInputChange('numeroPedidoCotacao', e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-              placeholder="Número da ordem de compra"
+              placeholder="Número do pedido de cotação"
             />
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.1, duration: 0.4 }}
-            className="space-y-2"
-          >
-            <label className="block text-sm font-semibold text-gray-700 flex items-center">
-              <FileText className="w-4 h-4 mr-2 text-purple-600" />
-              Lista de Preço
-            </label>
-            <div className="flex">
-              <input
-                type="text"
-                value={formData.listaPreco}
-                onChange={(e) => onInputChange('listaPreco', e.target.value)}
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-l-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                placeholder="Selecione a lista de preço"
-              />
-              <Button className="px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-r-xl rounded-l-none">
-                <Plus className="w-4 h-4" />
-              </Button>
-            </div>
           </motion.div>
         </div>
 
-        {/* Seção Modalidade do Frete */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.2, duration: 0.4 }}
-          className="space-y-2"
-        >
-          <label className="block text-sm font-semibold text-gray-700 flex items-center">
-            <Truck className="w-4 h-4 mr-2 text-purple-600" />
-            Modalidade do Frete
-          </label>
-          <select
-            value={formData.frete}
-            onChange={(e) => onInputChange('frete', e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+        {/* Campo Motivo da Perda - Condicional */}
+        {formData.status === 'perdido' && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.4 }}
+            className="space-y-2"
           >
-            <option value="0">0 - Por conta do emitente</option>
-            <option value="1">1 - Por conta do destinatário</option>
-            <option value="2">2 - Por conta de terceiros</option>
-            <option value="9">9 - Sem frete</option>
-          </select>
-        </motion.div>
+            <label className="block text-sm font-semibold text-gray-700 flex items-center">
+              <AlertCircle className="w-4 h-4 mr-2 text-red-600" />
+              Motivo da Perda *
+            </label>
+            <textarea
+              value={formData.motivoPerda || ''}
+              onChange={(e) => onInputChange('motivoPerda', e.target.value)}
+              className="w-full px-4 py-3 border border-red-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
+              placeholder="Descreva o motivo da perda deste orçamento..."
+              rows={4}
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Este campo é obrigatório quando o status é "Perdido"
+            </p>
+          </motion.div>
+        )}
+
+        {/* Seção Modalidade do Frete e Estoque */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Modalidade do Frete */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.2, duration: 0.4 }}
+            className="space-y-2"
+          >
+            <label className="block text-sm font-semibold text-gray-700 flex items-center">
+              <Truck className="w-4 h-4 mr-2 text-purple-600" />
+              Modalidade do Frete
+            </label>
+            <select
+              value={formData.frete}
+              onChange={(e) => onInputChange('frete', e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+            >
+              <option value="0">0 - Por conta do emitente</option>
+              <option value="1">1 - Por conta do destinatário</option>
+              <option value="2">2 - Por conta de terceiros</option>
+              <option value="9">9 - Sem frete</option>
+            </select>
+          </motion.div>
+
+          {/* Local de Estoque */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.25, duration: 0.4 }}
+            className="space-y-2"
+          >
+            <label className="block text-sm font-semibold text-gray-700 flex items-center">
+              <Warehouse className="w-4 h-4 mr-2 text-purple-600" />
+              Estoque
+            </label>
+            <select
+              value={localEstoqueId}
+              onChange={(e) => setLocalEstoqueId(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+            >
+              <option value="">Selecione o estoque</option>
+              {locaisEstoque.map((local: any) => (
+                <option key={local.id} value={local.id}>
+                  {local.nome} {local.codigo ? `(${local.codigo})` : ''}
+                </option>
+              ))}
+            </select>
+          </motion.div>
+        </div>
 
         {/* Seção Valores de Frete e Despesas */}
         <motion.div
