@@ -27,15 +27,27 @@ export default function DateInput({
   required = false,
   className = ""
 }: DateInputProps) {
+  // Função para formatar valor para exibição (dd/mm/aaaa)
+  const formatValueForDisplay = (val: string) => {
+    if (!val) return '';
+    // Se o valor está em formato ISO (YYYY-MM-DD), formatar para dd/mm/aaaa
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+      const partes = val.split('-');
+      return `${partes[2]}/${partes[1]}/${partes[0]}`;
+    }
+    // Se já está formatado, usar diretamente
+    return val;
+  };
+
   const [isOpen, setIsOpen] = useState(false);
-  const [inputValue, setInputValue] = useState(value);
+  const [inputValue, setInputValue] = useState(formatValueForDisplay(value));
   const [isValid, setIsValid] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Atualizar inputValue quando value prop muda
   useEffect(() => {
-    setInputValue(value);
+    setInputValue(formatValueForDisplay(value));
   }, [value]);
 
   // Fechar dropdown ao clicar fora
