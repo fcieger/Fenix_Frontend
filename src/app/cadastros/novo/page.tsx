@@ -475,6 +475,9 @@ function NovoClienteForm() {
         window.opener.postMessage({ type: 'cadastroUpdated', id: editId }, window.location.origin);
         // Fechar a janela
         window.close();
+      } else if (returnUrl) {
+        // Se tem returnUrl mas não foi aberto em nova janela, navegar de volta
+        openSuccess({ title: 'Atualizado com sucesso', message: 'Cadastro atualizado.', onClose: () => router.push(returnUrl) });
       } else {
         openSuccess({ title: 'Atualizado com sucesso', message: 'Cadastro atualizado.', onClose: () => router.push('/cadastros') });
       }
