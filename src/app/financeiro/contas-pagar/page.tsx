@@ -226,9 +226,40 @@ export default function ContasPagarPage() {
     window.location.href = `/financeiro/contas-pagar/nova?id=${encodeURIComponent(conta.id)}`;
   };
 
-  const handleExcluirConta = (conta: ContaPagar) => {
-    if (confirm(`Tem certeza que deseja excluir a conta "${conta.fornecedor}"?`)) {
+  const handleExcluirConta = async (conta: ContaPagar) => {
+    if (!confirm(`Tem certeza que deseja excluir a conta "${conta.fornecedor}"? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const res = await fetch(`/api/contas-pagar/${conta.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const json = await res.json();
+      
+      if (!res.ok || !json.success) {
+        throw new Error(json?.error || 'Falha ao excluir conta a pagar');
+      }
+
+      // Remover da lista local após sucesso
       setContasPagar(prev => prev.filter(c => c.id !== conta.id));
+      
+      // Mostrar feedback de sucesso (opcional)
+      alert('Conta a pagar excluída com sucesso!');
+      
+    } catch (e: any) {
+      console.error('Erro ao excluir conta a pagar:', e);
+      setError(e?.message || 'Erro ao excluir conta a pagar');
+      alert(e?.message || 'Erro ao excluir conta a pagar. Tente novamente.');
+    } finally {
+      setLoading(false);
     }
   };
 
