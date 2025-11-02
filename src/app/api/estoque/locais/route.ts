@@ -18,7 +18,14 @@ function getPool(): Pool {
 export async function GET(request: NextRequest) {
   const client = await getPool().connect()
   try {
-    await ensureCoreSchema(client)
+    // Tentar garantir schema, mas não bloquear se falhar
+    try {
+      await ensureCoreSchema(client)
+    } catch (schemaError: any) {
+      console.warn('⚠️ Erro ao garantir schema (continuando):', schemaError?.message)
+      // Continuar mesmo se schema falhar - tabela pode já existir
+    }
+    
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
     const ativo = searchParams.get('ativo')
@@ -91,7 +98,12 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json({ success: true, data: rows })
   } catch (e: any) {
-    return NextResponse.json({ success: false, error: e?.message || 'Erro interno' }, { status: 500 })
+    console.error('❌ Erro em GET /api/estoque/locais:', e)
+    return NextResponse.json({ 
+      success: false, 
+      error: e?.message || 'Erro interno ao buscar locais de estoque',
+      details: process.env.NODE_ENV === 'development' ? e?.stack : undefined
+    }, { status: 500 })
   } finally {
     client.release()
   }
@@ -100,7 +112,13 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const client = await getPool().connect()
   try {
-    await ensureCoreSchema(client)
+    // Tentar garantir schema, mas não bloquear se falhar
+    try {
+      await ensureCoreSchema(client)
+    } catch (schemaError: any) {
+      console.warn('⚠️ Erro ao garantir schema (continuando):', schemaError?.message)
+    }
+    
     const { nome, codigo, ativo = true, companyId } = await request.json()
     
     // Log para debug (desenvolvimento)
@@ -132,7 +150,11 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ success: true, data: rows[0] })
   } catch (e: any) {
-    return NextResponse.json({ success: false, error: e?.message || 'Erro interno' }, { status: 500 })
+    console.error('❌ Erro em POST /api/estoque/locais:', e)
+    return NextResponse.json({ 
+      success: false, 
+      error: e?.message || 'Erro interno ao criar local de estoque'
+    }, { status: 500 })
   } finally {
     client.release()
   }
@@ -141,7 +163,12 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   const client = await getPool().connect()
   try {
-    await ensureCoreSchema(client)
+    // Tentar garantir schema, mas não bloquear se falhar
+    try {
+      await ensureCoreSchema(client)
+    } catch (schemaError: any) {
+      console.warn('⚠️ Erro ao garantir schema (continuando):', schemaError?.message)
+    }
     const body = await request.json()
     const { id, nome, codigo, ativo } = body
     if (!id) return NextResponse.json({ success: false, error: 'id é obrigatório' }, { status: 400 })
@@ -157,7 +184,11 @@ export async function PUT(request: NextRequest) {
     const { rows } = await client.query(sql, params)
     return NextResponse.json({ success: true, data: rows[0] })
   } catch (e: any) {
-    return NextResponse.json({ success: false, error: e?.message || 'Erro interno' }, { status: 500 })
+    console.error('❌ Erro em PUT /api/estoque/locais:', e)
+    return NextResponse.json({ 
+      success: false, 
+      error: e?.message || 'Erro interno ao atualizar local de estoque'
+    }, { status: 500 })
   } finally {
     client.release()
   }
@@ -166,14 +197,23 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const client = await getPool().connect()
   try {
-    await ensureCoreSchema(client)
+    // Tentar garantir schema, mas não bloquear se falhar
+    try {
+      await ensureCoreSchema(client)
+    } catch (schemaError: any) {
+      console.warn('⚠️ Erro ao garantir schema (continuando):', schemaError?.message)
+    }
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
     if (!id) return NextResponse.json({ success: false, error: 'id é obrigatório' }, { status: 400 })
     await client.query('DELETE FROM locais_estoque WHERE id = $1', [id])
     return NextResponse.json({ success: true })
   } catch (e: any) {
-    return NextResponse.json({ success: false, error: e?.message || 'Erro interno' }, { status: 500 })
+    console.error('❌ Erro em DELETE /api/estoque/locais:', e)
+    return NextResponse.json({ 
+      success: false, 
+      error: e?.message || 'Erro interno ao deletar local de estoque'
+    }, { status: 500 })
   } finally {
     client.release()
   }
