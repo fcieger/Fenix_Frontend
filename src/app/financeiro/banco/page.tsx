@@ -105,6 +105,18 @@ export default function BancoPage() {
   // Hook para gerenciar contas
   const { contas, loading: contasLoading, error: contasError, refreshContas, deleteConta, updateConta } = useContas(activeCompanyId || '');
 
+  // Atualizar saldos quando a página carregar
+  useEffect(() => {
+    if (activeCompanyId && contas.length > 0 && !loading) {
+      // Verificar se algum saldo está NULL ou 0 e atualizar se necessário
+      const contasSemSaldo = contas.filter(c => !c.saldo_atual || c.saldo_atual === 0 || c.saldo_atual === null);
+      if (contasSemSaldo.length > 0) {
+        handleAtualizarSaldos();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCompanyId, contas.length]); // Executar quando activeCompanyId ou número de contas mudar
+
   // Lista atualizada dos principais bancos brasileiros
   const bancos: Banco[] = [
     {
