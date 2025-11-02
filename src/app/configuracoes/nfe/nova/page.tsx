@@ -4,17 +4,19 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   ArrowLeft, Save, FileText, Settings, 
-  Building2, Calendar, Clock, Info, Eye, EyeOff, AlertCircle
+  Info, Eye, EyeOff, AlertCircle, Loader2, XCircle
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
+import { useFeedback } from '@/contexts/feedback-context';
 import { apiService, ConfiguracaoNfeResponse } from '@/lib/api';
 
 // Componente que usa useSearchParams
@@ -22,6 +24,7 @@ function NovaConfiguracaoNfeForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, token, activeCompanyId, isAuthenticated, isLoading } = useAuth();
+  const { openSuccess } = useFeedback();
   
   // Detectar se está em modo de edição
   const configId = searchParams.get('id');
@@ -187,14 +190,24 @@ function NovaConfiguracaoNfeForm() {
       if (isEditMode && configId) {
         await apiService.updateConfiguracaoNfe(configId, configuracaoData, token);
         console.log('✅ Configuração atualizada com sucesso');
+        
+        openSuccess({
+          title: 'Configuração atualizada!',
+          message: 'A configuração foi atualizada com sucesso.'
+        });
       } else {
         await apiService.createConfiguracaoNfe(configuracaoData, token);
         console.log('✅ Configuração criada com sucesso');
+        
+        openSuccess({
+          title: 'Configuração criada!',
+          message: 'A configuração foi criada com sucesso.'
+        });
       }
 
       // Sucesso - redirecionar para listagem
       router.push('/configuracoes/nfe');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao salvar configuração:', error);
       setErro(error instanceof Error ? error.message : 'Erro ao salvar configuração.');
     } finally {
@@ -211,32 +224,12 @@ function NovaConfiguracaoNfeForm() {
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">
+          <div className="flex flex-col items-center">
+            <Loader2 className="w-12 h-12 text-purple-600 animate-spin mb-4" />
+            <p className="text-purple-600 font-medium">
               {carregando ? 'Carregando configuração...' : 'Carregando...'}
             </p>
           </div>
-        </div>
-
-        {/* Botões Flutuantes */}
-        <div className="fixed bottom-6 right-6 flex flex-col space-y-3 z-50">
-          <Button
-            onClick={handleCancelar}
-            variant="outline"
-            className="h-14 px-6 bg-white/95 backdrop-blur-sm border-2 border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 rounded-xl font-semibold"
-          >
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            Voltar
-          </Button>
-          <Button
-            onClick={handleSalvar}
-            disabled={carregando}
-            className="h-14 px-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 rounded-xl font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Save className="w-5 h-5 mr-2" />
-            {isEditMode ? 'Atualizar Configuração' : 'Salvar Configuração'}
-          </Button>
         </div>
       </Layout>
     );
@@ -244,495 +237,461 @@ function NovaConfiguracaoNfeForm() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
-        <div className="space-y-8 p-6">
-          {/* Header Moderno */}
-          <div className="relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 via-blue-600/10 to-purple-600/10 rounded-2xl"></div>
-            <div className="relative bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-8">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-6">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => router.back()}
-                    className="hover:bg-purple-50 transition-colors"
-                  >
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Voltar
-                  </Button>
-                  <div className="flex items-center space-x-4">
-                    <div className="p-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl shadow-lg">
-                      <Settings className="w-8 h-8 text-white" />
-                    </div>
-                    <div>
-                      <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                        {isEditMode ? 'Editar Configuração de NFe' : 'Nova Configuração de NFe'}
-                      </h1>
-                      <p className="text-gray-600 mt-2 text-lg">Configure os parâmetros para emissão de notas fiscais</p>
-                    </div>
-                  </div>
+      <div className="space-y-6">
+        {/* Header moderno */}
+        <div className="bg-gradient-to-r from-purple-600 via-violet-600 to-purple-700 text-white shadow-lg rounded-2xl">
+          <div className="px-6 py-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => router.back()}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  aria-label="Voltar"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-bold flex items-center">
+                    <Settings className="w-8 h-8 mr-3" />
+                    {isEditMode ? 'Editar Configuração de NFe' : 'Nova Configuração de NFe'}
+                  </h1>
+                  <p className="text-purple-100 mt-1 text-sm sm:text-base">Configure os parâmetros para emissão de notas fiscais</p>
                 </div>
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleCancelar}
+                  variant="outline"
+                  className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSalvar}
+                  disabled={salvando}
+                  className="bg-white text-purple-700 hover:bg-gray-100 font-semibold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
+                >
+                  {salvando ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-5 h-5 mr-2" />
+                      {isEditMode ? 'Atualizar' : 'Salvar'}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Mensagem de erro */}
+        {erro && (
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
+            <div className="flex items-center">
+              <XCircle className="w-5 h-5 text-red-500 mr-2" />
+              <p className="text-red-700 text-sm">{erro}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Configuração do Modelo */}
+        <Card className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+          <div className="bg-gradient-to-r from-purple-600 to-violet-600 text-white p-6">
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                <Settings className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white">Configuração do Modelo</h2>
+                <p className="text-purple-100 text-sm mt-1">
+                  Configure os parâmetros básicos do modelo de documento fiscal
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="descricaoModelo" className="text-sm font-semibold text-gray-700">
+                  Descrição Modelo *
+                </Label>
+                <Input
+                  id="descricaoModelo"
+                  value={descricaoModelo}
+                  onChange={(e) => setDescricaoModelo(e.target.value)}
+                  placeholder="Ex: Configuração Principal"
+                  className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="tipoModelo" className="text-sm font-semibold text-gray-700">
+                  Tipo de modelo Documentos Fiscais *
+                </Label>
+                <Select value={tipoModelo} onValueChange={setTipoModelo}>
+                  <SelectTrigger className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg">
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-lg">
+                    {tiposModelo.map((tipo) => (
+                      <SelectItem key={tipo.value} value={tipo.value}>
+                        {tipo.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="modelo" className="text-sm font-semibold text-gray-700">
+                  Modelo *
+                </Label>
+                <Input
+                  id="modelo"
+                  value={modelo}
+                  onChange={(e) => setModelo(e.target.value)}
+                  placeholder="Ex: 55"
+                  className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="serie" className="text-sm font-semibold text-gray-700">
+                  Série *
+                </Label>
+                <Input
+                  id="serie"
+                  value={serie}
+                  onChange={(e) => setSerie(e.target.value)}
+                  placeholder="Ex: 1"
+                  className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="numeroAtual" className="text-sm font-semibold text-gray-700">
+                  Número Atual
+                </Label>
+                <Input
+                  id="numeroAtual"
+                  value={numeroAtual}
+                  onChange={(e) => setNumeroAtual(e.target.value)}
+                  placeholder="Ex: 1"
+                  className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="ambiente" className="text-sm font-semibold text-gray-700">
+                  Ambiente *
+                </Label>
+                <Select value={ambiente} onValueChange={setAmbiente}>
+                  <SelectTrigger className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-lg">
+                    <SelectItem value="HOMOLOGACAO">Homologação</SelectItem>
+                    <SelectItem value="PRODUCAO">Produção</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Abas RPS e NFC-e */}
+        <Card className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+          <div className="bg-gradient-to-r from-purple-600 to-violet-600 text-white p-6">
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                <FileText className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white">Configurações Específicas</h2>
+                <p className="text-purple-100 text-sm mt-1">
+                  Configure parâmetros específicos para RPS e NFC-e
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Alerta de erro moderno */}
-          {erro && (
-            <div className="relative">
-              <Alert className="border-red-200 bg-gradient-to-r from-red-50 to-pink-50 shadow-lg rounded-xl">
-                <AlertCircle className="h-5 w-5 text-red-600" />
-                <AlertDescription className="text-red-800 font-medium">{erro}</AlertDescription>
-              </Alert>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <div className="px-6 pt-4 border-b border-gray-200">
+              <TabsList className="grid w-full grid-cols-2 bg-gray-100 rounded-lg p-1">
+                <TabsTrigger 
+                  value="rps" 
+                  className="data-[state=active]:bg-white data-[state=active]:text-purple-600 data-[state=active]:shadow-sm rounded-md font-semibold py-2 transition-all duration-200"
+                >
+                  RPS
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="nfce" 
+                  className="data-[state=active]:bg-white data-[state=active]:text-purple-600 data-[state=active]:shadow-sm rounded-md font-semibold py-2 transition-all duration-200"
+                >
+                  NFC-e
+                </TabsTrigger>
+              </TabsList>
             </div>
-          )}
 
-          {/* Configuração do Modelo - Modernizada */}
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 via-purple-600/5 to-blue-600/5 rounded-3xl"></div>
-            <Card className="relative bg-white/90 backdrop-blur-sm shadow-2xl border-0 rounded-3xl overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-8">
-                <div className="flex items-center space-x-4">
-                  <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
-                    <Settings className="w-8 h-8 text-white" />
+            <div className="p-6">
+              {/* Aba RPS */}
+              <TabsContent value="rps" className="space-y-6 mt-6">
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <FileText className="w-6 h-6 text-green-600" />
                   </div>
-                  <div>
-                    <CardTitle className="text-2xl font-bold text-white">Configuração do Modelo</CardTitle>
-                    <CardDescription className="text-blue-100 text-lg mt-2">
-                      Configure os parâmetros básicos do modelo de documento fiscal
-                    </CardDescription>
-                  </div>
+                  <h3 className="text-xl font-bold text-gray-800">Configurações RPS</h3>
                 </div>
-              </CardHeader>
-              <CardContent className="p-8">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <div className="space-y-3">
-                    <Label htmlFor="descricaoModelo" className="text-sm font-semibold text-gray-700 flex items-center">
-                      <span className="w-2 h-2 bg-purple-600 rounded-full mr-2"></span>
-                      Descrição Modelo *
-                    </Label>
-                    <Input
-                      id="descricaoModelo"
-                      value={descricaoModelo}
-                      onChange={(e) => setDescricaoModelo(e.target.value)}
-                      placeholder="Ex: Configuração Principal"
-                      className="h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500 rounded-xl"
-                    />
-                  </div>
 
-                  <div className="space-y-3">
-                    <Label htmlFor="tipoModelo" className="text-sm font-semibold text-gray-700 flex items-center">
-                      <span className="w-2 h-2 bg-blue-600 rounded-full mr-2"></span>
-                      Tipo de modelo Documentos Fiscais *
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="naturezaOperacao" className="text-sm font-semibold text-gray-700">
+                      Natureza da operação *
                     </Label>
-                    <Select value={tipoModelo} onValueChange={setTipoModelo}>
-                      <SelectTrigger className="h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500 rounded-xl">
-                        <SelectValue placeholder="Selecione o tipo" />
+                    <Select value={naturezaOperacao} onValueChange={setNaturezaOperacao}>
+                      <SelectTrigger className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg">
+                        <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="rounded-xl">
-                        {tiposModelo.map((tipo) => (
-                          <SelectItem key={tipo.value} value={tipo.value} className="rounded-lg">
-                            {tipo.label}
+                      <SelectContent className="rounded-lg">
+                        {naturezasOperacao.map((natureza) => (
+                          <SelectItem key={natureza.value} value={natureza.value}>
+                            {natureza.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
 
-                  <div className="space-y-3">
-                    <Label htmlFor="modelo" className="text-sm font-semibold text-gray-700 flex items-center">
-                      <span className="w-2 h-2 bg-green-600 rounded-full mr-2"></span>
-                      Modelo *
+                  <div className="space-y-2">
+                    <Label htmlFor="regimeTributario" className="text-sm font-semibold text-gray-700">
+                      Regime Tributário *
                     </Label>
-                    <Input
-                      id="modelo"
-                      value={modelo}
-                      onChange={(e) => setModelo(e.target.value)}
-                      placeholder="Ex: 55"
-                      className="h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500 rounded-xl"
-                    />
-                  </div>
-
-                  <div className="space-y-3">
-                    <Label htmlFor="serie" className="text-sm font-semibold text-gray-700 flex items-center">
-                      <span className="w-2 h-2 bg-orange-600 rounded-full mr-2"></span>
-                      Série *
-                    </Label>
-                    <Input
-                      id="serie"
-                      value={serie}
-                      onChange={(e) => setSerie(e.target.value)}
-                      placeholder="Ex: 1"
-                      className="h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500 rounded-xl"
-                    />
-                  </div>
-
-                  <div className="space-y-3">
-                    <Label htmlFor="numeroAtual" className="text-sm font-semibold text-gray-700 flex items-center">
-                      <span className="w-2 h-2 bg-indigo-600 rounded-full mr-2"></span>
-                      Número Atual
-                    </Label>
-                    <Input
-                      id="numeroAtual"
-                      value={numeroAtual}
-                      onChange={(e) => setNumeroAtual(e.target.value)}
-                      placeholder="Ex: 1"
-                      className="h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500 rounded-xl"
-                    />
-                  </div>
-
-                  <div className="space-y-3">
-                    <Label htmlFor="ambiente" className="text-sm font-semibold text-gray-700 flex items-center">
-                      <span className="w-2 h-2 bg-red-600 rounded-full mr-2"></span>
-                      Ambiente *
-                    </Label>
-                    <Select value={ambiente} onValueChange={setAmbiente}>
-                      <SelectTrigger className="h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500 rounded-xl">
+                    <Select value={regimeTributario} onValueChange={setRegimeTributario}>
+                      <SelectTrigger className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="rounded-xl">
-                        <SelectItem value="HOMOLOGACAO" className="rounded-lg">Homologação</SelectItem>
-                        <SelectItem value="PRODUCAO" className="rounded-lg">Produção</SelectItem>
+                      <SelectContent className="rounded-lg">
+                        {regimesTributarios.map((regime) => (
+                          <SelectItem key={regime.value} value={regime.value}>
+                            {regime.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
 
-          {/* Abas RPS e NFC-e - Modernizadas */}
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-gray-50 via-blue-50 to-purple-50 rounded-3xl"></div>
-            <Card className="relative bg-white/95 backdrop-blur-sm shadow-2xl border border-gray-200 rounded-3xl overflow-hidden">
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-8">
-                  <div className="flex items-center space-x-4">
-                    <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
-                      <FileText className="w-8 h-8 text-white" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-2xl font-bold text-white">Configurações Específicas</CardTitle>
-                      <CardDescription className="text-blue-100 text-lg mt-2">
-                        Configure parâmetros específicos para RPS e NFC-e
-                      </CardDescription>
+                  <div className="space-y-2">
+                    <Label htmlFor="regimeEspecialTributacao" className="text-sm font-semibold text-gray-700">
+                      Regime Especial de Tributação *
+                    </Label>
+                    <Select value={regimeEspecialTributacao} onValueChange={setRegimeEspecialTributacao}>
+                      <SelectTrigger className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-lg">
+                        {regimesEspeciaisTributacao.map((regime) => (
+                          <SelectItem key={regime.value} value={regime.value}>
+                            {regime.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="numeroLoteAtual" className="text-sm font-semibold text-gray-700">
+                      Número do Lote Atual
+                    </Label>
+                    <Input
+                      id="numeroLoteAtual"
+                      value={numeroLoteAtual}
+                      onChange={(e) => setNumeroLoteAtual(e.target.value)}
+                      placeholder="0"
+                      className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="serieLoteAtual" className="text-sm font-semibold text-gray-700">
+                      Série do Lote Atual
+                    </Label>
+                    <Input
+                      id="serieLoteAtual"
+                      value={serieLoteAtual}
+                      onChange={(e) => setSerieLoteAtual(e.target.value)}
+                      placeholder="0"
+                      className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="loginPrefeitura" className="text-sm font-semibold text-gray-700">
+                      Login da Prefeitura
+                    </Label>
+                    <Input
+                      id="loginPrefeitura"
+                      value={loginPrefeitura}
+                      onChange={(e) => setLoginPrefeitura(e.target.value)}
+                      placeholder="Digite o login"
+                      className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="senhaPrefeitura" className="text-sm font-semibold text-gray-700">
+                      Senha da Prefeitura
+                    </Label>
+                    <div className="flex space-x-2">
+                      <Input
+                        id="senhaPrefeitura"
+                        type={mostrarSenhaPrefeitura ? "text" : "password"}
+                        value={senhaPrefeitura}
+                        onChange={(e) => setSenhaPrefeitura(e.target.value)}
+                        placeholder="Digite a senha"
+                        className="flex-1 h-11 border-gray-300 focus:ring-purple-500 rounded-lg"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setMostrarSenhaPrefeitura(!mostrarSenhaPrefeitura)}
+                        className="h-11 px-4 hover:bg-purple-50 border-gray-300 rounded-lg"
+                      >
+                        {mostrarSenhaPrefeitura ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
                     </div>
                   </div>
-                </CardHeader>
 
-                {/* Abas separadas do header */}
-                <div className="px-8 py-4 bg-white border-b border-gray-200">
-                  <TabsList className="grid w-full grid-cols-2 bg-transparent rounded-xl p-1">
-                    <TabsTrigger 
-                      value="rps" 
-                      className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-md data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800 data-[state=inactive]:hover:bg-white/50 rounded-lg font-bold py-3 transition-all duration-200 text-base border border-gray-200 hover:border-gray-300"
-                    >
-                      RPS
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="nfce" 
-                      className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-md data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-gray-800 data-[state=inactive]:hover:bg-white/50 rounded-lg font-bold py-3 transition-all duration-200 text-base border border-gray-200 hover:border-gray-300"
-                    >
-                      NFC-e
-                    </TabsTrigger>
-                  </TabsList>
+                  <div className="space-y-2">
+                    <Label htmlFor="aliquotaISS" className="text-sm font-semibold text-gray-700">
+                      Alíquota ISS
+                    </Label>
+                    <Input
+                      id="aliquotaISS"
+                      value={aliquotaISS}
+                      onChange={(e) => setAliquotaISS(e.target.value)}
+                      placeholder="0"
+                      className="w-32 h-11 border-gray-300 focus:ring-purple-500 rounded-lg"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700">Notificações</Label>
+                    <div className="flex flex-col space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="enviarNotificacaoCliente"
+                          checked={enviarNotificacaoCliente}
+                          onCheckedChange={(checked) => setEnviarNotificacaoCliente(checked === true)}
+                        />
+                        <Label htmlFor="enviarNotificacaoCliente" className="text-sm font-medium cursor-pointer">
+                          Enviar Notificação para o cliente
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="receberNotificacao"
+                          checked={receberNotificacao}
+                          onCheckedChange={(checked) => setReceberNotificacao(checked === true)}
+                        />
+                        <Label htmlFor="receberNotificacao" className="text-sm font-medium cursor-pointer">
+                          Receber Notificação
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="emailNotificacao" className="text-sm font-semibold text-gray-700">
+                      Email
+                    </Label>
+                    <Input
+                      id="emailNotificacao"
+                      value={emailNotificacao}
+                      onChange={(e) => setEmailNotificacao(e.target.value)}
+                      placeholder="email@exemplo.com"
+                      type="email"
+                      className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg"
+                    />
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Aba NFC-e */}
+              <TabsContent value="nfce" className="space-y-6 mt-6">
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <FileText className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-800">Configurações NFC-e</h3>
                 </div>
 
-                <CardContent className="p-8">
-                  {/* Aba RPS */}
-                  <TabsContent value="rps" className="space-y-8">
-                    <div className="space-y-6">
-                      <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-green-100 rounded-lg">
-                          <FileText className="w-6 h-6 text-green-600" />
-                        </div>
-                        <h3 className="text-xl font-bold text-gray-800">Configurações RPS</h3>
-                      </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="idToken" className="text-sm font-semibold text-gray-700">
+                      ID Token *
+                    </Label>
+                    <Input
+                      id="idToken"
+                      value={idToken}
+                      onChange={(e) => setIdToken(e.target.value)}
+                      placeholder="Digite o ID do Token"
+                      className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg"
+                    />
+                  </div>
 
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <div className="space-y-3">
-                          <Label htmlFor="naturezaOperacao" className="text-sm font-semibold text-gray-700 flex items-center">
-                            <span className="w-2 h-2 bg-blue-600 rounded-full mr-2"></span>
-                            Natureza da operação *
-                          </Label>
-                          <Select value={naturezaOperacao} onValueChange={setNaturezaOperacao}>
-                            <SelectTrigger className="h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl">
-                              {naturezasOperacao.map((natureza) => (
-                                <SelectItem key={natureza.value} value={natureza.value} className="rounded-lg">
-                                  {natureza.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-3">
-                          <Label htmlFor="regimeTributario" className="text-sm font-semibold text-gray-700 flex items-center">
-                            <span className="w-2 h-2 bg-blue-600 rounded-full mr-2"></span>
-                            Regime Tributário *
-                          </Label>
-                          <Select value={regimeTributario} onValueChange={setRegimeTributario}>
-                            <SelectTrigger className="h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl">
-                              {regimesTributarios.map((regime) => (
-                                <SelectItem key={regime.value} value={regime.value} className="rounded-lg">
-                                  {regime.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-3">
-                          <Label htmlFor="regimeEspecialTributacao" className="text-sm font-semibold text-gray-700 flex items-center">
-                            <span className="w-2 h-2 bg-purple-600 rounded-full mr-2"></span>
-                            Regime Especial de Tributação *
-                          </Label>
-                          <Select value={regimeEspecialTributacao} onValueChange={setRegimeEspecialTributacao}>
-                            <SelectTrigger className="h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl">
-                              {regimesEspeciaisTributacao.map((regime) => (
-                                <SelectItem key={regime.value} value={regime.value} className="rounded-lg">
-                                  {regime.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-3">
-                          <Label htmlFor="numeroLoteAtual" className="text-sm font-semibold text-gray-700 flex items-center">
-                            <span className="w-2 h-2 bg-orange-600 rounded-full mr-2"></span>
-                            Número do Lote Atual
-                          </Label>
-                          <Input
-                            id="numeroLoteAtual"
-                            value={numeroLoteAtual}
-                            onChange={(e) => setNumeroLoteAtual(e.target.value)}
-                            placeholder="0"
-                            className="h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl"
-                          />
-                        </div>
-
-                        <div className="space-y-3">
-                          <Label htmlFor="serieLoteAtual" className="text-sm font-semibold text-gray-700 flex items-center">
-                            <span className="w-2 h-2 bg-indigo-600 rounded-full mr-2"></span>
-                            Série do Lote Atual
-                          </Label>
-                          <Input
-                            id="serieLoteAtual"
-                            value={serieLoteAtual}
-                            onChange={(e) => setSerieLoteAtual(e.target.value)}
-                            placeholder="0"
-                            className="h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl"
-                          />
-                        </div>
-
-                        <div className="space-y-3">
-                          <Label htmlFor="loginPrefeitura" className="text-sm font-semibold text-gray-700 flex items-center">
-                            <span className="w-2 h-2 bg-red-600 rounded-full mr-2"></span>
-                            Login da Prefeitura
-                          </Label>
-                          <Input
-                            id="loginPrefeitura"
-                            value={loginPrefeitura}
-                            onChange={(e) => setLoginPrefeitura(e.target.value)}
-                            placeholder="Digite o login"
-                            className="h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl"
-                          />
-                        </div>
-
-                        <div className="space-y-3">
-                          <Label htmlFor="senhaPrefeitura" className="text-sm font-semibold text-gray-700 flex items-center">
-                            <span className="w-2 h-2 bg-pink-600 rounded-full mr-2"></span>
-                            Senha da Prefeitura
-                          </Label>
-                          <div className="flex space-x-2">
-                            <Input
-                              id="senhaPrefeitura"
-                              type={mostrarSenhaPrefeitura ? "text" : "password"}
-                              value={senhaPrefeitura}
-                              onChange={(e) => setSenhaPrefeitura(e.target.value)}
-                              placeholder="Digite a senha"
-                              className="flex-1 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl"
-                            />
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setMostrarSenhaPrefeitura(!mostrarSenhaPrefeitura)}
-                              className="h-12 px-4 hover:bg-blue-50 border-gray-300 rounded-xl"
-                            >
-                              {mostrarSenhaPrefeitura ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </Button>
-                          </div>
-                        </div>
-
-                        <div className="space-y-3">
-                          <Label htmlFor="aliquotaISS" className="text-sm font-semibold text-gray-700 flex items-center">
-                            <span className="w-2 h-2 bg-yellow-600 rounded-full mr-2"></span>
-                            Alíquota ISS
-                          </Label>
-                          <Input
-                            id="aliquotaISS"
-                            value={aliquotaISS}
-                            onChange={(e) => setAliquotaISS(e.target.value)}
-                            placeholder="0"
-                            className="w-32 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl"
-                          />
-                        </div>
-
-                        <div className="space-y-3">
-                          <div className="flex items-center space-x-6">
-                            <div className="flex items-center space-x-2">
-                              <input
-                                type="checkbox"
-                                id="enviarNotificacaoCliente"
-                                checked={enviarNotificacaoCliente}
-                                onChange={(e) => setEnviarNotificacaoCliente(e.target.checked)}
-                                className="rounded border-gray-300 focus:ring-blue-500"
-                              />
-                              <Label htmlFor="enviarNotificacaoCliente" className="text-sm font-medium">
-                                Enviar Notificação para o cliente
-                              </Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <input
-                                type="checkbox"
-                                id="receberNotificacao"
-                                checked={receberNotificacao}
-                                onChange={(e) => setReceberNotificacao(e.target.checked)}
-                                className="rounded border-gray-300 focus:ring-blue-500"
-                              />
-                              <Label htmlFor="receberNotificacao" className="text-sm font-semibold text-gray-700">
-                                Receber Notificação
-                              </Label>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-3">
-                          <Label htmlFor="emailNotificacao" className="text-sm font-semibold text-gray-700 flex items-center">
-                            <span className="w-2 h-2 bg-teal-600 rounded-full mr-2"></span>
-                            Email
-                          </Label>
-                          <Input
-                            id="emailNotificacao"
-                            value={emailNotificacao}
-                            onChange={(e) => setEmailNotificacao(e.target.value)}
-                            placeholder="email@exemplo.com"
-                            type="email"
-                            className="h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl"
-                          />
-                        </div>
-                      </div>
-
+                  <div className="space-y-2">
+                    <Label htmlFor="cscToken" className="text-sm font-semibold text-gray-700">
+                      CSC do Token *
+                    </Label>
+                    <div className="flex space-x-2">
+                      <Input
+                        id="cscToken"
+                        type={mostrarCscToken ? "text" : "password"}
+                        value={cscToken}
+                        onChange={(e) => setCscToken(e.target.value)}
+                        placeholder="Digite o CSC do Token"
+                        className="flex-1 h-11 border-gray-300 focus:ring-purple-500 rounded-lg"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setMostrarCscToken(!mostrarCscToken)}
+                        className="h-11 px-4 hover:bg-purple-50 border-gray-300 rounded-lg"
+                      >
+                        {mostrarCscToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
                     </div>
-                  </TabsContent>
+                  </div>
+                </div>
 
-                  {/* Aba NFC-e Modernizada */}
-                  <TabsContent value="nfce" className="space-y-8">
-                    <div className="space-y-6">
-                      <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                          <FileText className="w-6 h-6 text-blue-600" />
-                        </div>
-                        <h3 className="text-xl font-bold text-gray-800">Configurações NFC-e</h3>
-                      </div>
-
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <div className="space-y-3">
-                          <Label htmlFor="idToken" className="text-sm font-semibold text-gray-700 flex items-center">
-                            <span className="w-2 h-2 bg-blue-600 rounded-full mr-2"></span>
-                            ID Token *
-                          </Label>
-                          <Input
-                            id="idToken"
-                            value={idToken}
-                            onChange={(e) => setIdToken(e.target.value)}
-                            placeholder="Digite o ID do Token"
-                            className="h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl"
-                          />
-                        </div>
-
-                        <div className="space-y-3">
-                          <Label htmlFor="cscToken" className="text-sm font-semibold text-gray-700 flex items-center">
-                            <span className="w-2 h-2 bg-purple-600 rounded-full mr-2"></span>
-                            CSC do Token *
-                          </Label>
-                          <div className="flex space-x-2">
-                            <Input
-                              id="cscToken"
-                              type={mostrarCscToken ? "text" : "password"}
-                              value={cscToken}
-                              onChange={(e) => setCscToken(e.target.value)}
-                              placeholder="Digite o CSC do Token"
-                              className="flex-1 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl"
-                            />
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setMostrarCscToken(!mostrarCscToken)}
-                              className="h-12 px-4 hover:bg-blue-50 border-gray-300 rounded-xl"
-                            >
-                              {mostrarCscToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Informações sobre Token */}
-                      <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-200">
-                        <div className="flex items-start space-x-3">
-                          <div className="p-2 bg-blue-100 rounded-full">
-                            <Info className="w-5 h-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <h4 className="font-semibold text-blue-900 mb-2">Informações sobre Token NFC-e</h4>
-                            <p className="text-blue-800 text-sm leading-relaxed">
-                              O ID Token e CSC (Código de Segurança do Contribuinte) são fornecidos pela SEFAZ 
-                              para autenticação na emissão de NFC-e. Estes dados são obrigatórios para o 
-                              funcionamento correto da emissão de notas fiscais de consumidor.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+                {/* Informações sobre Token */}
+                <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                  <div className="flex items-start space-x-3">
+                    <div className="p-2 bg-blue-100 rounded-full">
+                      <Info className="w-5 h-5 text-blue-600" />
                     </div>
-                  </TabsContent>
-                </CardContent>
-              </Tabs>
-            </Card>
-          </div>
-          </div>
-        </div>
-
-        {/* Botões Flutuantes */}
-        <div className="fixed bottom-6 right-6 flex flex-col space-y-3 z-50">
-          <Button
-            onClick={handleCancelar}
-            variant="outline"
-            className="h-14 px-6 bg-white/95 backdrop-blur-sm border-2 border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 rounded-xl font-semibold"
-          >
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            Voltar
-          </Button>
-          <Button
-            onClick={handleSalvar}
-            className="h-14 px-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 rounded-xl font-bold text-lg"
-          >
-            <Save className="w-5 h-5 mr-2" />
-            {isEditMode ? 'Atualizar Configuração' : 'Salvar Configuração'}
-          </Button>
-        </div>
-      </Layout>
-    );
-  }
+                    <div>
+                      <h4 className="font-semibold text-blue-900 mb-1">Informações sobre Token NFC-e</h4>
+                      <p className="text-blue-800 text-sm leading-relaxed">
+                        O ID Token e CSC (Código de Segurança do Contribuinte) são fornecidos pela SEFAZ 
+                        para autenticação na emissão de NFC-e. Estes dados são obrigatórios para o 
+                        funcionamento correto da emissão de notas fiscais de consumidor.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+            </div>
+          </Tabs>
+        </Card>
+      </div>
+    </Layout>
+  );
+}
 
 // Componente principal com Suspense
 export default function NovaConfiguracaoNFEPage() {
