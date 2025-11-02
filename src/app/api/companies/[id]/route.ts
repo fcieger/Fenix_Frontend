@@ -100,6 +100,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Inicializar tabelas se necessário
+    await initializeTables();
+
     const authHeader = request.headers.get('authorization');
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -111,19 +114,18 @@ export async function DELETE(
 
     const { id } = await params;
     
-    // Buscar empresa por ID
-    const companyIndex = mockCompanies.findIndex(c => c.id === id && c.isActive);
+    // Buscar empresa por ID no banco de dados
+    const existingCompany = await CompanyService.findById(id);
     
-    if (companyIndex === -1) {
+    if (!existingCompany) {
       return NextResponse.json(
         { message: 'Empresa não encontrada' },
         { status: 404 }
       );
     }
 
-    // Marcar como inativa (soft delete)
-    mockCompanies[companyIndex].isActive = false;
-    mockCompanies[companyIndex].updatedAt = new Date().toISOString();
+    // Marcar como inativa (soft delete) no banco de dados
+    const updatedCompany = await CompanyService.update(id, { isActive: false });
 
     return NextResponse.json({ message: 'Empresa excluída com sucesso' });
   } catch (error) {
