@@ -145,41 +145,65 @@ export class ContasService {
   }
 
   async getContas(filters: ContaFinanceiraFilters = {}): Promise<ContaFinanceira[]> {
-    let sql = 'SELECT * FROM contas_financeiras WHERE 1=1';
+    // Query para buscar contas com cálculo dinâmico do saldo_atual baseado nas movimentações
+    let sql = `
+      SELECT 
+        cf.*,
+        COALESCE(
+          (
+            SELECT 
+              COALESCE(SUM(
+                CASE 
+                  WHEN m.tipo_movimentacao = 'entrada' THEN m.valor_entrada
+                  WHEN m.tipo_movimentacao = 'transferencia' AND m.valor_entrada > 0 THEN m.valor_entrada
+                  WHEN m.tipo_movimentacao = 'saida' THEN -m.valor_saida
+                  WHEN m.tipo_movimentacao = 'transferencia' AND m.valor_saida > 0 THEN -m.valor_saida
+                  ELSE 0
+                END
+              ), 0)
+            FROM movimentacoes_financeiras m
+            WHERE m.conta_id = cf.id
+              AND COALESCE(m.situacao, 'pago') = 'pago'
+          ),
+          0
+        ) as saldo_atual
+      FROM contas_financeiras cf
+      WHERE 1=1
+    `;
     const params: any[] = [];
     let paramCount = 0;
 
     if (filters.company_id) {
       paramCount++;
-      sql += ` AND "companyId" = $${paramCount}`;
+      sql += ` AND cf."companyId" = $${paramCount}`;
       params.push(filters.company_id);
     }
 
     if (filters.tipo_conta) {
       paramCount++;
-      sql += ` AND tipo_conta = $${paramCount}`;
+      sql += ` AND cf.tipo_conta = $${paramCount}`;
       params.push(filters.tipo_conta);
     }
 
     if (filters.status) {
       paramCount++;
-      sql += ` AND status = $${paramCount}`;
+      sql += ` AND cf.status = $${paramCount}`;
       params.push(filters.status);
     }
 
     if (filters.banco_id) {
       paramCount++;
-      sql += ` AND banco_id = $${paramCount}`;
+      sql += ` AND cf.banco_id = $${paramCount}`;
       params.push(filters.banco_id);
     }
 
     if (filters.search) {
       paramCount++;
-      sql += ` AND (descricao ILIKE $${paramCount} OR banco_nome ILIKE $${paramCount} OR banco_codigo ILIKE $${paramCount})`;
+      sql += ` AND (cf.descricao ILIKE $${paramCount} OR cf.banco_nome ILIKE $${paramCount} OR cf.banco_codigo ILIKE $${paramCount})`;
       params.push(`%${filters.search}%`);
     }
 
-    sql += ' ORDER BY created_at DESC';
+    sql += ' ORDER BY cf.created_at DESC';
     
     // ✅ Adicionar LIMIT padrão se não especificado para melhor performance
     if (!filters.limit) {
@@ -197,7 +221,14 @@ export class ContasService {
     }
 
     const result = await query(sql, params);
-    return result.rows;
+    
+    // Garantir que saldo_atual seja sempre um número válido
+    return result.rows.map((row: any) => ({
+      ...row,
+      saldo_atual: row.saldo_atual !== null && row.saldo_atual !== undefined 
+        ? parseFloat(row.saldo_atual) 
+        : 0
+    }));
   }
 
   async updateConta(id: string, data: UpdateContaFinanceiraRequest): Promise<ContaFinanceira> {
