@@ -228,4 +228,16 @@ export class UserCompanyService {
       WHERE "userId" = $1 AND "companyId" = $2
     `, [userId, companyId]);
   }
+
+  static async getCompanyUsers(companyId: string): Promise<User[]> {
+    const result = await query(`
+      SELECT u.*
+      FROM users u
+      JOIN user_companies uc ON u.id = uc."userId"
+      WHERE uc."companyId" = $1
+      ORDER BY u."createdAt" DESC
+    `, [companyId]);
+
+    return result.rows;
+  }
 }
