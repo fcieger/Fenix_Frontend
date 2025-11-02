@@ -12,8 +12,23 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Buscar todos os usuários do banco
-    const users = await UserService.getAll();
+    // Parâmetros de query para paginação e filtros
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const search = searchParams.get('search') || '';
+    const status = searchParams.get('status') || '';
+    const companyId = searchParams.get('company_id') || '';
+
+    let users;
+
+    // Se company_id for fornecido, buscar apenas usuários daquela empresa
+    if (companyId) {
+      users = await UserCompanyService.getCompanyUsers(companyId);
+    } else {
+      // Buscar todos os usuários do banco
+      users = await UserService.getAll();
+    }
     
     // Para cada usuário, buscar suas empresas
     const usersWithCompanies = await Promise.all(
@@ -26,13 +41,6 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    // Parâmetros de query para paginação e filtros
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
-    const search = searchParams.get('search') || '';
-    const status = searchParams.get('status') || '';
-
     // Filtrar usuários
     let filteredUsers = usersWithCompanies;
 
@@ -40,7 +48,7 @@ export async function GET(request: NextRequest) {
       filteredUsers = filteredUsers.filter(user => 
         user.name.toLowerCase().includes(search.toLowerCase()) ||
         user.email.toLowerCase().includes(search.toLowerCase()) ||
-        user.phone.includes(search)
+        (user.phone && user.phone.includes(search))
       );
     }
 
