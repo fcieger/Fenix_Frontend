@@ -1,0 +1,373 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { validateUserAccess } from '@/lib/auth-utils';
+import { query, transaction } from '@/lib/database';
+import { ensureCoreSchema } from '@/lib/migrations';
+import { subDays, startOfMonth, endOfMonth, format } from 'date-fns';
+
+/**
+ * GET /api/compras/dashboard
+ * 
+ * Retorna dados do dashboard de compras com informações consolidadas
+ */
+export async function GET(request: NextRequest) {
+  try {
+    await transaction(async (client) => {
+      await ensureCoreSchema(client);
+    });
+
+    // Verificar autenticação
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Token de autenticação necessário'
+        },
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.substring(7).trim();
+    const { searchParams } = new URL(request.url);
+    const company_id = searchParams.get('company_id');
+    const dataInicio = searchParams.get('dataInicio');
+    const dataFim = searchParams.get('dataFim');
+    
+    if (!company_id) {
+      return NextResponse.json(
+        { success: false, error: 'company_id é obrigatório' },
+        { status: 400 }
+      );
+    }
+
+    // Validar acesso
+    const acesso = await validateUserAccess(token, company_id);
+    if (!acesso.valid) {
+      const statusCode = acesso.error?.includes('Token') || acesso.error?.includes('não fornecido') ? 401 : 403;
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: acesso.error || 'Acesso negado'
+        },
+        { status: statusCode }
+      );
+    }
+
+    // Calcular períodos baseado nos parâmetros ou usar padrão (30 dias)
+    const hoje = new Date();
+    let dataInicioPeriodo: Date;
+    let dataFimPeriodo: Date = hoje;
+
+    if (dataInicio && dataFim) {
+      dataInicioPeriodo = new Date(dataInicio);
+      dataFimPeriodo = new Date(dataFim);
+      // Ajustar para incluir o dia inteiro
+      dataInicioPeriodo.setHours(0, 0, 0, 0);
+      dataFimPeriodo.setHours(23, 59, 59, 999);
+    } else {
+      // Padrão: últimos 30 dias
+      dataInicioPeriodo = subDays(hoje, 30);
+      dataInicioPeriodo.setHours(0, 0, 0, 0);
+      dataFimPeriodo = hoje;
+      dataFimPeriodo.setHours(23, 59, 59, 999);
+    }
+
+    console.log('[Dashboard Compras] Período de busca:', {
+      inicio: dataInicioPeriodo.toISOString(),
+      fim: dataFimPeriodo.toISOString(),
+      inicioFormatado: format(dataInicioPeriodo, 'yyyy-MM-dd'),
+      fimFormatado: format(dataFimPeriodo, 'yyyy-MM-dd')
+    });
+
+    // 1. Total de compras no período - PRIMEIRO verificar SEM filtro de status
+    const comprasTotalQuery = await query(`
+      SELECT 
+        COUNT(*) as total_todas,
+        COUNT(CASE WHEN status NOT IN ('cancelado', 'rascunho') THEN 1 END) as total_validas,
+        array_agg(DISTINCT status) as status_disponiveis
+      FROM pedidos_compra
+      WHERE "companyId" = $1::uuid
+        AND DATE("dataEmissao") >= $2::date
+        AND DATE("dataEmissao") <= $3::date
+    `, [company_id, format(dataInicioPeriodo, 'yyyy-MM-dd'), format(dataFimPeriodo, 'yyyy-MM-dd')]);
+
+    console.log('[Dashboard Compras] Total de compras no período (sem filtro status):', comprasTotalQuery.rows[0]);
+    console.log('[Dashboard Compras] Status encontrados:', comprasTotalQuery.rows[0]?.status_disponiveis);
+
+    // 1. Total de compras no período - INCLUIR rascunhos também para ver todos os dados
+    const comprasPeriodoQuery = await query(`
+      SELECT 
+        COUNT(*) as total_compras,
+        COALESCE(SUM("totalGeral"), 0) as valor_total_compras,
+        COALESCE(SUM("totalProdutos"), 0) as valor_produtos
+      FROM pedidos_compra
+      WHERE "companyId" = $1::uuid
+        AND DATE("dataEmissao") >= $2::date
+        AND DATE("dataEmissao") <= $3::date
+        AND status != 'cancelado'
+    `, [company_id, format(dataInicioPeriodo, 'yyyy-MM-dd'), format(dataFimPeriodo, 'yyyy-MM-dd')]);
+
+    // 1b. Estatísticas de compras por status
+    const estatisticasComprasQuery = await query(`
+      SELECT 
+        COUNT(*) FILTER (WHERE status = 'pendente') as compras_pendentes,
+        COUNT(*) FILTER (WHERE status = 'entregue') as compras_entregues,
+        COUNT(*) FILTER (WHERE status = 'faturado') as compras_faturadas,
+        COUNT(*) FILTER (WHERE status = 'cancelado') as compras_canceladas,
+        COALESCE(SUM("totalGeral") FILTER (WHERE status = 'entregue'), 0) as valor_entregues,
+        COALESCE(SUM("totalGeral") FILTER (WHERE status = 'faturado'), 0) as valor_faturadas
+      FROM pedidos_compra
+      WHERE "companyId" = $1::uuid
+        AND DATE("dataEmissao") >= $2::date
+        AND DATE("dataEmissao") <= $3::date
+    `, [company_id, format(dataInicioPeriodo, 'yyyy-MM-dd'), format(dataFimPeriodo, 'yyyy-MM-dd')]);
+
+    const comprasPeriodo = comprasPeriodoQuery.rows[0];
+    const totalComprasPeriodo = parseInt(comprasPeriodo?.total_compras || '0') || 0;
+    const valorTotalComprasPeriodo = parseFloat(comprasPeriodo?.valor_total_compras || '0') || 0;
+    const valorProdutosPeriodo = parseFloat(comprasPeriodo?.valor_produtos || '0') || 0;
+
+    const estatisticasCompras = estatisticasComprasQuery.rows[0];
+    const comprasPendentes = parseInt(estatisticasCompras?.compras_pendentes || '0') || 0;
+    const comprasEntregues = parseInt(estatisticasCompras?.compras_entregues || '0') || 0;
+    const comprasFaturadas = parseInt(estatisticasCompras?.compras_faturadas || '0') || 0;
+    const valorEntregues = parseFloat(estatisticasCompras?.valor_entregues || '0') || 0;
+    const valorFaturadas = parseFloat(estatisticasCompras?.valor_faturadas || '0') || 0;
+
+    console.log('[Dashboard Compras] Total de compras no período:', totalComprasPeriodo);
+    console.log('[Dashboard Compras] Valor total de compras:', valorTotalComprasPeriodo);
+    console.log('[Dashboard Compras] Período:', dataInicioPeriodo, 'até', dataFimPeriodo);
+    console.log('[Dashboard Compras] Pendentes:', comprasPendentes, 'Entregues:', comprasEntregues, 'Faturadas:', comprasFaturadas);
+
+    // Calcular dias no período para média diária
+    const diasPeriodo = Math.max(1, Math.ceil((dataFimPeriodo.getTime() - dataInicioPeriodo.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+    const mediaComprasDiaria = diasPeriodo > 0 ? totalComprasPeriodo / diasPeriodo : 0;
+
+    // 2. Gráfico de compras por status
+    const graficoComprasPorStatusQuery = await query(`
+      SELECT 
+        DATE("dataEmissao") as data,
+        COUNT(*) FILTER (WHERE status != 'cancelado') as quantidade,
+        COUNT(*) FILTER (WHERE status = 'pendente') as quantidade_pendentes,
+        COUNT(*) FILTER (WHERE status = 'entregue') as quantidade_entregues,
+        COUNT(*) FILTER (WHERE status = 'faturado') as quantidade_faturadas,
+        COUNT(*) FILTER (WHERE status = 'rascunho') as quantidade_rascunho,
+        COALESCE(SUM("totalGeral") FILTER (WHERE status != 'cancelado'), 0) as valor_total
+      FROM pedidos_compra
+      WHERE "companyId" = $1::uuid
+        AND DATE("dataEmissao") >= $2::date
+        AND DATE("dataEmissao") <= $3::date
+      GROUP BY DATE("dataEmissao")
+      ORDER BY DATE("dataEmissao") ASC
+    `, [company_id, format(dataInicioPeriodo, 'yyyy-MM-dd'), format(dataFimPeriodo, 'yyyy-MM-dd')]);
+
+    const graficoComprasPorStatus = graficoComprasPorStatusQuery.rows.map((row: any) => ({
+      data: format(new Date(row.data), 'dd/MM'),
+      quantidade: parseInt(row.quantidade || '0') || 0,
+      quantidadePendentes: parseInt(row.quantidade_pendentes || '0') || 0,
+      quantidadeEntregues: parseInt(row.quantidade_entregues || '0') || 0,
+      quantidadeFaturadas: parseInt(row.quantidade_faturadas || '0') || 0,
+      quantidadeRascunho: parseInt(row.quantidade_rascunho || '0') || 0,
+      valorTotal: parseFloat(row.valor_total || '0') || 0
+    }));
+
+    console.log('[Dashboard Compras] Dados do gráfico de compras por status:', graficoComprasPorStatus.length, 'registros');
+
+    // 3. Compras do período (para gráfico)
+    const graficoComprasQuery = await query(`
+      SELECT 
+        DATE("dataEmissao") as data,
+        COUNT(*) as quantidade,
+        COALESCE(SUM("totalGeral"), 0) as valor_total
+      FROM pedidos_compra
+      WHERE "companyId" = $1::uuid
+        AND DATE("dataEmissao") >= $2::date
+        AND DATE("dataEmissao") <= $3::date
+        AND status != 'cancelado'
+      GROUP BY DATE("dataEmissao")
+      ORDER BY DATE("dataEmissao") ASC
+    `, [company_id, format(dataInicioPeriodo, 'yyyy-MM-dd'), format(dataFimPeriodo, 'yyyy-MM-dd')]);
+
+    const graficoCompras = graficoComprasQuery.rows.map((row: any) => ({
+      data: format(new Date(row.data), 'dd/MM'),
+      quantidade: parseInt(row.quantidade || '0') || 0,
+      valorTotal: parseFloat(row.valor_total || '0') || 0
+    }));
+
+    console.log('[Dashboard Compras] Registros no gráfico de compras:', graficoCompras.length);
+
+    // 4. Top fornecedores do período
+    const topFornecedoresQuery = await query(`
+      SELECT 
+        c.id,
+        COALESCE(c."nomeRazaoSocial", c."nomeFantasia", 'Fornecedor sem nome') as nome,
+        COUNT(pc.id) as total_compras,
+        COALESCE(SUM(pc."totalGeral"), 0) as valor_total
+      FROM pedidos_compra pc
+      INNER JOIN cadastros c ON pc."fornecedorId" = c.id
+      WHERE pc."companyId" = $1::uuid
+        AND DATE(pc."dataEmissao") >= $2::date
+        AND DATE(pc."dataEmissao") <= $3::date
+        AND pc.status != 'cancelado'
+      GROUP BY c.id, c."nomeRazaoSocial", c."nomeFantasia"
+      ORDER BY valor_total DESC
+      LIMIT 10
+    `, [company_id, format(dataInicioPeriodo, 'yyyy-MM-dd'), format(dataFimPeriodo, 'yyyy-MM-dd')]);
+
+    const topFornecedores = topFornecedoresQuery.rows.map((row: any) => ({
+      id: row.id,
+      nome: row.nome,
+      totalCompras: parseInt(row.total_compras || 0),
+      valorTotal: parseFloat(row.valor_total || 0)
+    }));
+
+    // 5. Top produtos vendidos do período - agrupa por ID do produto
+    const topProdutosQuery = await query(`
+      SELECT 
+        pvi."produtoId" as id,
+        MAX(pvi.codigo) as codigo,
+        MAX(pvi.nome) as nome,
+        COALESCE(SUM(pvi.quantidade), 0) as quantidade_total,
+        COALESCE(SUM(pvi."totalItem"), 0) as valor_total
+      FROM pedidos_compra_itens pvi
+      INNER JOIN pedidos_compra pv ON pvi."pedidoCompraId" = pv.id
+      WHERE pv."companyId" = $1::uuid
+        AND pvi."produtoId" IS NOT NULL
+        AND DATE(pv."dataEmissao") >= $2::date
+        AND DATE(pv."dataEmissao") <= $3::date
+        AND pv.status != 'cancelado'
+      GROUP BY pvi."produtoId"
+      ORDER BY valor_total DESC
+      LIMIT 10
+    `, [company_id, format(dataInicioPeriodo, 'yyyy-MM-dd'), format(dataFimPeriodo, 'yyyy-MM-dd')]);
+
+    const topProdutos = topProdutosQuery.rows.map((row: any, index: number) => ({
+      id: row.id || `produto-${index}`,
+      codigo: row.codigo || '',
+      nome: row.nome || 'Produto sem nome',
+      quantidadeTotal: parseFloat(row.quantidade_total || 0),
+      valorTotal: parseFloat(row.valor_total || 0)
+    }));
+
+    // 6. Compras por comprador do período
+    const comprasPorCompradorQuery = await query(`
+      SELECT 
+        c.id,
+        COALESCE(c."nomeRazaoSocial", c."nomeFantasia", 'Sem comprador') as nome,
+        COUNT(pc.id) as total_compras,
+        COALESCE(SUM(pc."totalGeral"), 0) as valor_total
+      FROM pedidos_compra pc
+      LEFT JOIN cadastros c ON pc."compradorId" = c.id
+      WHERE pc."companyId" = $1::uuid
+        AND DATE(pc."dataEmissao") >= $2::date
+        AND DATE(pc."dataEmissao") <= $3::date
+        AND pc.status != 'cancelado'
+      GROUP BY c.id, c."nomeRazaoSocial", c."nomeFantasia"
+      ORDER BY valor_total DESC
+      LIMIT 10
+    `, [company_id, format(dataInicioPeriodo, 'yyyy-MM-dd'), format(dataFimPeriodo, 'yyyy-MM-dd')]);
+
+    const comprasPorComprador = comprasPorCompradorQuery.rows.map((row: any) => ({
+      id: row.id,
+      nome: row.nome,
+      totalCompras: parseInt(row.total_compras || 0),
+      valorTotal: parseFloat(row.valor_total || 0)
+    }));
+
+    // 7. Comparativo: período atual vs período anterior (mesmo tamanho)
+    const periodoAnteriorFim = subDays(dataInicioPeriodo, 1);
+    const periodoAnteriorInicio = subDays(periodoAnteriorFim, diasPeriodo - 1);
+
+    const comparativoQuery = await query(`
+      SELECT 
+        CASE 
+          WHEN DATE("dataEmissao") >= $2::date AND DATE("dataEmissao") <= $3::date THEN 'atual'
+          WHEN DATE("dataEmissao") >= $4::date AND DATE("dataEmissao") <= $5::date THEN 'anterior'
+        END as periodo,
+        COUNT(*) as total_compras,
+        COALESCE(SUM("totalGeral"), 0) as valor_total
+      FROM pedidos_compra
+      WHERE "companyId" = $1::uuid
+        AND (
+          (DATE("dataEmissao") >= $2::date AND DATE("dataEmissao") <= $3::date)
+          OR (DATE("dataEmissao") >= $4::date AND DATE("dataEmissao") <= $5::date)
+        )
+        AND status != 'cancelado'
+      GROUP BY periodo
+    `, [
+      company_id, 
+      format(dataInicioPeriodo, 'yyyy-MM-dd'), 
+      format(dataFimPeriodo, 'yyyy-MM-dd'), 
+      format(periodoAnteriorInicio, 'yyyy-MM-dd'), 
+      format(periodoAnteriorFim, 'yyyy-MM-dd')
+    ]);
+
+    const comparativo = {
+      atual: {
+        totalCompras: 0,
+        valorTotal: 0
+      },
+      anterior: {
+        totalCompras: 0,
+        valorTotal: 0
+      }
+    };
+
+    comparativoQuery.rows.forEach((row: any) => {
+      if (row.periodo === 'atual') {
+        comparativo.atual.totalCompras = parseInt(row.total_compras || 0);
+        comparativo.atual.valorTotal = parseFloat(row.valor_total || 0);
+      } else if (row.periodo === 'anterior') {
+        comparativo.anterior.totalCompras = parseInt(row.total_compras || 0);
+        comparativo.anterior.valorTotal = parseFloat(row.valor_total || 0);
+      }
+    });
+
+    const variacaoCompras = comparativo.anterior.totalCompras > 0 
+      ? ((comparativo.atual.totalCompras - comparativo.anterior.totalCompras) / comparativo.anterior.totalCompras) * 100
+      : 0;
+    
+    const variacaoValor = comparativo.anterior.valorTotal > 0
+      ? ((comparativo.atual.valorTotal - comparativo.anterior.valorTotal) / comparativo.anterior.valorTotal) * 100
+      : 0;
+
+    // Taxa de entrega (compras entregues / total compras)
+    const taxaEntrega = totalComprasPeriodo > 0 
+      ? (comprasEntregues / totalComprasPeriodo) * 100 
+      : 0;
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        metrics: {
+          totalComprasPeriodo,
+          valorTotalComprasPeriodo,
+          comprasPendentes,
+          comprasEntregues,
+          comprasFaturadas,
+          valorEntregues,
+          valorFaturadas,
+          mediaComprasDiaria: parseFloat(mediaComprasDiaria.toFixed(2)),
+          taxaEntrega: parseFloat(taxaEntrega.toFixed(2)),
+          variacaoCompras: parseFloat(variacaoCompras.toFixed(2)),
+          variacaoValor: parseFloat(variacaoValor.toFixed(2))
+        },
+        graficoComprasPorStatus,
+        graficoCompras,
+        topFornecedores,
+        topProdutos,
+        comprasPorComprador,
+        comparativo
+      }
+    });
+  } catch (error: any) {
+    console.error('❌ Erro ao buscar dashboard de compras:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro interno do servidor'
+      },
+      { status: 500 }
+    );
+  }
+}
