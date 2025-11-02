@@ -349,6 +349,90 @@ CREATE TABLE IF NOT EXISTS pedidos_venda_itens (
 );
 
 -- ============================================
+-- TABELAS DE PEDIDOS DE COMPRA
+-- ============================================
+CREATE TABLE IF NOT EXISTS pedidos_compra (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  "companyId" UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  numero TEXT NOT NULL,
+  serie TEXT,
+  "numeroOrdemCompra" TEXT,
+  "dataEmissao" DATE NOT NULL DEFAULT CURRENT_DATE,
+  "dataPrevisaoEntrega" DATE,
+  "dataEntrega" DATE,
+  "fornecedorId" UUID NOT NULL REFERENCES cadastros(id),
+  "compradorId" UUID REFERENCES cadastros(id),
+  "transportadoraId" UUID REFERENCES cadastros(id),
+  "prazoPagamentoId" UUID REFERENCES prazos_pagamento(id),
+  "naturezaOperacaoPadraoId" UUID REFERENCES natureza_operacao(id),
+  "formaPagamentoId" UUID REFERENCES formas_pagamento(id) ON DELETE SET NULL,
+  "localEstoqueId" UUID,
+  parcelamento TEXT,
+  "consumidorFinal" BOOLEAN DEFAULT FALSE,
+  "indicadorPresenca" TEXT,
+  "listaPreco" TEXT,
+  frete TEXT,
+  "valorFrete" NUMERIC(14,2) DEFAULT 0,
+  despesas NUMERIC(14,2) DEFAULT 0,
+  "incluirFreteTotal" BOOLEAN DEFAULT FALSE,
+  "placaVeiculo" TEXT,
+  "ufPlaca" TEXT,
+  rntc TEXT,
+  "pesoLiquido" NUMERIC(14,3) DEFAULT 0,
+  "pesoBruto" NUMERIC(14,3) DEFAULT 0,
+  volume NUMERIC(14,3) DEFAULT 0,
+  especie TEXT,
+  marca TEXT,
+  numeracao TEXT,
+  "quantidadeVolumes" INTEGER,
+  "totalProdutos" NUMERIC(14,2) NOT NULL DEFAULT 0,
+  "totalDescontos" NUMERIC(14,2) NOT NULL DEFAULT 0,
+  "totalImpostos" NUMERIC(14,2) NOT NULL DEFAULT 0,
+  "totalGeral" NUMERIC(14,2) NOT NULL DEFAULT 0,
+  observacoes TEXT,
+  status TEXT NOT NULL DEFAULT 'rascunho',
+  "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS pedidos_compra_itens (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  "pedidoCompraId" UUID NOT NULL REFERENCES pedidos_compra(id) ON DELETE CASCADE,
+  "companyId" UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  "produtoId" UUID REFERENCES produtos(id),
+  codigo TEXT NOT NULL,
+  nome TEXT NOT NULL,
+  unidade TEXT NOT NULL,
+  ncm TEXT,
+  cest TEXT,
+  "naturezaOperacaoId" UUID NOT NULL REFERENCES natureza_operacao(id),
+  quantidade NUMERIC(14,6) NOT NULL,
+  "precoUnitario" NUMERIC(14,6) NOT NULL,
+  "descontoValor" NUMERIC(14,2) DEFAULT 0,
+  "descontoPercentual" NUMERIC(5,2) DEFAULT 0,
+  "freteRateado" NUMERIC(14,2) DEFAULT 0,
+  "seguroRateado" NUMERIC(14,2) DEFAULT 0,
+  "outrasDespesasRateado" NUMERIC(14,2) DEFAULT 0,
+  "icmsBase" NUMERIC(14,4),
+  "icmsAliquota" NUMERIC(7,4),
+  "icmsValor" NUMERIC(14,2),
+  "icmsStBase" NUMERIC(14,4),
+  "icmsStAliquota" NUMERIC(7,4),
+  "icmsStValor" NUMERIC(14,2),
+  "ipiAliquota" NUMERIC(7,4),
+  "ipiValor" NUMERIC(14,2),
+  "pisAliquota" NUMERIC(7,4),
+  "pisValor" NUMERIC(14,2),
+  "cofinsAliquota" NUMERIC(7,4),
+  "cofinsValor" NUMERIC(14,2),
+  "totalItem" NUMERIC(14,2) NOT NULL,
+  "numeroItem" INTEGER,
+  observacoes TEXT,
+  "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================
 -- ÍNDICES
 -- ============================================
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
