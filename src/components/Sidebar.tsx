@@ -42,8 +42,19 @@ const menuItems = [
     icon: ShoppingCart, 
     href: '/vendas',
     submenu: [
+      { id: 'vendas-dashboard', label: 'Dashboard', href: '/vendas/dashboard' },
       { id: 'pedido-venda', label: 'Pedido de Venda', href: '/vendas' },
       { id: 'orcamentos', label: 'Orçamentos', href: '/orcamentos' }
+    ]
+  },
+  { 
+    id: 'compras', 
+    label: 'Compras', 
+    icon: ShoppingCart, 
+    href: '/compras',
+    submenu: [
+      { id: 'compras-dashboard', label: 'Dashboard', href: '/compras/dashboard' },
+      { id: 'pedido-compra', label: 'Pedido de Compra', href: '/compras' }
     ]
   },
   { 
@@ -77,10 +88,10 @@ const menuItems = [
     submenu: [
       { id: 'financeiro-dashboard', label: 'Dashboard', href: '/financeiro' },
       { id: 'banco', label: 'Banco', href: '/financeiro/banco' },
+      { id: 'titulos-em-aberto', label: 'Títulos em Aberto', href: '/financeiro/titulos-em-aberto' },
       { id: 'contas-pagar', label: 'Contas a Pagar', href: '/financeiro/contas-pagar' },
       { id: 'contas-receber', label: 'Contas a Receber', href: '/financeiro/contas-receber' },
       { id: 'fluxo-caixa', label: 'Fluxo de Caixa', href: '/financeiro/fluxo-caixa' },
-      { id: 'dre', label: 'DRE', href: '/financeiro/dre' },
       { id: 'historico', label: 'Histórico', href: '/financeiro/historico' },
       { id: 'conta-contabil', label: 'Conta Contábil', href: '/financeiro/conta-contabil' },
       { id: 'centro-custo', label: 'Centro de Custo', href: '/financeiro/centro-custo' },
@@ -117,6 +128,10 @@ export default function Sidebar() {
     // Manter menu vendas expandido quando estiver na área de vendas
     if (pathname.startsWith('/vendas') || pathname.startsWith('/orcamentos')) {
       setExpandedMenus(prev => new Set([...prev, 'vendas']));
+    }
+    // Manter menu compras expandido quando estiver na área de compras
+    if (pathname.startsWith('/compras')) {
+      setExpandedMenus(prev => new Set([...prev, 'compras']));
     }
   }, [pathname]);
 
