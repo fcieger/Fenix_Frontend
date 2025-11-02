@@ -376,3 +376,4 @@ totalGeral = totalProdutos - totalDescontos + totalImpostos + valorFrete + despe
 **Versão da Análise**: 1.0.0
 
 
+
