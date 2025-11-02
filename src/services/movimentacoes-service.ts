@@ -76,7 +76,7 @@ export class MovimentacoesService {
         data.data_movimentacao,
         saldoAnterior,
         saldoPosterior,
-        data.situacao || 'pendente',
+        data.situacao || 'pago',
         data.conta_destino_id || null,
         data.categoria_id || null,
         data.created_by || null
