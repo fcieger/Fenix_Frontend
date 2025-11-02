@@ -61,6 +61,20 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const body = await request.json();
     if (!id) return NextResponse.json({ success: false, error: 'ID é obrigatório' }, { status: 400 });
 
+    // Buscar conta antes de atualizar para validar existência e obter company_id
+    const contaCheckResult = await client.query(`
+      SELECT id, company_id FROM contas_receber WHERE id = $1
+    `, [id]);
+
+    if (contaCheckResult.rows.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Conta a receber não encontrada' },
+        { status: 404 }
+      );
+    }
+
+    const conta = contaCheckResult.rows[0];
+
     const { titulo, cadastro, valorTotal, contaContabil, parcelamento, dataEmissao, dataQuitacao, competencia, centroCusto, origem, observacoes, status, parcelas, cadastroId, parcelamentoId, rateioContaContabil, rateioCentroCusto } = body;
 
     await client.query('BEGIN');
@@ -210,17 +224,61 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   try {
     const { id } = params;
     if (!id) return NextResponse.json({ success: false, error: 'ID é obrigatório' }, { status: 400 });
+
+    // Buscar conta antes de deletar para obter company_id e informações para log
+    const contaResult = await client.query(`
+      SELECT id, company_id, titulo FROM contas_receber WHERE id = $1
+    `, [id]);
+
+    if (contaResult.rows.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Conta a receber não encontrada' },
+        { status: 404 }
+      );
+    }
+
+    const conta = contaResult.rows[0];
+    const companyId = conta.company_id;
+    const titulo = conta.titulo || 'Sem título';
+
     await client.query('BEGIN');
+
+    // Deletar movimentações financeiras relacionadas às parcelas
+    await client.query(`
+      DELETE FROM movimentacoes_financeiras 
+      WHERE parcela_id IN (
+        SELECT id FROM parcelas_contas_receber WHERE conta_receber_id = $1
+      ) AND tela_origem = 'contas_receber_parcelas'
+    `, [id]);
+
+    // Deletar parcelas
+    await client.query(`
+      DELETE FROM parcelas_contas_receber WHERE conta_receber_id = $1
+    `, [id]);
+
+    // Deletar rateios
+    await client.query(`
+      DELETE FROM contas_receber_conta_contabil WHERE conta_receber_id = $1
+    `, [id]);
+    
+    await client.query(`
+      DELETE FROM contas_receber_centro_custo WHERE conta_receber_id = $1
+    `, [id]);
+
+    // Deletar conta a receber
     await client.query(`DELETE FROM contas_receber WHERE id = $1`, [id]);
+
     await client.query('COMMIT');
+
     await logHistory(client, {
-      company_id: contaRes.rows[0]?.company_id || null,
+      company_id: companyId,
       action: 'delete',
       entity: 'contas_receber',
       entity_id: id,
-      description: `Excluído título a receber (${id})`,
-      metadata: { id }
+      description: `Excluído título a receber: "${titulo}"`,
+      metadata: { id, titulo }
     });
+
     return NextResponse.json({ success: true, data: { message: 'Conta a receber deletada com sucesso' } });
   } catch (e: any) {
     await client.query('ROLLBACK');
