@@ -356,9 +356,9 @@ export default function ConfiguracaoVenda({
             className="space-y-2"
           >
             <DateInput
-              value={formData.dataValidade}
-              onChange={(value) => onInputChange('dataValidade', value)}
-              label="Data de Validade"
+              value={formData.dataEntrega}
+              onChange={(value) => onInputChange('dataEntrega', value)}
+              label="Data de Entrega"
               icon={<Calendar className="w-4 h-4" />}
             />
           </motion.div>
@@ -566,12 +566,12 @@ export default function ConfiguracaoVenda({
               placeholder="Será preenchido automaticamente pela venda"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Este campo será preenchido automaticamente quando o orçamento for convertido em venda
+              Este campo será preenchido automaticamente quando a nota for emitida
             </p>
           </motion.div>
         </div>
 
-        {/* Seção Pedido de Cotação */}
+        {/* Seção Ordem de Compra */}
         <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -581,14 +581,14 @@ export default function ConfiguracaoVenda({
           >
             <label className="block text-sm font-semibold text-gray-700 flex items-center">
               <Hash className="w-4 h-4 mr-2 text-purple-600" />
-              N° do Pedido de Cotação
+              Número da Ordem de Compra
             </label>
             <input
               type="text"
               value={formData.numeroPedidoCotacao || ''}
               onChange={(e) => onInputChange('numeroPedidoCotacao', e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-              placeholder="Número do pedido de cotação"
+              placeholder="Número da ordem de compra"
             />
           </motion.div>
         </div>
