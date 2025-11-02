@@ -12,10 +12,23 @@ import {
   Banknote,
   CreditCard,
   BarChart3,
-  Eye,
-  Download,
-  RefreshCw
+  RefreshCw,
+  CheckCircle,
+  Loader2
 } from 'lucide-react';
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  ComposedChart
+} from 'recharts';
 
 // Tipos para os dados do dashboard
 interface DashboardMetrics {
@@ -45,9 +58,16 @@ interface ProximoVencimento {
   dias: number;
 }
 
+interface GraficoFluxo {
+  data: string;
+  receitas: number;
+  despesas: number;
+}
+
 export default function DashboardFinanceiro() {
-  const { user } = useAuth();
+  const { token, activeCompanyId, isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     saldoAtual: 0,
     fluxoCaixa: 0,
@@ -61,44 +81,56 @@ export default function DashboardFinanceiro() {
 
   const [contasVencidas, setContasVencidas] = useState<ContaVencida[]>([]);
   const [proximosVencimentos, setProximosVencimentos] = useState<ProximoVencimento[]>([]);
+  const [graficoFluxo, setGraficoFluxo] = useState<GraficoFluxo[]>([]);
 
-  // Simular carregamento de dados (substituir por API real)
+  // Carregar dados reais da API
   useEffect(() => {
     const loadDashboardData = async () => {
-      setLoading(true);
-      
-      // Simular delay da API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Dados simulados (substituir por chamadas reais da API)
-      setMetrics({
-        saldoAtual: 125000,
-        fluxoCaixa: 15000,
-        contasVencidas: 8500,
-        proximosVencimentos: 12000,
-        faturamentoMes: 180000,
-        despesasMes: 120000,
-        lucroBruto: 60000,
-        margemLucro: 33.33
-      });
+      if (!token || !activeCompanyId || authLoading) {
+        setLoading(false);
+        return;
+      }
 
-      setContasVencidas([
-        { id: '1', descricao: 'Fornecedor ABC - Fatura 001', valor: 2500, vencimento: '2024-01-15', tipo: 'pagar' },
-        { id: '2', descricao: 'Cliente XYZ - Fatura 002', valor: 3200, vencimento: '2024-01-10', tipo: 'receber' },
-        { id: '3', descricao: 'Fornecedor DEF - Fatura 003', valor: 1800, vencimento: '2024-01-12', tipo: 'pagar' }
-      ]);
+      try {
+        setLoading(true);
+        setError(null);
 
-      setProximosVencimentos([
-        { id: '1', descricao: 'Cliente ABC - Fatura 004', valor: 4500, vencimento: '2024-01-25', dias: 3 },
-        { id: '2', descricao: 'Fornecedor GHI - Fatura 005', valor: 2800, vencimento: '2024-01-28', dias: 6 },
-        { id: '3', descricao: 'Cliente JKL - Fatura 006', valor: 3200, vencimento: '2024-01-30', dias: 8 }
-      ]);
+        const response = await fetch(`/api/financeiro/dashboard?company_id=${activeCompanyId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
 
-      setLoading(false);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ 
+            error: `Erro HTTP ${response.status}: ${response.statusText}` 
+          }));
+          throw new Error(errorData.error || errorData.message || 'Erro ao buscar dados do dashboard');
+        }
+
+        const data = await response.json();
+        
+        if (!data.success || !data.data) {
+          throw new Error('Resposta inválida do servidor');
+        }
+
+        const { metrics: metricsData, contasVencidas: contasVencidasData, proximosVencimentos: proximosVencimentosData, graficoFluxo: graficoFluxoData } = data.data;
+
+        setMetrics(metricsData);
+        setContasVencidas(contasVencidasData || []);
+        setProximosVencimentos(proximosVencimentosData || []);
+        setGraficoFluxo(graficoFluxoData || []);
+      } catch (error: any) {
+        console.error('Erro ao carregar dashboard financeiro:', error);
+        setError(error.message || 'Erro ao carregar dados do dashboard financeiro');
+      } finally {
+        setLoading(false);
+      }
     };
 
     loadDashboardData();
-  }, []);
+  }, [token, activeCompanyId, authLoading]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -111,14 +143,16 @@ export default function DashboardFinanceiro() {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin text-purple-600 mx-auto mb-4" />
-          <p className="text-gray-600">Carregando dashboard financeiro...</p>
+      <Layout>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-purple-600 mx-auto mb-4" />
+            <p className="text-gray-600">Carregando dashboard financeiro...</p>
+          </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 
@@ -137,16 +171,6 @@ export default function DashboardFinanceiro() {
                 <p className="text-gray-600 mt-1">
                   Visão geral das finanças da empresa
                 </p>
-              </div>
-              <div className="flex space-x-3">
-                <button className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 flex items-center">
-                  <Eye className="h-4 w-4 mr-2" />
-                  Visualizar
-                </button>
-                <button className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center">
-                  <Download className="h-4 w-4 mr-2" />
-                  Exportar
-                </button>
               </div>
             </div>
           </div>
@@ -216,6 +240,16 @@ export default function DashboardFinanceiro() {
           </div>
         </div>
 
+        {/* Mensagem de erro */}
+        {error && (
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg mb-6">
+            <div className="flex items-center">
+              <AlertTriangle className="w-5 h-5 text-red-500 mr-2" />
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          </div>
+        )}
+
         {/* Gráfico de Fluxo de Caixa */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
           <div className="flex items-center justify-between mb-6">
@@ -226,12 +260,55 @@ export default function DashboardFinanceiro() {
               <button className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded-md">1 ano</button>
             </div>
           </div>
-          <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
-            <div className="text-center">
-              <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-              <p className="text-gray-500">Gráfico de fluxo de caixa será implementado aqui</p>
+          {graficoFluxo.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <ComposedChart data={graficoFluxo}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis 
+                  dataKey="data" 
+                  stroke="#6b7280"
+                  style={{ fontSize: '12px' }}
+                />
+                <YAxis 
+                  stroke="#6b7280"
+                  style={{ fontSize: '12px' }}
+                  tickFormatter={(value) => {
+                    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                    if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+                    return value.toString();
+                  }}
+                />
+                <Tooltip
+                  formatter={(value: number) => formatCurrency(value)}
+                  contentStyle={{
+                    backgroundColor: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px'
+                  }}
+                />
+                <Legend />
+                <Bar 
+                  dataKey="receitas" 
+                  fill="#3b82f6" 
+                  name="Receitas"
+                  radius={[4, 4, 0, 0]}
+                />
+                <Bar 
+                  dataKey="despesas" 
+                  fill="#ef4444" 
+                  name="Despesas"
+                  radius={[4, 4, 0, 0]}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
+              <div className="text-center">
+                <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-500">Nenhum dado disponível para o período</p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Grid de Informações */}
