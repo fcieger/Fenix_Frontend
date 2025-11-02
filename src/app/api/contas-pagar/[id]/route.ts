@@ -112,6 +112,20 @@ export async function PUT(
       );
     }
 
+    // Buscar conta antes de atualizar para validar existência e obter company_id
+    const contaCheckResult = await client.query(`
+      SELECT id, company_id FROM contas_pagar WHERE id = $1
+    `, [id]);
+
+    if (contaCheckResult.rows.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Conta a pagar não encontrada' },
+        { status: 404 }
+      );
+    }
+
+    const conta = contaCheckResult.rows[0];
+
     const {
       titulo, cadastro, valorTotal, contaContabil, parcelamento,
       dataEmissao, dataQuitacao, competencia, centroCusto, origem,
@@ -145,8 +159,13 @@ export async function PUT(
 
     if (parcelas && parcelas.length > 0) {
       for (const parcela of parcelas) {
-        if (parcela.id && atuais.has(parcela.id)) {
-          recebidasIds.add(parcela.id);
+        // Validar campos obrigatórios da parcela
+        if (!parcela.tituloParcela || !parcela.dataVencimento || !parcela.valorParcela) {
+          throw new Error(`Parcela inválida: campos obrigatórios ausentes (tituloParcela, dataVencimento, valorParcela)`);
+        }
+
+        if (parcela.id && atuais.has(String(parcela.id))) {
+          recebidasIds.add(String(parcela.id));
           await client.query(`
             UPDATE parcelas_contas_pagar SET
               titulo_parcela = $2, data_vencimento = $3, data_pagamento = $4,
@@ -155,9 +174,9 @@ export async function PUT(
               conta_corrente_id = $11, updated_at = CURRENT_TIMESTAMP
             WHERE id = $1
           `, [
-            parcela.id, parcela.tituloParcela, parcela.dataVencimento, parcela.dataPagamento || null,
-            parcela.dataCompensacao || null, parcela.valorParcela, parcela.diferenca, parcela.valorTotal,
-            parcela.status, parcela.formaPagamentoId || null, parcela.contaCorrenteId || null
+            parcela.id, parcela.tituloParcela || 'Parcela', parcela.dataVencimento, parcela.dataPagamento || null,
+            parcela.dataCompensacao || null, parcela.valorParcela || 0, parcela.diferenca || 0, parcela.valorTotal || parcela.valorParcela || 0,
+            parcela.status || 'pendente', parcela.formaPagamentoId || null, parcela.contaCorrenteId || null
           ]);
         } else {
           const ins = await client.query(`
@@ -168,9 +187,9 @@ export async function PUT(
             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
             RETURNING id
           `, [
-            id, parcela.tituloParcela, parcela.dataVencimento, parcela.dataPagamento || null,
-            parcela.dataCompensacao || null, parcela.valorParcela, parcela.diferenca, parcela.valorTotal,
-            parcela.status, parcela.formaPagamentoId || null, parcela.contaCorrenteId || null
+            id, parcela.tituloParcela || 'Parcela', parcela.dataVencimento, parcela.dataPagamento || null,
+            parcela.dataCompensacao || null, parcela.valorParcela || 0, parcela.diferenca || 0, parcela.valorTotal || parcela.valorParcela || 0,
+            parcela.status || 'pendente', parcela.formaPagamentoId || null, parcela.contaCorrenteId || null
           ]);
           const newId = ins.rows[0].id as string;
           recebidasIds.add(newId);
@@ -317,11 +336,23 @@ export async function PUT(
       data: { message: 'Conta a pagar atualizada com sucesso' }
     });
 
-  } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Erro ao atualizar conta a pagar:', error);
+  } catch (error: any) {
+    await client.query('ROLLBACK').catch(() => {}); // Ignorar erro se não houver transação
+    console.error('❌ Erro ao atualizar conta a pagar:', error);
+    console.error('❌ Stack trace:', error?.stack);
+    console.error('❌ Message:', error?.message);
+    
+    // Retornar mensagem de erro mais detalhada em desenvolvimento
+    const errorMessage = process.env.NODE_ENV === 'development' 
+      ? (error?.message || 'Erro interno do servidor')
+      : 'Erro interno do servidor';
+    
     return NextResponse.json(
-      { success: false, error: 'Erro interno do servidor' },
+      { 
+        success: false, 
+        error: errorMessage,
+        ...(process.env.NODE_ENV === 'development' && { details: error?.stack })
+      },
       { status: 500 }
     );
   } finally {
@@ -347,19 +378,59 @@ export async function DELETE(
 
     await client.query('BEGIN');
 
-    // Deletar conta a pagar (cascade deletará parcelas e rateios)
+    // Buscar conta antes de deletar para obter company_id e informações para log
+    const contaResult = await client.query(`
+      SELECT id, company_id, titulo FROM contas_pagar WHERE id = $1
+    `, [id]);
+
+    if (contaResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return NextResponse.json(
+        { success: false, error: 'Conta a pagar não encontrada' },
+        { status: 404 }
+      );
+    }
+
+    const conta = contaResult.rows[0];
+    const companyId = conta.company_id;
+    const titulo = conta.titulo || 'Sem título';
+
+    // Deletar movimentações financeiras relacionadas às parcelas
+    await client.query(`
+      DELETE FROM movimentacoes_financeiras 
+      WHERE parcela_id IN (
+        SELECT id FROM parcelas_contas_pagar WHERE conta_pagar_id = $1
+      ) AND tela_origem = 'contas_pagar_parcelas'
+    `, [id]);
+
+    // Deletar parcelas (se não houver cascade, deletar explicitamente)
+    await client.query(`
+      DELETE FROM parcelas_contas_pagar WHERE conta_pagar_id = $1
+    `, [id]);
+
+    // Deletar rateios
+    await client.query(`
+      DELETE FROM contas_pagar_conta_contabil WHERE conta_pagar_id = $1
+    `, [id]);
+    
+    await client.query(`
+      DELETE FROM contas_pagar_centro_custo WHERE conta_pagar_id = $1
+    `, [id]);
+
+    // Deletar conta a pagar
     await client.query(`
       DELETE FROM contas_pagar WHERE id = $1
     `, [id]);
 
     await client.query('COMMIT');
+    
     await logHistory(client, {
-      company_id: contaResult.rows[0]?.company_id || null,
+      company_id: companyId,
       action: 'delete',
       entity: 'contas_pagar',
       entity_id: id,
-      description: `Excluído título a pagar (${id})`,
-      metadata: { id }
+      description: `Excluído título a pagar: "${titulo}"`,
+      metadata: { id, titulo }
     });
 
     return NextResponse.json({
