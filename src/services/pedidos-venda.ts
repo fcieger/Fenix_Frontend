@@ -35,6 +35,7 @@ export async function obterPedidoVenda(id: string) {
 
 export async function criarPedidoVenda(payload: PedidoVenda) {
   try {
+    console.log('[PedidosVenda Service] Criando pedido, payload:', JSON.stringify(payload, null, 2));
     const { data } = await axios.post(`${API}/api/pedidos-venda`, payload, {
       headers: getAuthHeaders()
     });
@@ -42,6 +43,19 @@ export async function criarPedidoVenda(payload: PedidoVenda) {
   } catch (error: any) {
     console.error('[PedidosVenda Service] Erro ao criar pedido:', error);
     console.error('[PedidosVenda Service] Resposta do servidor:', error?.response?.data);
+    console.error('[PedidosVenda Service] Status:', error?.response?.status);
+    console.error('[PedidosVenda Service] Headers:', error?.response?.headers);
+    console.error('[PedidosVenda Service] Payload enviado:', JSON.stringify(payload, null, 2));
+    
+    // Melhorar mensagem de erro
+    const errorData = error?.response?.data;
+    if (errorData) {
+      const errorMessage = errorData.message || errorData.error || 'Erro ao criar pedido de venda';
+      const enhancedError = new Error(errorMessage);
+      (enhancedError as any).response = error.response;
+      throw enhancedError;
+    }
+    
     // Re-throw para que o componente possa tratar
     throw error;
   }
@@ -92,4 +106,44 @@ export async function excluirPedidoVenda(id: string) {
     headers: getAuthHeaders()
   });
   return data;
+}
+
+export async function entregarPedidoVenda(
+  pedidoId: string,
+  companyId: string,
+  localEstoqueId: string,
+  naturezaOperacao: any,
+  itens: any[],
+  status: string
+) {
+  try {
+    // Usar URL relativa porque a rota está no Next.js (frontend), não no backend
+    const { data } = await axios.post(`/api/pedidos-venda/entregar`, {
+      pedidoId,
+      companyId,
+      localEstoqueId,
+      naturezaOperacao,
+      itens,
+      status
+    }, {
+      headers: getAuthHeaders()
+    });
+    return data;
+  } catch (error: any) {
+    console.error('[PedidosVenda Service] Erro ao entregar pedido:', error);
+    console.error('[PedidosVenda Service] Resposta do servidor:', error?.response?.data);
+    console.error('[PedidosVenda Service] Status:', error?.response?.status);
+    console.error('[PedidosVenda Service] Erro completo:', JSON.stringify(error?.response?.data, null, 2));
+    
+    // Melhorar mensagem de erro
+    const errorData = error?.response?.data;
+    if (errorData) {
+      const errorMessage = errorData.error || errorData.message || 'Erro ao entregar pedido';
+      const enhancedError = new Error(errorMessage);
+      (enhancedError as any).response = error.response;
+      throw enhancedError;
+    }
+    
+    throw error;
+  }
 }
