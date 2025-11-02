@@ -52,7 +52,7 @@ import {
   Copy,
   Send
 } from 'lucide-react';
-import { obterPedidoVenda, criarPedidoVenda, atualizarPedidoVenda, recalcularImpostos } from '../../../services/pedidos-venda';
+import { obterPedidoVenda, criarPedidoVenda, atualizarPedidoVenda, recalcularImpostos, entregarPedidoVenda } from '../../../services/pedidos-venda';
 import { obterOrcamento } from '../../../services/orcamentos';
 import { PedidoVenda } from '../../../types/pedido-venda';
 import { Orcamento } from '../../../types/orcamento';
@@ -108,6 +108,7 @@ function PedidoVendaFormPage() {
   const [dataLoaded, setDataLoaded] = useState(false);
   const [pedidoVendaBloqueado, setPedidoVendaBloqueado] = useState(false);
   const [originalPedidoVenda, setOriginalPedidoVenda] = useState<any>(null);
+  const [showModalEntrega, setShowModalEntrega] = useState(false);
   const [filteredProdutos, setFilteredProdutos] = useState<any[]>([]);
   const [showProdutoSearchDropdown, setShowProdutoSearchDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -769,14 +770,29 @@ function PedidoVendaFormPage() {
     }
   }, [formData.naturezaOperacao, ufDestino, ufOrigem]);
 
-  async function salvar() {
+  async function salvar(confirmarEntrega: boolean = false) {
     if (!activeCompanyId) { error('Erro', 'Informe a empresa'); return; }
     if (!model.clienteId) { error('Erro', 'Selecione o cliente'); return; }
     if (!model.dataEmissao) { error('Erro', 'Informe a data de emissão'); return; }
     if (!model.itens || model.itens.length === 0) { error('Erro', 'Adicione ao menos um item'); return; }
     
-    // Validar campos obrigatórios para pedido de venda (sem motivoPerda)
+    // Verificar se data de entrega está preenchida e ainda não está entregue
+    const dataEntrega = formData.dataEntrega || model.dataEntrega;
     const statusAtual = formData.status || model.status || 'rascunho';
+    
+    if (dataEntrega && statusAtual !== 'entregue' && !confirmarEntrega) {
+      // Mostrar modal de confirmação
+      setShowModalEntrega(true);
+      return;
+    }
+    
+    // Se confirmar entrega, atualizar status
+    if (confirmarEntrega && dataEntrega) {
+      setModel(prev => ({ ...prev, status: 'entregue' }));
+      setFormData(prev => ({ ...prev, status: 'entregue' }));
+    }
+    
+    // Validar campos obrigatórios para pedido de venda (sem motivoPerda)
     
     // Validar cada item e identificar campos faltantes
     const itensInvalidos: Array<{index: number, campos: string[]}> = [];
@@ -808,6 +824,11 @@ function PedidoVendaFormPage() {
 
     setIsSalvando(true);
     try {
+      // Obter data de entrega formatada antes de usar
+      const dataEntregaFormatada = formData.dataEntrega 
+        ? new Date(formData.dataEntrega).toISOString().split('T')[0] 
+        : (model.dataEntrega ? new Date(model.dataEntrega).toISOString().split('T')[0] : undefined);
+      
       // Garantir que o model está sincronizado com formData antes de salvar
       const modelSincronizado: PedidoVenda = {
         ...model,
@@ -835,8 +856,8 @@ function PedidoVendaFormPage() {
         numeroOrdemCompra: formData.numeroOrdemCompra || model.numeroOrdemCompra,
         dataEmissao: formData.dataEmissao || (model.dataEmissao ? new Date(model.dataEmissao).toISOString().split('T')[0] : undefined),
         dataPrevisaoEntrega: formData.dataPrevisao ? new Date(formData.dataPrevisao).toISOString().split('T')[0] : (model.dataPrevisaoEntrega ? new Date(model.dataPrevisaoEntrega).toISOString().split('T')[0] : undefined),
-        dataEntrega: formData.dataEntrega ? new Date(formData.dataEntrega).toISOString().split('T')[0] : (model.dataEntrega ? new Date(model.dataEntrega).toISOString().split('T')[0] : undefined),
-        status: formData.status || model.status || 'rascunho',
+        dataEntrega: dataEntregaFormatada,
+        status: (confirmarEntrega && dataEntregaFormatada) ? ('entregue' as any) : (formData.status || model.status || 'rascunho'),
         orcamentoId: model.orcamentoId, // Preservar orcamentoId do model original
         observacoes: formData.observacoes || model.observacoes,
       };
@@ -919,8 +940,15 @@ function PedidoVendaFormPage() {
         }
       });
       
+      // Log do payload antes de enviar
+      console.log('[Vendas Page] Payload antes de salvar:', JSON.stringify(modelToSave, null, 2));
+      console.log('[Vendas Page] É novo pedido?', isNovo);
+      
+      let savedId = id;
+      
       if (isNovo) {
         const saved = await criarPedidoVenda(modelToSave);
+        savedId = saved.id;
         openSuccess({
           title: 'Pedido de Venda Salvo',
           message: 'Pedido de Venda criado com sucesso!',
@@ -934,6 +962,12 @@ function PedidoVendaFormPage() {
           title: 'Pedido de Venda Salvo',
           message: 'Pedido de Venda atualizado com sucesso!'
         });
+      }
+      
+      // Se data de entrega está preenchida e ainda não foi entregue, fazer lançamento de estoque
+      const dataEntrega = modelToSave.dataEntrega || model.dataEntrega || formData.dataEntrega;
+      if (dataEntrega && savedId && savedId !== 'novo') {
+        await fazerLancamentoEstoque(savedId, modelToSave, modelSincronizado);
       }
     } catch (e: any) {
       console.error('[Vendas Page] Erro completo:', e);
@@ -973,7 +1007,7 @@ function PedidoVendaFormPage() {
     );
   }
 
-  const blocked = model.status === 'finalizado' || pedidoVendaBloqueado;
+  const blocked = model.status === 'finalizado' || model.status === 'entregue' || pedidoVendaBloqueado;
   const round2 = (n: any) => Number.isFinite(Number(n)) ? Math.round(Number(n) * 100) / 100 : 0;
   const round4 = (n: any) => Number.isFinite(Number(n)) ? Math.round(Number(n) * 10000) / 10000 : 0;
 
@@ -1027,7 +1061,9 @@ function PedidoVendaFormPage() {
     } else if (field === 'dataPrevisao') {
       setModel(prev => ({ ...prev, dataPrevisaoEntrega: value ? new Date(value).toISOString() : null }));
     } else if (field === 'dataEntrega') {
-      setModel(prev => ({ ...prev, dataEntrega: value ? new Date(value).toISOString() : null }));
+      const dataEntregaValue = value ? new Date(value).toISOString() : null;
+      setModel(prev => ({ ...prev, dataEntrega: dataEntregaValue }));
+      // Não atualizar status automaticamente - só após salvar com confirmação no modal
     } else if (field === 'observacoes') {
       setModel(prev => ({ ...prev, observacoes: value }));
     } else if (field === 'status') {
@@ -1117,6 +1153,74 @@ function PedidoVendaFormPage() {
       setOrcamentoOrigem(null);
     } finally {
       setIsLoadingOrcamentoOrigem(false);
+    }
+  };
+
+  // Função para fazer lançamento de estoque após salvar pedido com data de entrega
+  const fazerLancamentoEstoque = async (pedidoId: string, modelSalvo: any, modelCompleto: any) => {
+    if (!pedidoId || pedidoId === 'novo' || !token) return;
+    
+    try {
+      // Buscar a natureza de operação selecionada
+      const naturezaId = modelSalvo.naturezaOperacaoPadraoId || model.naturezaOperacaoPadraoId || formData.naturezaOperacao;
+      if (!naturezaId) {
+        warning('Atenção', 'Natureza de operação não selecionada. Não será possível movimentar estoque.');
+        return;
+      }
+      
+      // Buscar detalhes da natureza de operação
+      const natureza = naturezasOperacao.find((n: any) => n.id === naturezaId);
+      if (!natureza) {
+        warning('Atenção', 'Natureza de operação não encontrada. Não será possível movimentar estoque.');
+        return;
+      }
+      
+      // Verificar se a natureza movimenta estoque
+      if (!natureza.movimentaEstoque) {
+        return; // Natureza não movimenta estoque, não fazer nada
+      }
+      
+      // Verificar se tem local de estoque e itens
+      const estoqueId = modelSalvo.localEstoqueId || model.localEstoqueId || localEstoqueId;
+      if (!estoqueId) {
+        warning('Atenção', 'Local de estoque não selecionado. Não será possível movimentar estoque.');
+        return;
+      }
+      
+      const itensComProduto = (modelCompleto.itens || model.itens || []).filter((item: any) => item.produtoId);
+      if (itensComProduto.length === 0) {
+        warning('Atenção', 'Nenhum item com produto encontrado. Não será possível movimentar estoque.');
+        return;
+      }
+      
+      // Preparar itens para a API
+      const itensParaEstoque = itensComProduto.map((item: any) => ({
+        produtoId: item.produtoId,
+        quantidade: item.quantidade || item.qtd || 0
+      }));
+      
+      // Chamar API de entregar para fazer lançamento de estoque
+      const companyId = modelSalvo.companyId || model.companyId || activeCompanyId || user?.companies?.[0]?.id;
+      if (!companyId) {
+        error('Erro', 'Company ID não encontrado');
+        return;
+      }
+      
+      await entregarPedidoVenda(
+        pedidoId,
+        companyId,
+        estoqueId,
+        natureza,
+        itensParaEstoque,
+        'entregue'
+      );
+      
+      success('Estoque Atualizado', 'Lançamento no kardex realizado e saldos atualizados automaticamente!');
+      
+    } catch (err: any) {
+      console.error('Erro ao fazer lançamento de estoque:', err);
+      const errorMessage = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Erro ao fazer lançamento de estoque';
+      error('Erro', errorMessage);
     }
   };
 
@@ -2544,6 +2648,15 @@ function PedidoVendaFormPage() {
                     Voltar
                   </Button>
                   
+                  <Button
+                    onClick={() => router.push('/vendas/novo')}
+                    variant="outline"
+                    className="px-6 py-3 border-purple-300 text-purple-700 hover:bg-purple-50 font-semibold rounded-xl transition-all duration-200"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Novo Pedido
+                  </Button>
+                  
                   {!blocked && (
                     <Button
                       onClick={handleSalvar}
@@ -2579,6 +2692,82 @@ function PedidoVendaFormPage() {
 
         {/* Toast Container */}
         <ToastContainer toasts={toasts} />
+
+        {/* Modal de Confirmação de Entrega */}
+        <AnimatePresence>
+          {showModalEntrega && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+              onClick={() => setShowModalEntrega(false)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-5 text-white">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-white/20 rounded-lg">
+                        <Truck className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold">Confirmar Entrega do Pedido</h2>
+                        <p className="text-purple-100 text-sm mt-1">O pedido será marcado como entregue</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowModalEntrega(false)}
+                      className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
+                    <div className="flex items-start">
+                      <AlertCircle className="h-5 w-5 text-yellow-600 mr-3 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-yellow-800">Atenção!</p>
+                        <p className="text-sm text-yellow-700 mt-1">
+                          Ao confirmar a entrega, o pedido será marcado como <strong>"Entregue"</strong> e <strong>não poderá mais ser editado</strong>. 
+                          O lançamento de estoque será realizado automaticamente se a natureza de operação movimentar estoque.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end space-x-3 pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowModalEntrega(false)}
+                      className="px-6 py-2 border-gray-300 text-gray-700 hover:bg-gray-50"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      onClick={async () => {
+                        setShowModalEntrega(false);
+                        await salvar(true); // Passar true para confirmar entrega
+                      }}
+                      className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+                    >
+                      Confirmar Entrega
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </Layout>
   );
