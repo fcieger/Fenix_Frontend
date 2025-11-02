@@ -21,9 +21,22 @@ export async function GET(request: NextRequest) {
     await ensureCoreSchema(client)
     const { searchParams } = new URL(request.url)
     const localId = searchParams.get('localId')
+    const companyId = searchParams.get('companyId')
 
-    const whereLocal = localId ? `WHERE COALESCE(m."localDestinoId", m."localOrigemId") = $1` : ''
-    const params = localId ? [localId] : []
+    const whereConditions: string[] = []
+    const params: any[] = []
+    let c = 0
+    
+    if (localId) { 
+      whereConditions.push(`COALESCE(m."localDestinoId", m."localOrigemId") = $${++c}`); 
+      params.push(localId) 
+    }
+    if (companyId) { 
+      whereConditions.push(`m."companyId" = $${++c}`); 
+      params.push(companyId) 
+    }
+    
+    const whereClause = whereConditions.length ? `WHERE ${whereConditions.join(' AND ')}` : ''
 
     const sql = `
       WITH saldos AS (
@@ -31,7 +44,7 @@ export async function GET(request: NextRequest) {
                SUM(CASE WHEN m.tipo IN ('entrada','transferencia') AND m."localDestinoId" IS NOT NULL THEN m.qtd ELSE 0 END)
                - SUM(CASE WHEN m.tipo IN ('saida','ajuste') AND m."localOrigemId" IS NOT NULL THEN m.qtd ELSE 0 END) AS qtd
         FROM estoque_movimentos m
-        ${whereLocal}
+        ${whereClause}
         GROUP BY m."produtoId"
       )
       SELECT 

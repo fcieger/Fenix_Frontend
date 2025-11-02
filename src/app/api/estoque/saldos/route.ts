@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const produtoId = searchParams.get('produtoId')
     const localId = searchParams.get('localId')
+    const companyId = searchParams.get('companyId')
     const categoriaId = searchParams.get('categoriaId') // futuro
 
     const whereMov: string[] = []
@@ -29,6 +30,7 @@ export async function GET(request: NextRequest) {
     let c = 0
     if (produtoId) { whereMov.push('m."produtoId" = $' + (++c)); params.push(produtoId) }
     if (localId) { whereMov.push('(COALESCE(m."localOrigemId", \'00000000-0000-0000-0000-000000000000\') = $' + (++c) + ' OR COALESCE(m."localDestinoId", \'00000000-0000-0000-0000-000000000000\') = $' + c + ')'); params.push(localId) }
+    if (companyId) { whereMov.push('m."companyId" = $' + (++c)); params.push(companyId) }
 
     const sql = `
       WITH rows AS (

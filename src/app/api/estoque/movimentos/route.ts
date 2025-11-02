@@ -128,9 +128,9 @@ export async function GET(request: NextRequest) {
         ld.nome as local_destino_nome,
         ld.codigo as local_destino_codigo
       FROM estoque_movimentos m
-      LEFT JOIN produtos p ON p.id = m."produtoId"
-      LEFT JOIN locais_estoque lo ON lo.id = m."localOrigemId"
-      LEFT JOIN locais_estoque ld ON ld.id = m."localDestinoId"
+      LEFT JOIN produtos p ON p.id = m."produtoId" AND p."companyId" = m."companyId"
+      LEFT JOIN locais_estoque lo ON lo.id = m."localOrigemId" AND lo."companyId" = m."companyId"
+      LEFT JOIN locais_estoque ld ON ld.id = m."localDestinoId" AND ld."companyId" = m."companyId"
       ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
       ORDER BY m."dataMov" DESC
       LIMIT 500
