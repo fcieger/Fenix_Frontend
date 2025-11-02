@@ -8,14 +8,20 @@ function getPool(): Pool {
   if (!pool) {
     // Priorizar DATABASE_URL se disponível (para produção/Vercel)
     if (process.env.DATABASE_URL) {
+      console.log('🔌 Usando DATABASE_URL para conexão');
       pool = new Pool({
         connectionString: process.env.DATABASE_URL,
         max: 20,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 2000,
+        ssl: process.env.DATABASE_URL?.includes('neon.tech') || process.env.NODE_ENV === 'production' 
+          ? { rejectUnauthorized: false } 
+          : undefined,
       });
     } else {
       // Fallback para configuração manual (desenvolvimento local)
+      console.warn('⚠️ DATABASE_URL não encontrado, usando configuração local');
+      console.warn('⚠️ Isso pode causar erros em produção. Configure DATABASE_URL na Vercel.');
       pool = new Pool({
         host: process.env.DB_HOST || 'localhost',
         port: parseInt(process.env.DB_PORT || '5432'),
@@ -33,13 +39,30 @@ function getPool(): Pool {
 
 // Função para executar queries
 export async function query(text: string, params?: any[]) {
-  const pool = getPool();
-  const client = await pool.connect();
   try {
-    const result = await client.query(text, params);
-    return result;
-  } finally {
-    client.release();
+    const pool = getPool();
+    const client = await pool.connect();
+    try {
+      const result = await client.query(text, params);
+      return result;
+    } finally {
+      client.release();
+    }
+  } catch (error: any) {
+    // Log detalhado do erro de conexão
+    if (error.message?.includes('ECONNREFUSED') || error.message?.includes('connect')) {
+      const hasDatabaseUrl = !!process.env.DATABASE_URL;
+      console.error('❌ Erro de conexão ao banco de dados:');
+      console.error('   - DATABASE_URL configurado?', hasDatabaseUrl);
+      console.error('   - NODE_ENV:', process.env.NODE_ENV);
+      console.error('   - Erro:', error.message);
+      if (!hasDatabaseUrl) {
+        console.error('   ⚠️ DATABASE_URL não está configurado na Vercel!');
+        console.error('   ⚠️ Configure DATABASE_URL nas variáveis de ambiente da Vercel.');
+      }
+      throw new Error(`Erro de conexão ao banco de dados. ${hasDatabaseUrl ? 'Verifique se DATABASE_URL está correto.' : 'DATABASE_URL não está configurado. Configure nas variáveis de ambiente da Vercel.'}`);
+    }
+    throw error;
   }
 }
 
