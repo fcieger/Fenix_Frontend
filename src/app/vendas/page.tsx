@@ -35,7 +35,7 @@ import { listarPedidosVenda, excluirPedidoVenda, obterPedidoVenda } from '../../
 
 export default function PedidosVendaPage() {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, activeCompanyId } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -61,7 +61,14 @@ export default function PedidosVendaPage() {
       try {
         setIsLoadingPedidoVendas(true);
         setError(null);
-        const result = await listarPedidosVenda();
+        
+        // Enviar companyId como parâmetro
+        const params: any = {};
+        if (activeCompanyId) {
+          params.companyId = activeCompanyId;
+        }
+        
+        const result = await listarPedidosVenda(params);
         
         // Garantir que result é um array
         const resultArray = Array.isArray(result) ? result : (result?.data || result?.items || []);
@@ -88,10 +95,10 @@ export default function PedidosVendaPage() {
       }
     };
 
-    if (isAuthenticated) {
+    if (isAuthenticated && activeCompanyId) {
       loadPedidoVendas();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, activeCompanyId]);
 
   if (isLoading) {
     return (
