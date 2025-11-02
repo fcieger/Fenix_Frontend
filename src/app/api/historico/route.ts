@@ -5,12 +5,23 @@ import { ensureHistorySchema } from '@/lib/history';
 let pool: Pool | null = null;
 function getPool(): Pool {
   if (!pool) {
-    pool = new Pool({
-      connectionString: process.env.DATABASE_URL || 'postgresql://postgres:fenix123@localhost:5432/fenix',
-      max: 20,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
-    });
+    // Priorizar DATABASE_URL se disponível (para produção/Vercel)
+    if (process.env.DATABASE_URL) {
+      pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        max: 20,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 2000,
+      });
+    } else {
+      // Fallback para desenvolvimento local
+      pool = new Pool({
+        connectionString: 'postgresql://postgres:fenix123@localhost:5432/fenix',
+        max: 20,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 2000,
+      });
+    }
   }
   return pool;
 }

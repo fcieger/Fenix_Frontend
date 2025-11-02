@@ -2,16 +2,35 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import { logHistory } from '@/lib/history';
 
-const pool = new Pool({
-  connectionString:
-    process.env.DATABASE_URL || 'postgresql://postgres:fenix123@localhost:5432/fenix',
-});
+let pool: Pool | null = null;
+function getPool(): Pool {
+  if (!pool) {
+    // Priorizar DATABASE_URL se disponível (para produção/Vercel)
+    if (process.env.DATABASE_URL) {
+      pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        max: 20,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 2000,
+      });
+    } else {
+      // Fallback para desenvolvimento local
+      pool = new Pool({
+        connectionString: 'postgresql://postgres:fenix123@localhost:5432/fenix',
+        max: 20,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 2000,
+      });
+    }
+  }
+  return pool;
+}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const client = await pool.connect();
+  const client = await getPool().connect();
   
   try {
     const { id } = params;
@@ -99,7 +118,7 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const client = await pool.connect();
+  const client = await getPool().connect();
   
   try {
     const { id } = params;
@@ -364,7 +383,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const client = await pool.connect();
+  const client = await getPool().connect();
   
   try {
     const { id } = params;
