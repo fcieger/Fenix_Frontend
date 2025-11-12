@@ -35,13 +35,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(userData)
       // Definir primeira empresa como ativa se existir
       if (userData.companies && userData.companies.length > 0) {
-        setActiveCompanyId(userData.companies[0].id)
-        // console.log('🏢 Empresa ativa definida:', userData.companies[0].id);
+        const companyId = userData.companies[0].id;
+        setActiveCompanyId(companyId);
+        localStorage.setItem('activeCompanyId', companyId);
+        // console.log('🏢 Empresa ativa definida:', companyId);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erro ao carregar perfil:', error)
+      
+      // Se for erro 401 ou 404 (token inválido ou usuário não encontrado), redirecionar
+      const errorMessage = error?.message || '';
+      if (errorMessage.includes('401') || errorMessage.includes('404') || errorMessage.includes('não encontrado')) {
+        console.log('🔄 Token inválido detectado, redirecionando para limpeza...');
+        localStorage.removeItem('fenix_token')
+        localStorage.removeItem('activeCompanyId')
+        setToken(null)
+        setUser(null)
+        setActiveCompanyId(null)
+        
+        // Redirecionar para página de limpeza
+        if (typeof window !== 'undefined') {
+          window.location.href = '/clear-token';
+          return;
+        }
+      }
+      
       // Token inválido, limpar dados
       localStorage.removeItem('fenix_token')
+      localStorage.removeItem('activeCompanyId')
       setToken(null)
       setUser(null)
       setActiveCompanyId(null)
@@ -65,8 +86,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Definir primeira empresa como ativa se existir
       if (response.user.companies && response.user.companies.length > 0) {
-        setActiveCompanyId(response.user.companies[0].id)
-        console.log('🏢 Empresa ativa definida:', response.user.companies[0].id);
+        const companyId = response.user.companies[0].id;
+        setActiveCompanyId(companyId);
+        localStorage.setItem('activeCompanyId', companyId);
+        console.log('🏢 Empresa ativa definida:', companyId);
       }
     } catch (error) {
       console.error('❌ Erro no login:', error);
@@ -117,7 +140,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Definir primeira empresa como ativa se existir
       if (response.user.companies && response.user.companies.length > 0) {
-        setActiveCompanyId(response.user.companies[0].id)
+        const companyId = response.user.companies[0].id;
+        setActiveCompanyId(companyId);
+        localStorage.setItem('activeCompanyId', companyId);
       }
     } catch (error) {
       throw error
@@ -131,10 +156,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null)
     setActiveCompanyId(null)
     localStorage.removeItem('fenix_token')
+    localStorage.removeItem('activeCompanyId')
   }
 
   const setActiveCompany = (companyId: string) => {
     setActiveCompanyId(companyId)
+    localStorage.setItem('activeCompanyId', companyId)
   }
 
   const value = {
