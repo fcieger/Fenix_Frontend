@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { UserService, UserCompanyService } from '@/lib/database-service';
+import { extractUserIdFromToken } from '@/lib/auth-utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,19 +13,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const token = authHeader.substring(7);
+    const token = authHeader.substring(7).trim();
     
-    // Extrair user ID do token (formato: mock-jwt-token-{userId}-{timestamp})
-    // O UUID tem formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-    const tokenMatch = token.match(/^mock-jwt-token-(.{36})-\d+$/);
-    if (!tokenMatch) {
+    // Extrair user ID do token (suporta JWT e formato mock)
+    const userId = extractUserIdFromToken(token);
+    
+    if (!userId) {
       return NextResponse.json(
-        { message: 'Token inválido' },
+        { message: 'Token inválido ou expirado' },
         { status: 401 }
       );
     }
-    
-    const userId = tokenMatch[1];
     
     // Buscar usuário no banco
     const user = await UserService.findById(userId);
