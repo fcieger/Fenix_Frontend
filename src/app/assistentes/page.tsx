@@ -18,7 +18,10 @@ import {
   Rocket,
   Zap,
   Shield,
-  Target
+  Target,
+  FileText,
+  Camera,
+  Sparkles
 } from 'lucide-react';
 
 export default function AssistentesPage() {
@@ -78,6 +81,23 @@ export default function AssistentesPage() {
         'Classificação tributária inteligente'
       ],
       status: 'Ativo'
+    },
+    {
+      id: 'ia-compras',
+      title: 'IA: Lançar Nota Fiscal',
+      description: 'Tire uma foto da nota fiscal de compra e deixe a IA processar tudo automaticamente. Extrai dados completos da nota, identifica produtos, valores e cria o pedido de compra em segundos.',
+      icon: Camera,
+      color: 'from-orange-500 to-red-500',
+      href: '/compras/ia-lancar',
+      features: [
+        'OCR avançado para leitura de notas fiscais',
+        'Extração automática de fornecedor e produtos',
+        'Detecção de valores, quantidades e impostos',
+        'Criação automática de pedido de compra',
+        'Processamento em ~1 minuto'
+      ],
+      status: 'Ativo',
+      badge: 'NOVO'
     }
   ];
 
@@ -107,7 +127,7 @@ export default function AssistentesPage() {
         </div>
 
         {/* Assistents Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {assistentes.map((assistente, index) => {
             const Icon = assistente.icon;
             return (
@@ -128,9 +148,16 @@ export default function AssistentesPage() {
                           <Icon className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                          <h3 className="text-xl font-bold text-gray-900 mb-1">
-                            {assistente.title}
-                          </h3>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="text-xl font-bold text-gray-900">
+                              {assistente.title}
+                            </h3>
+                            {assistente.badge && (
+                              <span className="px-2 py-0.5 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold rounded-full">
+                                {assistente.badge}
+                              </span>
+                            )}
+                          </div>
                           <div className="flex items-center">
                             <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
                             <span className="text-sm text-green-600 font-medium">{assistente.status}</span>
@@ -260,6 +287,13 @@ export default function AssistentesPage() {
               >
                 <Package className="w-5 h-5" />
                 <span>Assistente de Produtos</span>
+              </button>
+              <button
+                onClick={() => router.push('/compras/ia-lancar')}
+                className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:opacity-90 transition-all duration-200 flex items-center justify-center space-x-2"
+              >
+                <Camera className="w-5 h-5" />
+                <span>IA: Lançar NF</span>
               </button>
             </div>
           </div>
