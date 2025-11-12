@@ -87,17 +87,19 @@ function NaturezaOperacaoForm() {
   const loadNaturezaData = async (id: string) => {
     try {
       setIsLoadingData(true);
-      const natureza = await apiService.getNaturezaOperacao(id, token);
+      const natureza = await apiService.getNaturezaOperacao(id, token, activeCompanyId);
+      
+      console.log('📥 Natureza carregada:', natureza);
       
       setFormData({
         nome: natureza.nome || '',
         cfop: natureza.cfop || '',
         tipo: natureza.tipo || 'vendas',
-        movimentaEstoque: natureza.movimentaEstoque || false,
-        habilitado: natureza.habilitado || true,
-        considerarOperacaoComoFaturamento: natureza.considerarOperacaoComoFaturamento || false,
-        destacarTotalImpostosIBPT: natureza.destacarTotalImpostosIBPT || false,
-        gerarContasReceberPagar: natureza.gerarContasReceberPagar || false,
+        movimentaEstoque: natureza.movimentaEstoque === true,
+        habilitado: natureza.habilitado !== false,
+        considerarOperacaoComoFaturamento: natureza.considerarOperacaoComoFaturamento === true,
+        destacarTotalImpostosIBPT: natureza.destacarTotalImpostosIBPT === true,
+        gerarContasReceberPagar: natureza.gerarContasReceberPagar === true,
         tipoDataContasReceberPagar: natureza.tipoDataContasReceberPagar || 'data_emissao',
         informacoesAdicionaisFisco: natureza.informacoesAdicionaisFisco || '',
         informacoesAdicionaisContribuinte: natureza.informacoesAdicionaisContribuinte || ''
@@ -166,11 +168,20 @@ function NaturezaOperacaoForm() {
           informacoesAdicionaisContribuinte: formData.informacoesAdicionaisContribuinte || undefined
         };
 
+        console.log('📦 Dados a serem salvos:', naturezaData);
+        console.log('🏢 Company ID:', activeCompanyId);
+        console.log('🔍 TIPO sendo enviado:', naturezaData.tipo, 'tipo:', typeof naturezaData.tipo);
+        
+        const payloadToSave = { ...naturezaData, companyId: activeCompanyId };
+        console.log('📤 Payload completo a ser enviado:', JSON.stringify(payloadToSave, null, 2));
+
         if (isEditMode) {
-          await apiService.updateNaturezaOperacao(naturezaId, naturezaData, token);
+          console.log('🔄 Atualizando natureza:', naturezaId, 'com dados:', payloadToSave);
+          await apiService.updateNaturezaOperacao(naturezaId, payloadToSave as any, token);
           openSuccess({ title: 'Atualizado com sucesso', message: 'Natureza de operação atualizada.', onClose: () => router.push('/impostos/natureza-operacao') });
         } else {
-          await apiService.createNaturezaOperacao(naturezaData, token);
+          console.log('🆕 Criando natureza com dados:', payloadToSave);
+          await apiService.createNaturezaOperacao(payloadToSave as any, token);
           openSuccess({ title: 'Salvo com sucesso', message: 'Natureza de operação criada.', onClose: () => router.push('/impostos/natureza-operacao') });
         }
         
@@ -369,6 +380,7 @@ function NaturezaOperacaoForm() {
                           />
                           <span className="ml-3 text-sm text-gray-700">Destacar Total de Impostos IBPT</span>
                         </label>
+
 
                         <div className="space-y-2">
                           <label className="flex items-center">
