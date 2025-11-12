@@ -343,9 +343,10 @@ export async function POST(request: NextRequest) {
     } else {
       itens.forEach((item, index) => {
         const numItem = index + 1;
-        if (!item.naturezaOperacaoId) {
-          erros.push(`Item ${numItem}: naturezaOperacaoId é obrigatório`);
-        }
+        // naturezaOperacaoId é opcional para pedidos via OCR (será definida depois)
+        // if (!item.naturezaOperacaoId) {
+        //   erros.push(`Item ${numItem}: naturezaOperacaoId é obrigatório`);
+        // }
         if (!item.nome || item.nome.trim() === '') {
           erros.push(`Item ${numItem}: nome é obrigatório`);
         }
@@ -353,10 +354,10 @@ export async function POST(request: NextRequest) {
           erros.push(`Item ${numItem}: unidade é obrigatória`);
         }
         if (!item.quantidade || Number(item.quantidade) <= 0) {
-          erros.push(`Item ${numItem}: quantidade deve ser maior que zero`);
+          erros.push(`Item ${numItem}: quantidade deve ser maior que zero (atual: ${item.quantidade})`);
         }
-        if (!item.precoUnitario || Number(item.precoUnitario) <= 0) {
-          erros.push(`Item ${numItem}: precoUnitario deve ser maior que zero`);
+        if (item.precoUnitario !== undefined && item.precoUnitario !== null && Number(item.precoUnitario) < 0) {
+          erros.push(`Item ${numItem}: precoUnitario não pode ser negativo (atual: ${item.precoUnitario})`);
         }
       });
     }
@@ -541,6 +542,54 @@ export async function POST(request: NextRequest) {
     const pedidoCriado = insertPedidoQuery.rows[0];
     const pedidoId = pedidoCriado.id;
 
+    console.log('[API Pedidos Compra] ✅ Pedido criado com sucesso:', {
+      id: pedidoId,
+      numero: pedidoCriado.numero,
+      dataEmissao: pedidoCriado.dataEmissao,
+      status: pedidoCriado.status,
+      totalGeral: pedidoCriado.totalGeral,
+      companyId: pedidoCriado.companyId
+    });
+
+    // Buscar ou criar natureza de operação padrão para itens sem naturezaOperacaoId
+    let naturezaOperacaoPadraoId = null;
+    const itensComNaturezaFaltante = itens.filter(item => !item.naturezaOperacaoId);
+    
+    if (itensComNaturezaFaltante.length > 0) {
+      console.log(`⚠️ ${itensComNaturezaFaltante.length} itens sem naturezaOperacaoId, buscando padrão...`);
+      
+      // Buscar natureza de operação padrão
+      const naturezaPadrao = await query(`
+        SELECT id FROM naturezas_operacao
+        WHERE "companyId" = $1
+        AND tipo = 'compras'
+        AND habilitado = true
+        LIMIT 1
+      `, [companyId]);
+      
+      if (naturezaPadrao.rows.length > 0) {
+        naturezaOperacaoPadraoId = naturezaPadrao.rows[0].id;
+        console.log(`✅ Usando natureza padrão: ${naturezaOperacaoPadraoId}`);
+      } else {
+        // Criar natureza de operação padrão
+        console.log('📝 Criando natureza de operação padrão para compras...');
+        const novaNatureza = await query(`
+          INSERT INTO naturezas_operacao (
+            "companyId",
+            nome,
+            cfop,
+            tipo,
+            "movimentaEstoque",
+            habilitado
+          ) VALUES (
+            $1, 'Compra de Mercadorias', '1102', 'compras', true, true
+          ) RETURNING id
+        `, [companyId]);
+        naturezaOperacaoPadraoId = novaNatureza.rows[0].id;
+        console.log(`✅ Natureza padrão criada: ${naturezaOperacaoPadraoId}`);
+      }
+    }
+
     // Inserir itens se houver
     if (itens && Array.isArray(itens) && itens.length > 0) {
       for (let i = 0; i < itens.length; i++) {
@@ -574,6 +623,17 @@ export async function POST(request: NextRequest) {
             totalItem
           });
 
+          // Usar naturezaOperacaoId do item ou o padrão
+          const naturezaOperacaoIdFinal = item.naturezaOperacaoId || naturezaOperacaoPadraoId;
+          
+          if (!naturezaOperacaoIdFinal) {
+            console.error(`❌ Item ${i + 1}: naturezaOperacaoId não encontrada`);
+            return NextResponse.json(
+              { success: false, error: `Item ${i + 1}: naturezaOperacaoId não encontrada e não foi possível criar padrão` },
+              { status: 400 }
+            );
+          }
+          
           await query(`
             INSERT INTO pedidos_compra_itens (
               "pedidoCompraId",
@@ -623,7 +683,7 @@ export async function POST(request: NextRequest) {
             item.unidade || 'UN',
             item.ncm || null,
             item.cest || null,
-            item.naturezaOperacaoId, // Já validado que existe
+            naturezaOperacaoIdFinal, // Usa o do item ou o padrão
             quantidade, // Já convertido e validado
             precoUnitario, // Já convertido e validado
             item.descontoValor || 0,
