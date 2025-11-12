@@ -29,9 +29,24 @@ import {
   XCircle
 } from 'lucide-react';
 
+// Helper para exibir labels do tipo de operação
+const getTipoLabel = (tipo?: string) => {
+  const labels: Record<string, string> = {
+    'compras': 'Compras',
+    'vendas': 'Vendas',
+    'servicos': 'Serviços',
+    'frente_caixa': 'Frente de Caixa',
+    'ecommerce': 'E-commerce',
+    'devolucao_vendas': 'Devolução de Vendas',
+    'devolucao_compras': 'Devolução de Compras',
+    'outras_movimentacoes': 'Outras Movimentações'
+  };
+  return labels[tipo || ''] || tipo?.replace('_', ' ') || 'Não definido';
+};
+
 export default function NaturezaOperacaoPage() {
   const router = useRouter();
-  const { isAuthenticated, token } = useAuth();
+  const { isAuthenticated, token, activeCompanyId } = useAuth();
   const { openConfirm } = useFeedback();
   const [naturezas, setNaturezas] = useState<NaturezaOperacao[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -49,16 +64,28 @@ export default function NaturezaOperacaoPage() {
       return;
     }
 
-    if (token) {
+    if (token && activeCompanyId) {
       loadNaturezas();
     }
-  }, [isAuthenticated, token, router]);
+  }, [isAuthenticated, token, activeCompanyId, router]);
 
   const loadNaturezas = async () => {
     try {
       setIsLoading(true);
-      if (token) {
-        const data = await apiService.getNaturezasOperacao();
+      if (token && activeCompanyId) {
+        const data = await apiService.getNaturezasOperacao(activeCompanyId);
+        console.log('📦 Naturezas carregadas:', data);
+        console.log('📦 Primeira natureza:', data[0] ? {
+          nome: data[0].nome,
+          frenteDeCaixa: data[0].frenteDeCaixa,
+          considerarOperacaoComoFaturamento: data[0].considerarOperacaoComoFaturamento,
+          destacarTotalImpostosIBPT: data[0].destacarTotalImpostosIBPT,
+          gerarContasReceberPagar: data[0].gerarContasReceberPagar,
+          tipos: {
+            frenteDeCaixa: typeof data[0].frenteDeCaixa,
+            considerarOperacaoComoFaturamento: typeof data[0].considerarOperacaoComoFaturamento,
+          }
+        } : 'Nenhuma natureza');
         setNaturezas(data);
       }
     } catch (error) {
@@ -332,8 +359,8 @@ export default function NaturezaOperacaoPage() {
                               </span>
                             </td>
                             <td className="px-3 lg:px-6 py-4 lg:py-6">
-                              <span className="text-xs lg:text-sm font-medium text-gray-900 capitalize bg-gray-100 px-2 lg:px-3 py-1 rounded-lg">
-                                {natureza.tipo?.replace('_', ' ') || 'Não definido'}
+                              <span className="text-xs lg:text-sm font-medium text-gray-900 bg-gray-100 px-2 lg:px-3 py-1 rounded-lg">
+                                {getTipoLabel(natureza.tipo)}
                               </span>
                             </td>
                             <td className="px-3 lg:px-6 py-4 lg:py-6">
@@ -360,24 +387,31 @@ export default function NaturezaOperacaoPage() {
                             </td>
                             <td className="px-3 lg:px-6 py-4 lg:py-6">
                               <div className="flex flex-wrap gap-1 lg:gap-2">
-                                {natureza.considerarOperacaoComoFaturamento && (
+                                {(natureza.frenteDeCaixa === true || natureza.frenteDeCaixa === 'true' || natureza.frenteDeCaixa === 1) && (
+                                  <span className="inline-flex items-center px-2 lg:px-3 py-1 rounded-lg text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
+                                    🏪 <span className="hidden lg:inline">Frente de Caixa</span>
+                                    <span className="lg:hidden">Caixa</span>
+                                  </span>
+                                )}
+                                {(natureza.considerarOperacaoComoFaturamento === true || natureza.considerarOperacaoComoFaturamento === 'true') && (
                                   <span className="inline-flex items-center px-2 lg:px-3 py-1 rounded-lg text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
                                     💰 <span className="hidden lg:inline">Faturamento</span>
                                   </span>
                                 )}
-                                {natureza.destacarTotalImpostosIBPT && (
+                                {(natureza.destacarTotalImpostosIBPT === true || natureza.destacarTotalImpostosIBPT === 'true') && (
                                   <span className="inline-flex items-center px-2 lg:px-3 py-1 rounded-lg text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
                                     📊 <span className="hidden lg:inline">IBPT</span>
                                   </span>
                                 )}
-                                {natureza.gerarContasReceberPagar && (
+                                {(natureza.gerarContasReceberPagar === true || natureza.gerarContasReceberPagar === 'true') && (
                                   <span className="inline-flex items-center px-2 lg:px-3 py-1 rounded-lg text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-200">
                                     📋 <span className="hidden lg:inline">Contas</span>
                                   </span>
                                 )}
-                                {!natureza.considerarOperacaoComoFaturamento && 
-                                 !natureza.destacarTotalImpostosIBPT && 
-                                 !natureza.gerarContasReceberPagar && (
+                                {!(natureza.frenteDeCaixa === true || natureza.frenteDeCaixa === 'true' || natureza.frenteDeCaixa === 1) && 
+                                 !(natureza.considerarOperacaoComoFaturamento === true || natureza.considerarOperacaoComoFaturamento === 'true') && 
+                                 !(natureza.destacarTotalImpostosIBPT === true || natureza.destacarTotalImpostosIBPT === 'true') && 
+                                 !(natureza.gerarContasReceberPagar === true || natureza.gerarContasReceberPagar === 'true') && (
                                   <span className="text-xs text-gray-400 italic">Nenhuma</span>
                                 )}
                               </div>
@@ -499,8 +533,8 @@ export default function NaturezaOperacaoPage() {
                           <div>
                             <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</label>
                             <div className="mt-1">
-                              <span className="text-xs font-medium text-gray-900 capitalize">
-                                {natureza.tipo?.replace('_', ' ') || 'Não definido'}
+                              <span className="text-xs font-medium text-gray-900">
+                                {getTipoLabel(natureza.tipo)}
                               </span>
                             </div>
                           </div>
@@ -510,17 +544,22 @@ export default function NaturezaOperacaoPage() {
                         <div className="mb-3">
                           <label className="text-xs font-medium text-gray-500 uppercase tracking-wider block mb-2">Configurações</label>
                           <div className="flex flex-wrap gap-1">
-                            {natureza.considerarOperacaoComoFaturamento && (
+                            {(natureza.frenteDeCaixa === true || natureza.frenteDeCaixa === 'true' || natureza.frenteDeCaixa === 1) && (
+                              <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-purple-100 text-purple-800">
+                                🏪 Frente de Caixa
+                              </span>
+                            )}
+                            {(natureza.considerarOperacaoComoFaturamento === true || natureza.considerarOperacaoComoFaturamento === 'true') && (
                               <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-yellow-100 text-yellow-800">
                                 💰 Faturamento
                               </span>
                             )}
-                            {natureza.destacarTotalImpostosIBPT && (
+                            {(natureza.destacarTotalImpostosIBPT === true || natureza.destacarTotalImpostosIBPT === 'true') && (
                               <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-orange-100 text-orange-800">
                                 📊 IBPT
                               </span>
                             )}
-                            {natureza.gerarContasReceberPagar && (
+                            {(natureza.gerarContasReceberPagar === true || natureza.gerarContasReceberPagar === 'true') && (
                               <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-indigo-100 text-indigo-800">
                                 📋 Contas
                               </span>
@@ -530,9 +569,10 @@ export default function NaturezaOperacaoPage() {
                                 📦 Estoque
                               </span>
                             )}
-                            {!natureza.considerarOperacaoComoFaturamento && 
-                             !natureza.destacarTotalImpostosIBPT && 
-                             !natureza.gerarContasReceberPagar && 
+                            {!(natureza.frenteDeCaixa === true || natureza.frenteDeCaixa === 'true' || natureza.frenteDeCaixa === 1) && 
+                             !(natureza.considerarOperacaoComoFaturamento === true || natureza.considerarOperacaoComoFaturamento === 'true') && 
+                             !(natureza.destacarTotalImpostosIBPT === true || natureza.destacarTotalImpostosIBPT === 'true') && 
+                             !(natureza.gerarContasReceberPagar === true || natureza.gerarContasReceberPagar === 'true') && 
                              !natureza.movimentaEstoque && (
                               <span className="text-xs text-gray-400 italic">Nenhuma configuração</span>
                             )}
