@@ -458,8 +458,15 @@ function PedidoVendaFormPage() {
         setUfErrorMessage(`Usando configuração de ${configuracaoFallback.uf} para UF ${ufDestinoAtual}`);
       }
 
+      const companyId = activeCompanyId || user?.companies?.[0]?.id;
+      
+      if (!companyId) {
+        console.error('❌ companyId não disponível para cálculo de impostos');
+        return;
+      }
+
       const payload = {
-        companyId: user?.companies?.[0]?.id || '',
+        companyId,
         clienteId: formData.cliente || null,
         naturezaOperacaoId,
         ufOrigem: ufOrigemAtual,
@@ -491,6 +498,7 @@ function PedidoVendaFormPage() {
         }))
       };
       
+      console.log('🔍 Payload para calcular impostos:', payload);
       const resp = await apiService.calcularImpostos(payload, token!);
       setImpostosCalc(resp);
       
@@ -526,6 +534,29 @@ function PedidoVendaFormPage() {
       setUltimaAtualizacaoImpostos(new Date().toLocaleString('pt-BR'));
     } catch (e:any) {
       console.error('❌ Falha ao calcular impostos', e);
+      const errorMessage = e?.message || 'Erro ao calcular impostos';
+      setUfErrorMessage(`Erro ao calcular impostos: ${errorMessage}`);
+      
+      // Calcular totais sem impostos
+      const totalProdutosSemImpostos = (model.itens || []).reduce((s: number, i: any)=> s + (Number(i.totalItem)||0), 0);
+      let totalPedidoSemImpostos = totalProdutosSemImpostos;
+      
+      // Despesas sempre são incluídas no total
+      totalPedidoSemImpostos += Number(formData.despesas||0);
+      
+      // Frete só é incluído se incluirFreteTotal estiver marcado
+      if (formData.incluirFreteTotal) {
+        totalPedidoSemImpostos += Number(formData.valorFrete||0);
+      }
+      
+      setImpostosCalc(null);
+      setTotais(prev => ({ 
+        ...prev, 
+        totalImpostos: 0, 
+        impostosAprox: 0, 
+        totalProdutos: totalProdutosSemImpostos,
+        totalPedido: totalPedidoSemImpostos
+      }));
     } finally {
       setIsCalculandoImpostos(false);
     }

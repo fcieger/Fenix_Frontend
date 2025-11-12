@@ -20,7 +20,8 @@ import {
   FileText,
   Clock,
   CheckCircle,
-  XCircle
+  XCircle,
+  History
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
