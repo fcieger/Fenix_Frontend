@@ -29,7 +29,8 @@ import {
   Truck,
   CreditCard,
   MapPin,
-  Pencil
+  Pencil,
+  Sparkles
 } from 'lucide-react';
 import { listarPedidosCompra, excluirPedidoCompra, obterPedidoCompra } from '../../services/pedidos-compra';
 
@@ -265,6 +266,13 @@ export default function PedidosCompraPage() {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                onClick={() => router.push('/compras/ia-lancar')}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                IA: Lançar NF
+              </Button>
               <Button
                 onClick={handleNewPedidoCompra}
                 className="bg-purple-600 hover:bg-purple-700 text-white"
