@@ -61,3 +61,4 @@ http.get(url, options, (res) => {
   console.error('❌ Erro na requisição:', err.message);
 });
 
+
