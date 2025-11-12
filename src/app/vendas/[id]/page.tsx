@@ -137,6 +137,7 @@ function PedidoVendaFormPage() {
   // formData completo com todos os campos da tela de vendas
   const [formData, setFormData] = useState({
     // Informações do Pedido de Venda
+    companyId: activeCompanyId || user?.companies?.[0]?.id || '',
     cliente: '',
     vendedor: '',
     transportadora: '',
@@ -235,8 +236,18 @@ function PedidoVendaFormPage() {
   useEffect(() => {
     if (activeCompanyId) {
       setModel(prev => ({ ...prev, companyId: activeCompanyId }));
+      setFormData(prev => ({ ...prev, companyId: activeCompanyId }));
     }
   }, [activeCompanyId]);
+
+  // Garantir que o companyId seja definido assim que o usuário estiver disponível
+  useEffect(() => {
+    if (user?.companies?.[0]?.id && !model.companyId) {
+      const companyId = user.companies[0].id;
+      setModel(prev => ({ ...prev, companyId }));
+      setFormData(prev => ({ ...prev, companyId }));
+    }
+  }, [user]);
 
   // Recarregar dados do cliente quando voltar da página de cadastros
   useEffect(() => {
@@ -458,12 +469,20 @@ function PedidoVendaFormPage() {
         setUfErrorMessage(`Usando configuração de ${configuracaoFallback.uf} para UF ${ufDestinoAtual}`);
       }
 
-      const companyId = activeCompanyId || user?.companies?.[0]?.id;
+      // Buscar companyId de várias fontes possíveis
+      const companyId = activeCompanyId || 
+                        user?.companies?.[0]?.id || 
+                        formData.companyId ||
+                        model?.companyId;
       
       if (!companyId) {
         console.error('❌ companyId não disponível para cálculo de impostos');
+        console.log('Debug:', { activeCompanyId, user, formData, model });
+        setUfErrorMessage('Empresa não identificada. Por favor, recarregue a página.');
         return;
       }
+      
+      console.log('✅ companyId identificado:', companyId);
 
       const payload = {
         companyId,
