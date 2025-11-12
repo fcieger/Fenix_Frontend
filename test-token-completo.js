@@ -146,3 +146,4 @@ if (tokenArg) {
   console.log('   node test-token-completo.js "seu-token-jwt-aqui"');
 }
 
+
