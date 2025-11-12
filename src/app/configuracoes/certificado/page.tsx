@@ -64,6 +64,10 @@ export default function CertificadoDigitalPage() {
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+    
+    // Resetar o valor do input para permitir selecionar o mesmo arquivo novamente
+    event.target.value = '';
+    
     if (!file) return;
 
     // Primeiro: validar apenas o arquivo (sem senha)
