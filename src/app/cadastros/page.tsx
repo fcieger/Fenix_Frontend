@@ -55,7 +55,7 @@ import CadastrosAIAssistant from '@/components/CadastrosAIAssistant';
 
 export default function CadastrosPage() {
   const router = useRouter();
-  const { user, token, logout, isAuthenticated, isLoading } = useAuth();
+  const { user, token, logout, isAuthenticated, isLoading, activeCompanyId } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -78,18 +78,18 @@ export default function CadastrosPage() {
   // Buscar cadastros do backend
   useEffect(() => {
     const fetchCadastros = async () => {
-      console.log('🔍 Estado de autenticação:', { isAuthenticated, token: !!token, isLoading });
+      console.log('🔍 Estado de autenticação:', { isAuthenticated, token: !!token, activeCompanyId });
       
-      if (!isAuthenticated || !token) {
-        console.log('❌ Não autenticado ou sem token:', { isAuthenticated, token: !!token });
+      if (!isAuthenticated || !token || !activeCompanyId) {
+        console.log('❌ Não autenticado, sem token ou sem company_id:', { isAuthenticated, token: !!token, activeCompanyId });
         return;
       }
       
       try {
-        console.log('🔍 Buscando cadastros com token:', token.substring(0, 20) + '...');
+        console.log('🔍 Buscando cadastros com token e company_id:', token.substring(0, 20) + '...', activeCompanyId);
         setIsLoadingCadastros(true);
         setError(null);
-        const data = await apiService.getCadastros();
+        const data = await apiService.getCadastros(activeCompanyId);
         console.log('✅ Cadastros carregados:', data);
         setCadastros(data);
       } catch (error) {
@@ -100,10 +100,10 @@ export default function CadastrosPage() {
       }
     };
 
-    if (isAuthenticated && token) {
+    if (isAuthenticated && token && activeCompanyId) {
       fetchCadastros();
     }
-  }, [isAuthenticated, token, isLoading]);
+  }, [isAuthenticated, token, activeCompanyId]);
 
   if (isLoading) {
     return (
