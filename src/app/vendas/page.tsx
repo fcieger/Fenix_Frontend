@@ -29,13 +29,18 @@ import {
   Truck,
   CreditCard,
   MapPin,
-  Pencil
+  Pencil,
+  Download,
+  X
 } from 'lucide-react';
 import { listarPedidosVenda, excluirPedidoVenda, obterPedidoVenda } from '../../services/pedidos-venda';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { exportPedidoVendaPDF } from '@/lib/pdf/exportPedidoVendaPDF';
+import { toast } from 'sonner';
 
 export default function PedidosVendaPage() {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading, activeCompanyId } = useAuth();
+  const { user, token, isAuthenticated, isLoading, activeCompanyId } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -48,6 +53,10 @@ export default function PedidosVendaPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [expandedPedidoVenda, setExpandedPedidoVenda] = useState<string | null>(null);
   const [pedidoVendaDetalhes, setPedidoVendaDetalhes] = useState<{[key: string]: any}>({});
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const [currentPdfPedido, setCurrentPdfPedido] = useState<{id: string, numero: string} | null>(null);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -181,6 +190,51 @@ export default function PedidosVendaPage() {
         }
       }
     }
+  };
+
+  const handleExportarPDF = async (pedidoId: string, numero: string) => {
+    if (!token || !activeCompanyId) {
+      toast.error('Token ou empresa não encontrado');
+      return;
+    }
+
+    setIsExportingPDF(true);
+
+    try {
+      const url = await exportPedidoVendaPDF({
+        pedidoId,
+        token,
+        companyId: activeCompanyId
+      });
+
+      setPdfUrl(url);
+      setCurrentPdfPedido({ id: pedidoId, numero });
+      setPdfModalOpen(true);
+      toast.success('PDF gerado com sucesso!');
+    } catch (error: any) {
+      console.error('Erro ao exportar PDF:', error);
+      toast.error(error.message || 'Erro ao gerar PDF do pedido de venda');
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
+  const handleDownloadPDF = () => {
+    if (!pdfUrl || !currentPdfPedido) return;
+    
+    const a = document.createElement('a');
+    a.href = pdfUrl;
+    a.download = `pedido-venda-${currentPdfPedido.numero}-${Date.now()}.pdf`;
+    a.click();
+  };
+
+  const handleClosePdfModal = () => {
+    if (pdfUrl) {
+      window.URL.revokeObjectURL(pdfUrl);
+      setPdfUrl(null);
+    }
+    setCurrentPdfPedido(null);
+    setPdfModalOpen(false);
   };
 
   const getStatusLabel = (status: string) => {
@@ -499,6 +553,16 @@ export default function PedidosVendaPage() {
                       <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
+                        onClick={() => handleExportarPDF(pv.id, pv.numero)}
+                        disabled={isExportingPDF}
+                        className="flex items-center justify-center w-10 h-10 rounded-xl bg-green-50 hover:bg-green-100 text-green-600 border border-green-200 hover:border-green-300 shadow-sm hover:shadow-md transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Exportar PDF"
+                      >
+                        <FileText className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => handleEdit(pv.id)}
                         className="flex items-center justify-center w-10 h-10 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-600 border border-purple-200 hover:border-purple-300 shadow-sm hover:shadow-md transition-all duration-200 group"
                         title="Editar"
@@ -605,6 +669,16 @@ export default function PedidosVendaPage() {
                             title="Visualizar"
                           >
                             <Eye className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => handleExportarPDF(pv.id, pv.numero)}
+                            disabled={isExportingPDF}
+                            className="flex items-center justify-center w-10 h-10 rounded-xl bg-green-50 hover:bg-green-100 text-green-600 border border-green-200 hover:border-green-300 shadow-sm hover:shadow-md transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Exportar PDF"
+                          >
+                            <FileText className="w-4 h-4 group-hover:scale-110 transition-transform" />
                           </motion.button>
                           <motion.button
                             whileHover={{ scale: 1.05 }}
@@ -952,6 +1026,51 @@ export default function PedidosVendaPage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* PDF Modal */}
+        <Dialog open={pdfModalOpen} onOpenChange={(open) => {
+          if (!open) handleClosePdfModal();
+        }}>
+          <DialogContent className="max-w-6xl w-[95vw] h-[95vh] p-0 flex flex-col">
+            <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-purple-600" />
+                  Pedido de Venda #{currentPdfPedido?.numero || 'N/A'} - PDF
+                </DialogTitle>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={handleDownloadPDF}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    Baixar PDF
+                  </Button>
+                  <Button
+                    onClick={handleClosePdfModal}
+                    variant="ghost"
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <X className="w-4 h-4" />
+                    Fechar
+                  </Button>
+                </div>
+              </div>
+            </DialogHeader>
+            <div className="flex-1 overflow-hidden min-h-0">
+              {pdfUrl && (
+                <iframe
+                  src={pdfUrl}
+                  className="w-full h-full border-0"
+                  title="PDF do Pedido de Venda"
+                />
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
