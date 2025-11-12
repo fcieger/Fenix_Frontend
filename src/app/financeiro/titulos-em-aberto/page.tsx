@@ -3,18 +3,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/auth-context';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, 
   Search, 
-  Filter,
-  Download,
   RefreshCw,
   Calendar,
   DollarSign,
@@ -29,7 +29,13 @@ import {
   ArrowLeft,
   Printer,
   Save,
-  FileCheck
+  FileCheck,
+  Clock,
+  X,
+  AlertTriangle,
+  CheckCircle2,
+  User,
+  Landmark
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -53,6 +59,8 @@ interface ParcelaTitulo {
   tipo_pagamento?: string;
   conta_corrente?: string;
   forma_pagamento?: string;
+  conta_corrente_id?: string;
+  forma_pagamento_id?: string;
 }
 
 export default function TitulosEmAbertoPage() {
@@ -67,7 +75,23 @@ export default function TitulosEmAbertoPage() {
   const [filtroDataInicial, setFiltroDataInicial] = useState<string>('');
   const [filtroDataFinal, setFiltroDataFinal] = useState<string>('');
   const [filtroTipo, setFiltroTipo] = useState<'todos' | 'receber' | 'pagar'>('todos');
-  const [expandedContas, setExpandedContas] = useState<Set<string>>(new Set());
+  
+  // Estados para quitação de parcela
+  const [quitarModalOpen, setQuitarModalOpen] = useState(false);
+  const [parcelasParaQuitar, setParcelasParaQuitar] = useState<ParcelaTitulo[]>([]);
+  const [contasBancarias, setContasBancarias] = useState<Array<{ id: string; descricao: string; banco_nome?: string }>>([]);
+  const [contaCorrenteSelecionada, setContaCorrenteSelecionada] = useState<string>('');
+  const [dataPagamento, setDataPagamento] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [quitarLoading, setQuitarLoading] = useState(false);
+  
+  // Estados para edição inline
+  const [formasPagamento, setFormasPagamento] = useState<Array<{ id: string; nome: string }>>([]);
+  const [edicoesParcelas, setEdicoesParcelas] = useState<Record<string, {
+    data_pagamento?: string;
+    data_compensacao?: string;
+    conta_corrente_id?: string;
+    forma_pagamento_id?: string;
+  }>>({});
 
   // Função para formatar moeda
   const formatCurrency = (value: number) => {
@@ -86,6 +110,64 @@ export default function TitulosEmAbertoPage() {
       return dateString;
     }
   };
+
+  // Carregar contas bancárias
+  const loadContasBancarias = useCallback(async () => {
+    if (!token || !activeCompanyId || authLoading) return;
+    
+    try {
+      const response = await fetch(`/api/contas?company_id=${activeCompanyId}&status=ativo`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && Array.isArray(data.data)) {
+          const contas = data.data.map((conta: any) => ({
+            id: conta.id,
+            descricao: conta.descricao || conta.banco_nome || 'Conta',
+            banco_nome: conta.banco_nome
+          })).sort((a: any, b: any) => a.descricao.localeCompare(b.descricao));
+          setContasBancarias(contas);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar contas bancárias:', error);
+    }
+  }, [token, activeCompanyId, authLoading]);
+
+  // Carregar formas de pagamento
+  const loadFormasPagamento = useCallback(async () => {
+    if (!token || !activeCompanyId || authLoading) return;
+    
+    try {
+      const response = await fetch(`/api/formas-pagamento?company_id=${activeCompanyId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && Array.isArray(data.data)) {
+          const formas = data.data
+            .filter((f: any) => f.ativo !== false)
+            .map((forma: any) => ({
+              id: forma.id,
+              nome: forma.nome
+            }))
+            .sort((a: any, b: any) => a.nome.localeCompare(b.nome));
+          setFormasPagamento(formas);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar formas de pagamento:', error);
+    }
+  }, [token, activeCompanyId, authLoading]);
 
   // Carregar títulos em aberto
   const loadTitulos = useCallback(async () => {
@@ -121,15 +203,28 @@ export default function TitulosEmAbertoPage() {
       const dataCR = await responseCR.json();
       const dataCP = await responseCP.json();
 
+      if (!dataCR.success || !dataCP.success) {
+        throw new Error(dataCR.error || dataCP.error || 'Erro ao carregar dados');
+      }
+
       const contasReceber = Array.isArray(dataCR.data) ? dataCR.data : [];
       const contasPagar = Array.isArray(dataCP.data) ? dataCP.data : [];
+
+      console.log('📋 Dados recebidos:', {
+        contasReceber: contasReceber.length,
+        contasPagar: contasPagar.length,
+        primeiraContaReceber: contasReceber[0]?.parcelas?.length || 0,
+        primeiraContaPagar: contasPagar[0]?.parcelas?.length || 0
+      });
 
       // Processar parcelas de contas a receber
       const titulosReceber: ParcelaTitulo[] = [];
       contasReceber.forEach((conta: any) => {
         if (conta.parcelas && Array.isArray(conta.parcelas)) {
           conta.parcelas.forEach((parcela: any) => {
-            if (parcela.status === 'pendente') {
+            // Verificar status (pode vir como 'pendente', 'Pendente', 'PENDENTE', etc.)
+            const statusNormalizado = (parcela.status || '').toLowerCase();
+            if (statusNormalizado === 'pendente' || !parcela.data_pagamento) {
               titulosReceber.push({
                 id: parcela.id,
                 tipo: 'receber',
@@ -145,10 +240,12 @@ export default function TitulosEmAbertoPage() {
                 valor_parcela: parseFloat(parcela.valor_parcela || 0),
                 diferenca: parseFloat(parcela.diferenca || 0),
                 valor_total: parseFloat(parcela.valor_total || parcela.valor_parcela || 0),
-                status: parcela.status || 'pendente',
+                status: statusNormalizado === 'pago' ? 'pago' : 'pendente',
                 tipo_pagamento: parcela.forma_pagamento_nome || parcela.forma_pagamento || '-',
                 conta_corrente: parcela.conta_corrente_nome || parcela.banco_nome || parcela.conta_corrente || '-',
-                forma_pagamento: parcela.forma_pagamento_nome || parcela.forma_pagamento || '-'
+                forma_pagamento: parcela.forma_pagamento_nome || parcela.forma_pagamento || '-',
+                conta_corrente_id: parcela.conta_corrente_id || undefined,
+                forma_pagamento_id: parcela.forma_pagamento_id || undefined
               });
             }
           });
@@ -160,7 +257,9 @@ export default function TitulosEmAbertoPage() {
       contasPagar.forEach((conta: any) => {
         if (conta.parcelas && Array.isArray(conta.parcelas)) {
           conta.parcelas.forEach((parcela: any) => {
-            if (parcela.status === 'pendente') {
+            // Verificar status (pode vir como 'pendente', 'Pendente', 'PENDENTE', etc.)
+            const statusNormalizado = (parcela.status || '').toLowerCase();
+            if (statusNormalizado === 'pendente' || !parcela.data_pagamento) {
               titulosPagar.push({
                 id: parcela.id,
                 tipo: 'pagar',
@@ -176,14 +275,24 @@ export default function TitulosEmAbertoPage() {
                 valor_parcela: parseFloat(parcela.valor_parcela || 0),
                 diferenca: parseFloat(parcela.diferenca || 0),
                 valor_total: parseFloat(parcela.valor_total || parcela.valor_parcela || 0),
-                status: parcela.status || 'pendente',
+                status: statusNormalizado === 'pago' ? 'pago' : 'pendente',
                 tipo_pagamento: parcela.forma_pagamento_nome || parcela.forma_pagamento || '-',
                 conta_corrente: parcela.conta_corrente_nome || parcela.banco_nome || parcela.conta_corrente || '-',
-                forma_pagamento: parcela.forma_pagamento_nome || parcela.forma_pagamento || '-'
+                forma_pagamento: parcela.forma_pagamento_nome || parcela.forma_pagamento || '-',
+                conta_corrente_id: parcela.conta_corrente_id || undefined,
+                forma_pagamento_id: parcela.forma_pagamento_id || undefined
               });
             }
           });
         }
+      });
+
+      console.log('📊 Parcelas processadas:', {
+        contasReceber: contasReceber.length,
+        contasPagar: contasPagar.length,
+        titulosReceber: titulosReceber.length,
+        titulosPagar: titulosPagar.length,
+        total: titulosReceber.length + titulosPagar.length
       });
 
       // Unificar e ordenar por data de vencimento
@@ -193,6 +302,7 @@ export default function TitulosEmAbertoPage() {
         return dataA.getTime() - dataB.getTime();
       });
 
+      console.log('✅ Total de títulos carregados:', todosTitulos.length);
       setTitulos(todosTitulos);
       setLastUpdated(format(new Date(), 'HH:mm:ss'));
     } catch (error: any) {
@@ -205,7 +315,112 @@ export default function TitulosEmAbertoPage() {
 
   useEffect(() => {
     loadTitulos();
-  }, [loadTitulos]);
+    loadContasBancarias();
+    loadFormasPagamento();
+  }, [loadTitulos, loadContasBancarias, loadFormasPagamento]);
+
+  // Fechar modal de quitação
+  const handleFecharQuitarModal = () => {
+    setQuitarModalOpen(false);
+    setParcelasParaQuitar([]);
+    setContaCorrenteSelecionada('');
+    setDataPagamento(new Date().toISOString().split('T')[0]);
+  };
+
+  // Quitar parcelas (suporta múltiplas)
+  const handleQuitarParcelas = async () => {
+    if (parcelasParaQuitar.length === 0 || !token) {
+      alert('Selecione pelo menos uma parcela para quitar.');
+      return;
+    }
+
+    // Verificar se todas as parcelas têm conta selecionada
+    const parcelasSemConta = parcelasParaQuitar.filter(p => {
+      const edicao = edicoesParcelas[p.id];
+      return !edicao?.conta_corrente_id;
+    });
+
+    if (parcelasSemConta.length > 0) {
+      alert(`${parcelasSemConta.length} parcela(s) não têm conta bancária selecionada.`);
+      return;
+    }
+
+    setQuitarLoading(true);
+    try {
+      const resultados: Array<{ sucesso: boolean; parcela: ParcelaTitulo; erro?: string }> = [];
+      
+      // Processar cada parcela
+      for (const parcela of parcelasParaQuitar) {
+        try {
+          const endpoint = parcela.tipo === 'receber'
+            ? `/api/contas-receber/parcelas/${parcela.id}/receber`
+            : `/api/contas-pagar/parcelas/${parcela.id}/pagar`;
+
+          const edicao = edicoesParcelas[parcela.id];
+          if (!edicao?.conta_corrente_id || !edicao?.data_compensacao) {
+            resultados.push({ sucesso: false, parcela, erro: 'Campos obrigatórios não preenchidos' });
+            continue;
+          }
+
+          const body = {
+            conta_corrente_id: edicao.conta_corrente_id,
+            data_pagamento: edicao.data_compensacao,
+            valor_recebido: parcela.tipo === 'receber' ? parcela.valor_total : undefined,
+            valor_pago: parcela.tipo === 'pagar' ? parcela.valor_total : undefined,
+            descricao: `Quitação da parcela ${parcela.titulo_parcela} - ${parcela.nome}`
+          };
+
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+          });
+
+          const data = await response.json();
+
+          if (!response.ok || !data.success) {
+            resultados.push({ sucesso: false, parcela, erro: data.error || 'Erro ao quitar parcela' });
+          } else {
+            resultados.push({ sucesso: true, parcela });
+          }
+        } catch (error: any) {
+          resultados.push({ sucesso: false, parcela, erro: error?.message || 'Erro desconhecido' });
+        }
+      }
+
+      const sucessos = resultados.filter(r => r.sucesso).length;
+      const falhas = resultados.filter(r => !r.sucesso);
+
+      if (falhas.length > 0) {
+        console.error('Erros ao quitar parcelas:', falhas);
+        alert(`${sucessos} parcela(s) quitada(s) com sucesso. ${falhas.length} falha(ram).`);
+      } else {
+        alert(`${sucessos} parcela(s) quitada(s) com sucesso!`);
+      }
+
+      handleFecharQuitarModal();
+      
+      // Limpar seleções e edições das parcelas quitadas
+      const novasSelecoes = new Set(selectedTitulos);
+      const novasEdicoes = { ...edicoesParcelas };
+      parcelasParaQuitar.forEach(p => {
+        novasSelecoes.delete(p.id);
+        delete novasEdicoes[p.id];
+      });
+      setSelectedTitulos(novasSelecoes);
+      setEdicoesParcelas(novasEdicoes);
+      
+      await loadTitulos();
+    } catch (error: any) {
+      console.error('Erro ao quitar parcelas:', error);
+      alert(error?.message || 'Erro ao quitar parcelas. Tente novamente.');
+    } finally {
+      setQuitarLoading(false);
+    }
+  };
 
   // Filtrar títulos
   const titulosFiltrados = titulos.filter(titulo => {
@@ -243,50 +458,63 @@ export default function TitulosEmAbertoPage() {
     return true;
   });
 
-  // Calcular totais
-  const totalGeral = titulosFiltrados.reduce((sum, t) => sum + t.valor_parcela, 0);
-  const totalAtraso = titulosFiltrados
+  // Ordenar parcelas por data de vencimento
+  const parcelasOrdenadas = [...titulosFiltrados].sort((a, b) => {
+    const dataA = new Date(a.data_vencimento).getTime();
+    const dataB = new Date(b.data_vencimento).getTime();
+    return dataA - dataB;
+  });
+
+  // Calcular totais separados por tipo
+  const parcelasReceber = titulosFiltrados.filter(t => t.tipo === 'receber');
+  const parcelasPagar = titulosFiltrados.filter(t => t.tipo === 'pagar');
+  
+  const totalReceber = parcelasReceber.reduce((sum, t) => sum + t.valor_parcela, 0);
+  const totalAtrasoReceber = parcelasReceber
     .filter(t => new Date(t.data_vencimento) < new Date())
     .reduce((sum, t) => sum + t.valor_parcela, 0);
-  const totalSelecionado = titulosFiltrados
+  const totalReceberSelecionado = parcelasReceber
     .filter(t => selectedTitulos.has(t.id))
     .reduce((sum, t) => sum + t.valor_parcela, 0);
+  
+  const totalPagar = parcelasPagar.reduce((sum, t) => sum + t.valor_parcela, 0);
+  const totalAtrasoPagar = parcelasPagar
+    .filter(t => new Date(t.data_vencimento) < new Date())
+    .reduce((sum, t) => sum + t.valor_parcela, 0);
+  const totalPagarSelecionado = parcelasPagar
+    .filter(t => selectedTitulos.has(t.id))
+    .reduce((sum, t) => sum + t.valor_parcela, 0);
+  
+  const totalGeral = totalReceber + totalPagar;
+  const totalAtraso = totalAtrasoReceber + totalAtrasoPagar;
+  const totalSelecionado = totalReceberSelecionado + totalPagarSelecionado;
   const totalAtrasoSelecionado = titulosFiltrados
     .filter(t => selectedTitulos.has(t.id) && new Date(t.data_vencimento) < new Date())
     .reduce((sum, t) => sum + t.valor_parcela, 0);
-
-  // Agrupar por conta
-  const titulosAgrupados = titulosFiltrados.reduce((acc, titulo) => {
-    const key = titulo.conta_id;
-    if (!acc[key]) {
-      acc[key] = {
-        conta_id: key,
-        titulo: titulo.titulo,
-        tipo: titulo.tipo,
-        nome: titulo.nome,
-        parcelas: []
-      };
-    }
-    acc[key].parcelas.push(titulo);
-    return acc;
-  }, {} as Record<string, { conta_id: string; titulo: string; tipo: 'receber' | 'pagar'; nome: string; parcelas: ParcelaTitulo[] }>);
-
-  const toggleExpandConta = (contaId: string) => {
-    const newExpanded = new Set(expandedContas);
-    if (newExpanded.has(contaId)) {
-      newExpanded.delete(contaId);
-    } else {
-      newExpanded.add(contaId);
-    }
-    setExpandedContas(newExpanded);
-  };
 
   const toggleSelectTitulo = (id: string) => {
     const newSelected = new Set(selectedTitulos);
     if (newSelected.has(id)) {
       newSelected.delete(id);
+      // Remover edições quando desmarcar
+      const novasEdicoes = { ...edicoesParcelas };
+      delete novasEdicoes[id];
+      setEdicoesParcelas(novasEdicoes);
     } else {
       newSelected.add(id);
+      // Inicializar edições quando marcar
+      const parcela = titulos.find(t => t.id === id);
+      if (parcela) {
+        setEdicoesParcelas(prev => ({
+          ...prev,
+          [id]: {
+            data_pagamento: parcela.data_pagamento ? new Date(parcela.data_pagamento).toISOString().split('T')[0] : '',
+            data_compensacao: parcela.data_compensacao ? new Date(parcela.data_compensacao).toISOString().split('T')[0] : '',
+            conta_corrente_id: parcela.conta_corrente_id || '',
+            forma_pagamento_id: parcela.forma_pagamento_id || ''
+          }
+        }));
+      }
     }
     setSelectedTitulos(newSelected);
   };
@@ -294,8 +522,89 @@ export default function TitulosEmAbertoPage() {
   const toggleSelectAll = () => {
     if (selectedTitulos.size === titulosFiltrados.length) {
       setSelectedTitulos(new Set());
+      setEdicoesParcelas({});
     } else {
-      setSelectedTitulos(new Set(titulosFiltrados.map(t => t.id)));
+      const novosSelecionados = new Set(titulosFiltrados.map(t => t.id));
+      setSelectedTitulos(novosSelecionados);
+      // Inicializar edições para todas as parcelas
+      const novasEdicoes: Record<string, any> = {};
+      titulosFiltrados.forEach(parcela => {
+        novasEdicoes[parcela.id] = {
+          data_pagamento: parcela.data_pagamento ? new Date(parcela.data_pagamento).toISOString().split('T')[0] : '',
+          data_compensacao: parcela.data_compensacao ? new Date(parcela.data_compensacao).toISOString().split('T')[0] : '',
+          conta_corrente_id: parcela.conta_corrente_id || '',
+          forma_pagamento_id: parcela.forma_pagamento_id || ''
+        };
+      });
+      setEdicoesParcelas(novasEdicoes);
+    }
+  };
+
+  // Atualizar campo de edição
+  const atualizarCampoEdicao = (parcelaId: string, campo: string, valor: string) => {
+    setEdicoesParcelas(prev => {
+      const novoEstado = {
+        ...prev,
+        [parcelaId]: {
+          ...prev[parcelaId],
+          [campo]: valor
+        }
+      };
+      
+      // Após atualizar, verificar se todos os campos estão preenchidos
+      setTimeout(() => verificarCamposQuitacao(parcelaId), 100);
+      
+      return novoEstado;
+    });
+  };
+
+  // Verificar se todos os campos necessários foram preenchidos e abrir modal
+  const verificarCamposQuitacao = (parcelaId: string) => {
+    const edicao = edicoesParcelas[parcelaId];
+    if (!edicao) return;
+
+    // Verificar se os 3 campos obrigatórios estão preenchidos
+    if (edicao.data_compensacao && edicao.forma_pagamento_id && edicao.conta_corrente_id) {
+      const parcela = titulos.find(t => t.id === parcelaId);
+      if (parcela) {
+        // Preencher o modal com os dados já informados
+        setContaCorrenteSelecionada(edicao.conta_corrente_id);
+        setDataPagamento(edicao.data_compensacao);
+        setParcelasParaQuitar([parcela]);
+        setQuitarModalOpen(true);
+      }
+    }
+  };
+
+  // Abrir modal para quitar múltiplas parcelas
+  const handleQuitarMultiplasParcelas = () => {
+    const parcelasSelecionadas = titulosFiltrados.filter(t => selectedTitulos.has(t.id));
+    
+    if (parcelasSelecionadas.length === 0) {
+      alert('Selecione pelo menos uma parcela para quitar.');
+      return;
+    }
+
+    // Verificar se todas têm os campos necessários preenchidos
+    const parcelasCompletas = parcelasSelecionadas.filter(p => {
+      const edicao = edicoesParcelas[p.id];
+      return edicao?.data_compensacao && edicao?.forma_pagamento_id && edicao?.conta_corrente_id;
+    });
+
+    if (parcelasCompletas.length === 0) {
+      alert('Preencha os campos de compensação, tipo de pagamento e conta para todas as parcelas selecionadas.');
+      return;
+    }
+
+    if (parcelasCompletas.length !== parcelasSelecionadas.length) {
+      alert(`${parcelasCompletas.length} de ${parcelasSelecionadas.length} parcelas têm todos os campos preenchidos. Deseja quitar apenas estas?`);
+    }
+
+    setParcelasParaQuitar(parcelasCompletas);
+    if (parcelasCompletas.length > 0) {
+      setContaCorrenteSelecionada(edicoesParcelas[parcelasCompletas[0].id].conta_corrente_id || '');
+      setDataPagamento(edicoesParcelas[parcelasCompletas[0].id].data_compensacao || new Date().toISOString().split('T')[0]);
+      setQuitarModalOpen(true);
     }
   };
 
@@ -314,86 +623,157 @@ export default function TitulosEmAbertoPage() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        {/* Header moderno */}
-        <div className="bg-white shadow-sm border-b border-gray-200 rounded-2xl">
-          <div className="px-6 py-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center space-x-4">
+      <div className="p-4 space-y-3">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-lg shadow-sm border border-gray-200 p-4"
+        >
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+            <div className="flex items-center space-x-3">
                 <button
                   onClick={() => router.back()}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                   aria-label="Voltar"
                 >
-                  <ArrowLeft className="w-5 h-5 text-gray-600" />
+                <ArrowLeft className="w-4 h-4 text-gray-600" />
                 </button>
                 <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold flex items-center text-gray-900">
-                    <FileCheck className="w-8 h-8 mr-3 text-purple-600" />
-                    Títulos em Aberto
-                  </h1>
-                  <p className="text-gray-600 mt-1 text-sm sm:text-base">
-                    {titulosFiltrados.length} título{titulosFiltrados.length !== 1 ? 's' : ''} encontrado{titulosFiltrados.length !== 1 ? 's' : ''}
+                <h1 className="text-xl font-bold text-gray-900">Títulos em Aberto</h1>
+                <p className="text-sm text-gray-600">
+                  {parcelasOrdenadas.length} parcela{parcelasOrdenadas.length !== 1 ? 's' : ''} encontrada{parcelasOrdenadas.length !== 1 ? 's' : ''}
                     {totalAtraso > 0 && (
                       <span className="ml-2 text-red-600 font-semibold">
                         • {formatCurrency(totalAtraso)} em atraso
                       </span>
                     )}
                   </p>
-                  {lastUpdated && (
-                    <p className="text-gray-500 mt-1 text-xs">
-                      Última atualização: {lastUpdated}
-                    </p>
-                  )}
                 </div>
               </div>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
                   onClick={() => loadTitulos()}
-                  className="border-gray-300 hover:bg-gray-50 text-gray-700"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Atualizar
-                </Button>
-                <Button
-                  variant="outline"
-                  className="border-gray-300 hover:bg-gray-50 text-gray-700"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Exportar
+                disabled={loading}
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Atualizar</span>
                 </Button>
               </div>
             </div>
-          </div>
-        </div>
+        </motion.div>
 
         {/* Mensagem de erro */}
+        <AnimatePresence>
         {error && (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg shadow-sm"
+            >
             <div className="flex items-center">
               <XCircle className="w-5 h-5 text-red-500 mr-2" />
               <p className="text-red-700 text-sm">{error}</p>
             </div>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {/* Filtros modernizados */}
-        <Card className="bg-white rounded-lg shadow border border-gray-200">
-          <div className="p-4">
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Busca */}
-              <div className="flex-1 min-w-[250px]">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+        {/* Cards de Estatísticas - Separados por Tipo */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Contas a Receber */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 shadow-sm border-2 border-green-200"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <TrendingUp className="h-5 w-5 text-green-600" />
+              </div>
+              <h3 className="text-sm font-bold text-green-900 uppercase tracking-wide">Contas a Receber</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-xs text-green-700 mb-1">Total</p>
+                <h3 className="text-xl font-bold text-green-600">{formatCurrency(totalReceber)}</h3>
+              </div>
+              <div>
+                <p className="text-xs text-red-700 mb-1">Em Atraso</p>
+                <h3 className="text-lg font-bold text-red-600">{formatCurrency(totalAtrasoReceber)}</h3>
+              </div>
+            </div>
+            <div className="mt-3 pt-3 border-t border-green-200">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-green-700">Selecionado:</span>
+                <span className="text-sm font-semibold text-green-900">{formatCurrency(totalReceberSelecionado)}</span>
+              </div>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-xs text-green-700">Parcelas:</span>
+                <span className="text-sm font-semibold text-green-900">{parcelasReceber.length}</span>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Contas a Pagar */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-gradient-to-br from-red-50 to-orange-50 rounded-lg p-4 shadow-sm border-2 border-red-200"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-2 bg-red-100 rounded-lg">
+                <TrendingDown className="h-5 w-5 text-red-600" />
+              </div>
+              <h3 className="text-sm font-bold text-red-900 uppercase tracking-wide">Contas a Pagar</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-xs text-red-700 mb-1">Total</p>
+                <h3 className="text-xl font-bold text-red-600">{formatCurrency(totalPagar)}</h3>
+              </div>
+              <div>
+                <p className="text-xs text-red-700 mb-1">Em Atraso</p>
+                <h3 className="text-lg font-bold text-red-700">{formatCurrency(totalAtrasoPagar)}</h3>
+              </div>
+            </div>
+            <div className="mt-3 pt-3 border-t border-red-200">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-red-700">Selecionado:</span>
+                <span className="text-sm font-semibold text-red-900">{formatCurrency(totalPagarSelecionado)}</span>
+              </div>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-xs text-red-700">Parcelas:</span>
+                <span className="text-sm font-semibold text-red-900">{parcelasPagar.length}</span>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Busca/Filtros */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white rounded-lg p-3 shadow-sm border border-gray-200"
+        >
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 flex-1">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
                     type="text"
                     placeholder="Buscar por nome, título, pedido, nota fiscal..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 h-11 border-gray-300 focus:ring-purple-500 focus:ring-2"
+                  className="pl-10"
                   />
-                </div>
               </div>
 
               {/* Filtro por tipo */}
@@ -404,8 +784,8 @@ export default function TitulosEmAbertoPage() {
                   onClick={() => setFiltroTipo('todos')}
                   className={`h-9 px-4 text-xs font-medium transition-all ${
                     filtroTipo === 'todos' 
-                      ? 'bg-white text-purple-600 shadow-sm' 
-                      : 'text-gray-600 hover:text-gray-900 bg-transparent'
+                      ? 'bg-white text-gray-900 shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
                   Todos
@@ -414,26 +794,26 @@ export default function TitulosEmAbertoPage() {
                   variant={filtroTipo === 'receber' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setFiltroTipo('receber')}
-                  className={`h-9 px-4 text-xs font-medium transition-all ${
+                  className={`h-9 px-4 text-xs font-medium transition-all flex items-center gap-1 ${
                     filtroTipo === 'receber' 
-                      ? 'bg-white text-purple-600 shadow-sm' 
-                      : 'text-gray-600 hover:text-gray-900 bg-transparent'
+                      ? 'bg-green-500 text-white' 
+                      : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  <TrendingUp className="w-3 h-3 mr-1" />
+                  <TrendingUp className="w-3 h-3" />
                   A Receber
                 </Button>
                 <Button
                   variant={filtroTipo === 'pagar' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setFiltroTipo('pagar')}
-                  className={`h-9 px-4 text-xs font-medium transition-all ${
+                  className={`h-9 px-4 text-xs font-medium transition-all flex items-center gap-1 ${
                     filtroTipo === 'pagar' 
-                      ? 'bg-white text-purple-600 shadow-sm' 
-                      : 'text-gray-600 hover:text-gray-900 bg-transparent'
+                      ? 'bg-red-500 text-white' 
+                      : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  <TrendingDown className="w-3 h-3 mr-1" />
+                  <TrendingDown className="w-3 h-3" />
                   A Pagar
                 </Button>
               </div>
@@ -447,7 +827,7 @@ export default function TitulosEmAbertoPage() {
                     placeholder="Data inicial"
                     value={filtroDataInicial}
                     onChange={(e) => setFiltroDataInicial(e.target.value)}
-                    className="h-9 w-36 border-gray-300 focus:ring-purple-500 focus:ring-2 text-sm"
+                    className="h-9 w-36 border-gray-300 focus:ring-2 focus:ring-purple-500 text-sm"
                   />
                   <span className="text-gray-500 text-sm">até</span>
                   <Input
@@ -455,7 +835,7 @@ export default function TitulosEmAbertoPage() {
                     placeholder="Data final"
                     value={filtroDataFinal}
                     onChange={(e) => setFiltroDataFinal(e.target.value)}
-                    className="h-9 w-36 border-gray-300 focus:ring-purple-500 focus:ring-2 text-sm"
+                    className="h-9 w-36 border-gray-300 focus:ring-2 focus:ring-purple-500 text-sm"
                   />
                 </div>
               </div>
@@ -471,22 +851,48 @@ export default function TitulosEmAbertoPage() {
                     setFiltroDataFinal('');
                     setFiltroTipo('todos');
                   }}
-                  className="h-9 border-gray-300 hover:bg-gray-50 text-gray-700"
+                  className="h-9 border-gray-300 hover:bg-gray-50 text-gray-700 flex items-center gap-2"
                 >
-                  Limpar Filtros
+                  <X className="w-4 h-4" />
+                  Limpar
                 </Button>
               )}
             </div>
           </div>
-        </Card>
+        </motion.div>
 
         {/* Tabela de títulos */}
-        <Card className="bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col"
+          style={{ maxHeight: 'calc(100vh - 500px)', minHeight: '400px' }}
+        >
+          <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div className="p-1.5 bg-purple-100 rounded-lg">
+                  <FileCheck className="h-4 w-4 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">Títulos em Aberto</h3>
+                  <p className="text-xs text-gray-600">{parcelasOrdenadas.length} parcela{parcelasOrdenadas.length !== 1 ? 's' : ''} encontrada{parcelasOrdenadas.length !== 1 ? 's' : ''}</p>
+                </div>
+              </div>
+              {lastUpdated && (
+                <Badge variant="outline" className="text-xs text-gray-600 border-gray-300">
+                  <Calendar className="h-3 w-3 mr-1" />
+                  {lastUpdated}
+                </Badge>
+              )}
+            </div>
+          </div>
+          <div className="overflow-auto flex-1">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                 <tr>
-                  <th className="px-4 py-3 text-left">
+                  <th className="px-4 py-3 text-left sticky left-0 bg-gray-50 z-10">
                     <Checkbox
                       checked={selectedTitulos.size === titulosFiltrados.length && titulosFiltrados.length > 0}
                       onCheckedChange={toggleSelectAll}
@@ -495,26 +901,14 @@ export default function TitulosEmAbertoPage() {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Tipo
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Nome
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider min-w-[200px]">
+                    Cliente/Fornecedor
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Nº Pedido
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Nota Fiscal
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Título
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Título Parcela
+                    Parcela
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Vencimento
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Pagamento
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Compensação
@@ -528,103 +922,64 @@ export default function TitulosEmAbertoPage() {
                   <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Valor
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Diferença
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Total
-                  </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Ações
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {titulosFiltrados.length === 0 ? (
+                {parcelasOrdenadas.length === 0 ? (
                   <tr>
-                    <td colSpan={16} className="px-6 py-12 text-center">
+                    <td colSpan={10} className="px-6 py-12 text-center">
                       <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-600">Nenhum título encontrado</p>
+                      <p className="text-gray-600">Nenhuma parcela encontrada</p>
                     </td>
                   </tr>
                 ) : (
-                  Object.values(titulosAgrupados).map((grupo) => (
-                    <React.Fragment key={grupo.conta_id}>
-                      {/* Linha do grupo (conta) */}
-                      <tr 
-                        className="bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
-                        onClick={() => toggleExpandConta(grupo.conta_id)}
+                  parcelasOrdenadas.map((parcela) => (
+                    <tr 
+                      key={parcela.id}
+                      className={`hover:bg-gray-50 transition-colors ${
+                        new Date(parcela.data_vencimento) < new Date() ? 'bg-red-50 border-l-4 border-red-500' : ''
+                      } ${selectedTitulos.has(parcela.id) ? 'bg-blue-50' : ''}`}
                       >
-                        <td className="px-4 py-3">
-                          <button onClick={(e) => { e.stopPropagation(); toggleExpandConta(grupo.conta_id); }}>
-                            {expandedContas.has(grupo.conta_id) ? (
-                              <ChevronDown className="w-4 h-4 text-gray-500" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4 text-gray-500" />
-                            )}
-                          </button>
+                        <td className="px-4 py-3 sticky left-0 bg-white z-10">
+                        <Checkbox
+                          checked={selectedTitulos.has(parcela.id)}
+                          onCheckedChange={() => toggleSelectTitulo(parcela.id)}
+                        />
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <Badge variant={grupo.tipo === 'receber' ? 'default' : 'secondary'} className={
-                            grupo.tipo === 'receber' 
+                        <Badge variant={parcela.tipo === 'receber' ? 'default' : 'secondary'} className={
+                          parcela.tipo === 'receber' 
                               ? 'bg-green-100 text-green-800 border-green-200' 
                               : 'bg-red-100 text-red-800 border-red-200'
                           }>
-                            {grupo.tipo === 'receber' ? (
+                          {parcela.tipo === 'receber' ? (
                               <TrendingUp className="w-3 h-3 mr-1" />
                             ) : (
                               <TrendingDown className="w-3 h-3 mr-1" />
                             )}
-                            {grupo.tipo === 'receber' ? 'Receber' : 'Pagar'}
+                          {parcela.tipo === 'receber' ? 'Receber' : 'Pagar'}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{grupo.nome}</div>
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                          {grupo.parcelas[0]?.numero_pedido || '-'}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                          {grupo.parcelas[0]?.nota_fiscal || '-'}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900">
-                          {grupo.titulo}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <Badge variant="outline" className="text-xs">
-                            {grupo.parcelas.length} parcela{grupo.parcelas.length !== 1 ? 's' : ''}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500" colSpan={9}>
-                          <div className="flex items-center justify-between">
-                            <span className="text-gray-600">{formatDate(grupo.parcelas[0]?.data_vencimento)}</span>
-                            <span className="font-bold text-gray-900 text-base">
-                              {formatCurrency(grupo.parcelas.reduce((sum, p) => sum + p.valor_parcela, 0))}
-                            </span>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col">
+                            <div className="text-sm font-medium text-gray-900">{parcela.nome}</div>
+                            {(parcela.numero_pedido || parcela.nota_fiscal) && (
+                              <div className="text-xs text-gray-500 mt-0.5">
+                                {parcela.numero_pedido && `Pedido: ${parcela.numero_pedido}`}
+                                {parcela.numero_pedido && parcela.nota_fiscal && ' • '}
+                                {parcela.nota_fiscal && `NF: ${parcela.nota_fiscal}`}
+                              </div>
+                            )}
                           </div>
                         </td>
-                      </tr>
-                      {/* Parcelas expandidas */}
-                      {expandedContas.has(grupo.conta_id) && grupo.parcelas.map((parcela) => (
-                        <tr 
-                          key={parcela.id}
-                          className={`hover:bg-purple-50/50 transition-colors ${
-                            new Date(parcela.data_vencimento) < new Date() ? 'bg-red-50/50' : ''
-                          }`}
-                        >
-                          <td className="px-4 py-3">
-                            <Checkbox
-                              checked={selectedTitulos.has(parcela.id)}
-                              onCheckedChange={() => toggleSelectTitulo(parcela.id)}
-                            />
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap"></td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500"></td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500"></td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500"></td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500"></td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {parcela.titulo_parcela}
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-gray-900">{parcela.titulo_parcela}</span>
+                            <span className="text-xs text-gray-500">{parcela.titulo}</span>
+                          </div>
                           </td>
                           <td className={`px-4 py-3 whitespace-nowrap text-sm font-medium ${
                             new Date(parcela.data_vencimento) < new Date() ? 'text-red-600' : 'text-gray-900'
@@ -638,29 +993,76 @@ export default function TitulosEmAbertoPage() {
                               )}
                             </div>
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                            {formatDate(parcela.data_pagamento)}
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {selectedTitulos.has(parcela.id) ? (
+                            <Input
+                              type="date"
+                              value={edicoesParcelas[parcela.id]?.data_compensacao || ''}
+                              onChange={(e) => atualizarCampoEdicao(parcela.id, 'data_compensacao', e.target.value)}
+                              className="h-8 w-36 text-xs border-gray-300"
+                              placeholder="Selecione"
+                            />
+                          ) : (
+                            <span className="text-sm text-gray-500">{formatDate(parcela.data_compensacao) || '-'}</span>
+                          )}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                            {formatDate(parcela.data_compensacao)}
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {selectedTitulos.has(parcela.id) ? (
+                            <Select
+                              value={edicoesParcelas[parcela.id]?.forma_pagamento_id || undefined}
+                              onValueChange={(value) => {
+                                atualizarCampoEdicao(parcela.id, 'forma_pagamento_id', value);
+                              }}
+                            >
+                              <SelectTrigger className="h-8 w-44 text-xs">
+                                <SelectValue placeholder="Selecione" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {formasPagamento.map((forma) => (
+                                  <SelectItem key={forma.id} value={forma.id}>
+                                    {forma.nome}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <span className="text-sm text-gray-500">{parcela.forma_pagamento || '-'}</span>
+                          )}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                            {parcela.forma_pagamento || '-'}
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {selectedTitulos.has(parcela.id) ? (
+                            <Select
+                              value={edicoesParcelas[parcela.id]?.conta_corrente_id || undefined}
+                              onValueChange={(value) => {
+                                atualizarCampoEdicao(parcela.id, 'conta_corrente_id', value);
+                              }}
+                            >
+                              <SelectTrigger className="h-8 w-44 text-xs">
+                                <SelectValue placeholder="Selecione" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {contasBancarias.map((conta) => (
+                                  <SelectItem key={conta.id} value={conta.id}>
+                                    {conta.descricao} {conta.banco_nome ? `- ${conta.banco_nome}` : ''}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <span className="text-sm text-gray-500">{parcela.conta_corrente || '-'}</span>
+                          )}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                            {parcela.conta_corrente || '-'}
+                        <td className="px-4 py-3 whitespace-nowrap text-right">
+                          <div className="flex flex-col items-end">
+                            <span className="text-sm font-semibold text-gray-900">{formatCurrency(parcela.valor_total)}</span>
+                            {parcela.diferenca !== 0 && (
+                              <span className={`text-xs ${parcela.diferenca > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {parcela.diferenca > 0 ? '+' : ''}{formatCurrency(parcela.diferenca)}
+                              </span>
+                            )}
+                          </div>
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
-                            {formatCurrency(parcela.valor_parcela)}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-500">
-                            {formatCurrency(parcela.diferenca)}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
-                            {formatCurrency(parcela.valor_total)}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm">
-                            <div className="flex items-center gap-2">
+                        <td className="px-4 py-3 whitespace-nowrap">
                               <button
                                 onClick={() => {
                                   if (parcela.tipo === 'receber') {
@@ -669,114 +1071,216 @@ export default function TitulosEmAbertoPage() {
                                     window.location.href = `/financeiro/contas-pagar/${parcela.conta_id}`;
                                   }
                                 }}
-                                className="text-purple-600 hover:text-purple-700"
-                                title="Ver"
+                            className="p-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors"
+                            title="Ver detalhes"
                               >
                                 <Eye className="w-4 h-4" />
                               </button>
-                            </div>
                           </td>
                         </tr>
-                      ))}
-                    </React.Fragment>
                   ))
                 )}
               </tbody>
             </table>
           </div>
-        </Card>
+        </motion.div>
 
-        {/* Totais modernizados */}
-        <Card className="bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden">
-          <div className="bg-gradient-to-r from-purple-50 to-blue-50 px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-bold text-gray-900 flex items-center">
-              <DollarSign className="w-5 h-5 mr-2 text-purple-600" />
-              Resumo Financeiro
-            </h2>
+        {/* Footer com Totais e Ações */}
+        {selectedTitulos.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-lg shadow-lg border-2 border-purple-200 p-4 sticky bottom-0 z-20"
+          >
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-6">
+                <div>
+                  <span className="text-xs text-gray-600">Parcelas Selecionadas:</span>
+                  <span className="ml-2 text-sm font-bold text-purple-900">{selectedTitulos.size}</span>
           </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              {/* Geral */}
-              <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-4 border border-gray-200">
-                <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center">
-                  <FileText className="w-4 h-4 mr-2 text-gray-500" />
-                  Geral
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center pb-2 border-b border-gray-200">
-                    <span className="text-sm text-gray-600">Total em Atraso:</span>
-                    <span className="text-lg font-bold text-red-600">{formatCurrency(totalAtraso)}</span>
+                <div>
+                  <span className="text-xs text-gray-600">Total Selecionado:</span>
+                  <span className="ml-2 text-lg font-bold text-purple-900">{formatCurrency(totalSelecionado)}</span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-gray-700">Total Geral:</span>
-                    <span className="text-lg font-bold text-gray-900">{formatCurrency(totalGeral)}</span>
+                {totalAtrasoSelecionado > 0 && (
+                  <div>
+                    <span className="text-xs text-red-600">Em Atraso:</span>
+                    <span className="ml-2 text-sm font-bold text-red-600">{formatCurrency(totalAtrasoSelecionado)}</span>
+                  </div>
+                )}
+                </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedTitulos(new Set());
+                    setEdicoesParcelas({});
+                  }}
+                  className="h-9"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Limpar Seleção
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleQuitarMultiplasParcelas}
+                  disabled={selectedTitulos.size === 0}
+                  className="h-9 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
+                >
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Quitar {selectedTitulos.size > 1 ? `${selectedTitulos.size} Parcelas` : 'Parcela'}
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Modal de Quitação - Suporta Múltiplas Parcelas */}
+        <Dialog open={quitarModalOpen} onOpenChange={setQuitarModalOpen}>
+          <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden max-h-[90vh] flex flex-col">
+            {/* Header com gradiente */}
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-5">
+              <DialogTitle className="flex items-center gap-3 text-white text-xl">
+                <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                Confirmar Quitação {parcelasParaQuitar.length > 1 ? `(${parcelasParaQuitar.length} parcelas)` : ''}
+              </DialogTitle>
+            </div>
+
+            <div className="px-6 py-5 space-y-5 overflow-y-auto flex-1">
+              {/* Resumo Geral */}
+              <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-4 border-2 border-gray-200">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Total a Quitar</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {formatCurrency(parcelasParaQuitar.reduce((sum, p) => sum + p.valor_total, 0))}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Parcelas</p>
+                    <p className="text-xl font-bold text-gray-700">{parcelasParaQuitar.length}</p>
                   </div>
                 </div>
               </div>
 
-              {/* Selecionado */}
-              <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
-                <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center">
-                  <FileCheck className="w-4 h-4 mr-2 text-purple-600" />
-                  Selecionado
-                  {selectedTitulos.size > 0 && (
-                    <Badge variant="secondary" className="ml-2 bg-purple-200 text-purple-800">
-                      {selectedTitulos.size}
+              {/* Lista de Parcelas */}
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {parcelasParaQuitar.map((parcela) => {
+                  const edicao = edicoesParcelas[parcela.id];
+                  return (
+                    <div key={parcela.id} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge 
+                              variant={parcela.tipo === 'receber' ? 'default' : 'secondary'}
+                              className={`${
+                                parcela.tipo === 'receber' 
+                                  ? 'bg-green-100 text-green-800 border-green-200' 
+                                  : 'bg-red-100 text-red-800 border-red-200'
+                              }`}
+                            >
+                              {parcela.tipo === 'receber' ? 'Receber' : 'Pagar'}
                     </Badge>
-                  )}
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center pb-2 border-b border-purple-200">
-                    <span className="text-sm text-gray-600">Total em Atraso:</span>
-                    <span className="text-lg font-bold text-red-600">{formatCurrency(totalAtrasoSelecionado)}</span>
+                            <span className="text-xs text-gray-500">{parcela.titulo_parcela}</span>
+                          </div>
+                          <p className="text-sm font-medium text-gray-900">{parcela.nome}</p>
+                          <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                            <span>Vencimento: {formatDate(parcela.data_vencimento)}</span>
+                            {new Date(parcela.data_vencimento) < new Date() && (
+                              <Badge variant="destructive" className="text-xs">Vencido</Badge>
+                            )}
+                          </div>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-gray-700">Total Selecionado:</span>
-                    <span className="text-lg font-bold text-purple-900">{formatCurrency(totalSelecionado)}</span>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-green-600">{formatCurrency(parcela.valor_total)}</p>
                   </div>
                 </div>
+                      <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gray-200">
+                        <div className="text-xs">
+                          <span className="text-gray-600">Compensação:</span>
+                          <p className="font-medium text-gray-900">{formatDate(edicao?.data_compensacao)}</p>
               </div>
+                        <div className="text-xs">
+                          <span className="text-gray-600">Pagamento:</span>
+                          <p className="font-medium text-gray-900">{formasPagamento.find(f => f.id === edicao?.forma_pagamento_id)?.nome || '-'}</p>
+                        </div>
+                        <div className="text-xs">
+                          <span className="text-gray-600">Conta:</span>
+                          <p className="font-medium text-gray-900 truncate">
+                            {contasBancarias.find(c => c.id === edicao?.conta_corrente_id)?.descricao || '-'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
             </div>
 
-            {/* Botões de ação */}
-            <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-200">
+              {/* Aviso Importante */}
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-4 border-2 border-amber-300 shadow-sm"
+              >
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0">
+                    <div className="p-2 bg-amber-400 rounded-full">
+                      <AlertTriangle className="w-5 h-5 text-white" />
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-bold text-amber-900 mb-1">
+                      Atenção!
+                    </h4>
+                    <p className="text-xs text-amber-800 leading-relaxed">
+                      Ao confirmar, serão criadas <strong>{parcelasParaQuitar.length} movimentação(ões) financeira(s)</strong> 
+                      e {parcelasParaQuitar.length > 1 ? 'as parcelas serão marcadas' : 'a parcela será marcada'} como 
+                      <strong> {parcelasParaQuitar[0]?.tipo === 'receber' ? 'recebida(s)' : 'paga(s)'}</strong>. 
+                      Esta ação <strong>não pode ser desfeita</strong> automaticamente.
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Footer com ações */}
+            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-3 flex-shrink-0">
               <Button 
                 variant="outline" 
-                size="sm" 
-                className="border-gray-300 hover:bg-gray-50 text-gray-700"
+                onClick={handleFecharQuitarModal}
+                disabled={quitarLoading}
+                className="px-6"
               >
-                <FileCheck className="w-4 h-4 mr-2" />
-                Consolidar
+                <X className="w-4 h-4 mr-2" />
+                Cancelar
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="border-gray-300 hover:bg-gray-50 text-gray-700"
+              <Button
+                onClick={handleQuitarParcelas}
+                disabled={parcelasParaQuitar.length === 0 || quitarLoading || parcelasParaQuitar.some(p => {
+                  const edicao = edicoesParcelas[p.id];
+                  return !edicao?.conta_corrente_id || !edicao?.data_compensacao || !edicao?.forma_pagamento_id;
+                })}
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-6 shadow-lg"
               >
-                <Eye className="w-4 h-4 mr-2" />
-                Abrir Origem
-              </Button>
-              <div className="ml-auto flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="border-gray-300 hover:bg-gray-50 text-gray-700"
-                >
-                  <Printer className="w-4 h-4 mr-2" />
-                  Imprimir
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="border-gray-300 hover:bg-gray-50 text-gray-700"
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  Salvar
+                {quitarLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processando...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                    Confirmar Quitação {parcelasParaQuitar.length > 1 ? `(${parcelasParaQuitar.length})` : ''}
+                  </>
+                )}
                 </Button>
               </div>
-            </div>
-          </div>
-        </Card>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
