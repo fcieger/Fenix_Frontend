@@ -28,9 +28,11 @@ export async function POST(request: NextRequest) {
     await initializeTables();
 
     // Buscar usuário por email
+    console.log('🔍 LOGIN: Buscando usuário com email:', email);
     const user = await UserService.findByEmail(email);
     
     if (!user) {
+      console.error('❌ LOGIN: Usuário não encontrado com email:', email);
       return addCorsHeaders(
         NextResponse.json(
           { message: 'Credenciais inválidas' },
@@ -38,11 +40,14 @@ export async function POST(request: NextRequest) {
         )
       );
     }
+
+    console.log('✅ LOGIN: Usuário encontrado:', { id: user.id, email: user.email, name: user.name });
 
     // Verificar senha
     const isValidPassword = await bcrypt.compare(password, user.password);
     
     if (!isValidPassword) {
+      console.error('❌ LOGIN: Senha inválida para usuário:', email);
       return addCorsHeaders(
         NextResponse.json(
           { message: 'Credenciais inválidas' },
@@ -51,19 +56,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log('✅ LOGIN: Senha validada com sucesso');
+
     // Buscar empresas do usuário
+    console.log('🔍 LOGIN: Buscando empresas do usuário:', user.id);
     const companies = await UserCompanyService.getUserCompanies(user.id!);
+    console.log('✅ LOGIN: Empresas encontradas:', companies.length);
+    console.log('✅ LOGIN: IDs das empresas:', companies.map(c => ({ id: c.id, name: c.name })));
 
     // Gerar token JWT
+    const tokenPayload = { 
+      userId: user.id, 
+      email: user.email,
+      companyId: companies.length > 0 ? companies[0].id : null
+    };
+    
+    console.log('🔍 LOGIN: Gerando token JWT com payload:', tokenPayload);
+    
     const token = jwt.sign(
-      { 
-        userId: user.id, 
-        email: user.email,
-        companyId: companies.length > 0 ? companies[0].id : null
-      },
-      process.env.JWT_SECRET || 'fenix-secret-key',
+      tokenPayload,
+      process.env.JWT_SECRET || 'fenix-jwt-secret-key-2024-super-secure',
       { expiresIn: '24h' }
     );
+    
+    console.log('✅ LOGIN: Token JWT gerado (primeiros 50 chars):', token.substring(0, 50) + '...');
 
     // Formatar empresas no formato esperado pelo frontend
     const formattedCompanies = companies.map(company => ({
