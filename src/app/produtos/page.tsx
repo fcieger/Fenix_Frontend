@@ -54,7 +54,7 @@ import {
 
 export default function ProdutosPage() {
   const router = useRouter();
-  const { user, token, logout, isAuthenticated, isLoading } = useAuth();
+  const { user, token, logout, isAuthenticated, isLoading, activeCompanyId } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -75,18 +75,18 @@ export default function ProdutosPage() {
   // Buscar produtos do backend
   useEffect(() => {
     const fetchProdutos = async () => {
-      console.log('🔍 Estado de autenticação:', { isAuthenticated, token: !!token, isLoading });
+      console.log('🔍 Estado de autenticação:', { isAuthenticated, token: !!token, activeCompanyId });
       
-      if (!isAuthenticated || !token) {
-        console.log('❌ Não autenticado ou sem token:', { isAuthenticated, token: !!token });
+      if (!isAuthenticated || !token || !activeCompanyId) {
+        console.log('❌ Não autenticado, sem token ou sem company_id:', { isAuthenticated, token: !!token, activeCompanyId });
         return;
       }
       
       try {
-        console.log('🔍 Buscando produtos com token:', token.substring(0, 20) + '...');
+        console.log('🔍 Buscando produtos com token e company_id:', token.substring(0, 20) + '...', activeCompanyId);
         setIsLoadingProdutos(true);
         setError(null);
-        const data = await apiService.getProdutos();
+        const data = await apiService.getProdutos(activeCompanyId);
         console.log('✅ Produtos carregados:', data);
         setProdutos(data);
       } catch (error) {
@@ -97,10 +97,10 @@ export default function ProdutosPage() {
       }
     };
 
-    if (isAuthenticated && token) {
+    if (isAuthenticated && token && activeCompanyId) {
       fetchProdutos();
     }
-  }, [isAuthenticated, token, isLoading]);
+  }, [isAuthenticated, token, activeCompanyId]);
 
   if (isLoading) {
     return (
