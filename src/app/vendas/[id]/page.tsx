@@ -50,7 +50,8 @@ import {
   Phone,
   Hash,
   Copy,
-  Send
+  Send,
+  Download
 } from 'lucide-react';
 import { obterPedidoVenda, criarPedidoVenda, atualizarPedidoVenda, recalcularImpostos, entregarPedidoVenda } from '../../../services/pedidos-venda';
 import { obterOrcamento } from '../../../services/orcamentos';
@@ -58,6 +59,9 @@ import { PedidoVenda } from '../../../types/pedido-venda';
 import { Orcamento } from '../../../types/orcamento';
 import { buscarCadastros, listarNaturezasOperacao, listarPrazosPagamento, buscarProdutos } from '../../../services/lookups';
 import { apiService } from '@/lib/api';
+import { exportPedidoVendaPDF } from '@/lib/pdf/exportPedidoVendaPDF';
+import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const novoPedidoVenda = (): PedidoVenda => ({
   companyId: '',
@@ -105,6 +109,10 @@ function PedidoVendaFormPage() {
   const [showNaturezaModalDropdown, setShowNaturezaModalDropdown] = useState(false);
   const [isSalvando, setIsSalvando] = useState(false);
   const [isFinalizando, setIsFinalizando] = useState(false);
+  const [isExportandoPDF, setIsExportandoPDF] = useState(false);
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [currentPdfPedido, setCurrentPdfPedido] = useState<{id: string, numero: string} | null>(null);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [pedidoVendaBloqueado, setPedidoVendaBloqueado] = useState(false);
   const [originalPedidoVenda, setOriginalPedidoVenda] = useState<any>(null);
@@ -1229,6 +1237,62 @@ function PedidoVendaFormPage() {
     await salvar();
   };
 
+  // Função para exportar PDF do pedido de venda
+  const handleExportarPDF = async () => {
+    if (!id || id === 'novo') {
+      toast.error('Salve o pedido antes de exportar o PDF');
+      return;
+    }
+
+    if (!token || !activeCompanyId) {
+      toast.error('Token ou empresa não encontrado');
+      return;
+    }
+
+    setIsExportandoPDF(true);
+
+    try {
+      const url = await exportPedidoVendaPDF({
+        pedidoId: id,
+        token,
+        companyId: activeCompanyId
+      });
+
+      setPdfUrl(url);
+      setCurrentPdfPedido({
+        id,
+        numero: model.numero || id.substring(0, 8)
+      });
+      setPdfModalOpen(true);
+      toast.success('PDF do pedido de venda gerado com sucesso!');
+    } catch (error: any) {
+      console.error('Erro ao exportar PDF:', error);
+      toast.error(error.message || 'Erro ao gerar PDF do pedido de venda');
+    } finally {
+      setIsExportandoPDF(false);
+    }
+  };
+
+  // Função para fechar o modal de PDF
+  const handleClosePdfModal = () => {
+    setPdfModalOpen(false);
+    if (pdfUrl) {
+      window.URL.revokeObjectURL(pdfUrl);
+      setPdfUrl(null);
+    }
+    setCurrentPdfPedido(null);
+  };
+
+  // Função para fazer download do PDF
+  const handleDownloadPDF = () => {
+    if (!pdfUrl || !currentPdfPedido) return;
+
+    const a = document.createElement('a');
+    a.href = pdfUrl;
+    a.download = `pedido-venda-${currentPdfPedido.numero}-${Date.now()}.pdf`;
+    a.click();
+  };
+
   // Tabs para navegação
   const tabs = [
     { id: 'produtos', label: 'Produtos', icon: Package, completed: (model.itens || []).length > 0 },
@@ -1508,7 +1572,9 @@ function PedidoVendaFormPage() {
           onBack={() => router.push('/vendas')}
           onSave={handleSalvar}
           onAddProduct={handleOpenProdutoModal}
+          onExportPDF={handleExportarPDF}
           isSaving={isSalvando}
+          isExportingPDF={isExportandoPDF}
           totalItems={(model.itens || []).length}
           totalValue={totais.totalPedido || model.totalGeral || 0}
           title={isNovo ? 'Novo Pedido de Venda' : `Pedido de Venda #${model.numero || 'N/A'}`}
@@ -1517,6 +1583,7 @@ function PedidoVendaFormPage() {
           status={formData.status || model.status || 'rascunho'}
           onStatusChange={(newStatus) => handleInputChange('status', newStatus)}
           showStatus={true}
+          pedidoId={!isNovo ? id : undefined}
         />
 
         {/* Badge de Orçamento Origem */}
@@ -2768,6 +2835,54 @@ function PedidoVendaFormPage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Modal de PDF */}
+        <Dialog open={pdfModalOpen} onOpenChange={setPdfModalOpen}>
+          <DialogContent className="max-w-7xl w-[95vw] h-[95vh] p-0 flex flex-col">
+            <DialogHeader className="px-6 py-4 border-b">
+              <div className="flex items-center justify-between">
+                <DialogTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-purple-600" />
+                  Pedido de Venda {currentPdfPedido?.numero ? `#${currentPdfPedido.numero}` : ''}
+                </DialogTitle>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={handleDownloadPDF}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    disabled={!pdfUrl}
+                  >
+                    <Download className="w-4 h-4" />
+                    Download
+                  </Button>
+                  <Button
+                    onClick={handleClosePdfModal}
+                    variant="ghost"
+                    size="icon"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </DialogHeader>
+            <div className="flex-1 overflow-hidden">
+              {pdfUrl ? (
+                <iframe
+                  src={pdfUrl}
+                  className="w-full h-full border-0"
+                  title="PDF do Pedido de Venda"
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center">
+                    <div className="w-8 h-8 border-2 border-purple-600/30 border-t-purple-600 rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-gray-600">Carregando PDF...</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
