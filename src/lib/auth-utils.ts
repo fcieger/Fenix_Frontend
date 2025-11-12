@@ -25,7 +25,7 @@ export function extractUserIdFromToken(token: string): string | null {
   if (trimmedToken.startsWith('eyJ') && trimmedToken.includes('.') && trimmedToken.split('.').length === 3) {
     console.log('🔍 Token parece ser JWT, tentando verificar...');
     try {
-      const jwtSecret = process.env.JWT_SECRET || 'fenix-secret-key';
+      const jwtSecret = process.env.JWT_SECRET || 'fenix-jwt-secret-key-2024-super-secure';
       console.log('🔍 JWT_SECRET usado:', jwtSecret.substring(0, 10) + '...');
       
       // Tentar decodificar SEM verificar primeiro para ver o payload
@@ -124,31 +124,50 @@ export async function validateUserAccess(
   company_id: string
 ): Promise<{ valid: boolean; userId?: string; error?: string }> {
   try {
+    console.log('🔍 validateUserAccess iniciada');
+    console.log('🔍 company_id solicitado:', company_id);
+    
     if (!token || typeof token !== 'string' || token.trim().length === 0) {
+      console.error('❌ Token não fornecido ou inválido');
       return { valid: false, error: 'Token não fornecido' };
     }
 
     const userId = extractUserIdFromToken(token);
+    console.log('🔍 userId extraído do token:', userId);
     
     if (!userId) {
+      console.error('❌ Não foi possível extrair userId do token');
       return { valid: false, error: 'Token inválido' };
     }
 
     // Buscar usuário
+    console.log('🔍 Buscando usuário no banco com ID:', userId);
     const user = await UserService.findById(userId);
+    console.log('🔍 Usuário encontrado no banco:', user ? { id: user.id, email: user.email, name: user.name } : 'NÃO ENCONTRADO');
+    
     if (!user) {
+      console.error('❌ Usuário não encontrado no banco com ID:', userId);
       return { valid: false, error: 'Usuário não encontrado' };
     }
 
     // Buscar empresas do usuário
+    console.log('🔍 Buscando empresas do usuário:', user.id);
     const companies = await UserCompanyService.getUserCompanies(user.id!);
+    console.log('🔍 Empresas encontradas:', companies.length);
+    console.log('🔍 IDs das empresas:', companies.map(c => c.id));
     
     // Verificar se company_id pertence ao usuário
     const temAcesso = companies.some(c => c.id === company_id);
+    console.log('🔍 Usuário tem acesso à empresa solicitada?', temAcesso);
+    
     if (!temAcesso) {
+      console.error('❌ Acesso negado: empresa não pertence ao usuário');
+      console.error('   Company ID solicitado:', company_id);
+      console.error('   Companies do usuário:', companies.map(c => c.id));
       return { valid: false, error: 'Acesso negado: empresa não pertence ao usuário' };
     }
 
+    console.log('✅ Validação de acesso bem-sucedida');
     return { valid: true, userId };
   } catch (error: any) {
     console.error('❌ Erro ao validar acesso:', error);
