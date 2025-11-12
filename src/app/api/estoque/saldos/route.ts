@@ -53,9 +53,17 @@ export async function GET(request: NextRequest) {
         ${whereMov.length ? 'WHERE ' + whereMov.join(' AND ') : ''}
         GROUP BY m."produtoId", COALESCE(m."localDestinoId", m."localOrigemId")
       )
-      SELECT r."produtoId", r."localId", r.qtd
+      SELECT 
+        r."produtoId", 
+        r."localId", 
+        r.qtd AS saldo,
+        p.nome AS produto_nome,
+        p.codigo AS produto_codigo,
+        l.descricao AS local_nome
       FROM rows r
-      ORDER BY r."produtoId", r."localId"`
+      LEFT JOIN produtos p ON r."produtoId" = p.id
+      LEFT JOIN estoque_locais l ON r."localId" = l.id
+      ORDER BY p.nome, l.descricao`
 
     const { rows } = await client.query(sql, params)
 
