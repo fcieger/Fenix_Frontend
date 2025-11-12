@@ -28,7 +28,8 @@ import {
   Calculator,
   History,
   BookOpen,
-  Target
+  Target,
+  Store
 } from 'lucide-react';
 
 // Menu centralizado - ÚNICA FONTE DA VERDADE
@@ -45,6 +46,16 @@ const menuItems = [
       { id: 'vendas-dashboard', label: 'Dashboard', href: '/vendas/dashboard' },
       { id: 'pedido-venda', label: 'Pedido de Venda', href: '/vendas' },
       { id: 'orcamentos', label: 'Orçamentos', href: '/orcamentos' }
+    ]
+  },
+  { 
+    id: 'frente-caixa', 
+    label: 'Frente de Caixa', 
+    icon: Store, 
+    href: '/frente-caixa',
+    submenu: [
+      { id: 'frente-caixa-dashboard', label: 'Dashboard', href: '/frente-caixa/dashboard' },
+      { id: 'frente-caixa-pdv', label: 'Frente de Caixa', href: '/frente-caixa' }
     ]
   },
   { 
@@ -99,8 +110,51 @@ const menuItems = [
       { id: 'prazos-pagamento', label: 'Prazos de Pagamento', href: '/configuracoes/prazos-pagamento' }
     ]
   },
+  { 
+    id: 'credito', 
+    label: 'Crédito', 
+    icon: CreditCard,
+    href: '/credito',
+    submenu: [
+      { id: 'credito-dashboard', label: 'Dashboard', href: '/credito' },
+      { id: 'credito-solicitar', label: 'Solicitar Crédito', href: '/credito/solicitar' },
+      { id: 'credito-solicitacoes', label: 'Minhas Solicitações', href: '/credito/minhas-solicitacoes' },
+      { id: 'credito-documentacao', label: 'Documentação', href: '/credito/documentacao' },
+      { id: 'credito-propostas', label: 'Propostas', href: '/credito/propostas' },
+      { id: 'credito-capital-giro', label: 'Capital de Giro', href: '/credito/capital-giro' },
+      { id: 'credito-antecipacao', label: 'Antecipação', href: '/credito/antecipacao' }
+    ]
+  },
+  { 
+    id: 'aumente-vendas', 
+    label: 'AUMENTE SUAS VENDAS', 
+    icon: TrendingUp,
+    href: '/licitacoes',
+    submenu: [
+      { id: 'licitacoes-dashboard', label: 'Licitações', href: '/licitacoes' },
+      { id: 'licitacoes-matches', label: 'Matches IA', href: '/licitacoes/matches', badge: 'IA' },
+      { id: 'licitacoes-alertas', label: 'Meus Alertas', href: '/licitacoes/alertas' }
+    ]
+  },
+  { id: 'cursos-sebrae', label: 'Cursos Sebrae', icon: BookOpen, href: '/cursos-sebrae' },
   { id: 'assistentes', label: 'Assistentes IA', icon: Bot, href: '/assistentes', badge: 'IA' },
-  { id: 'relatorios', label: 'Relatórios', icon: BarChart3, href: '/relatorios' },
+  { id: 'chat-ia', label: 'Chat IA', icon: Bot, href: '/chat', badge: 'NOVO' },
+  { 
+    id: 'relatorios', 
+    label: 'Relatórios', 
+    icon: BarChart3, 
+    href: '/relatorios',
+    submenu: [
+      { id: 'relatorios-dashboard', label: 'Visão Geral', href: '/relatorios' },
+      { id: 'relatorios-vendas', label: 'Vendas', href: '/relatorios/vendas' },
+      { id: 'relatorios-compras', label: 'Compras', href: '/relatorios/compras' },
+      { id: 'relatorios-financeiro', label: 'Financeiro', href: '/relatorios/financeiro' },
+      { id: 'relatorios-estoque', label: 'Estoque', href: '/relatorios/estoque' },
+      { id: 'relatorios-fiscal', label: 'Fiscal', href: '/relatorios/fiscal' },
+      { id: 'relatorios-caixa', label: 'Frente de Caixa', href: '/relatorios/caixa' },
+      { id: 'relatorios-geral', label: 'Geral', href: '/relatorios/geral' }
+    ]
+  },
   { 
     id: 'configuracoes', 
     label: 'Configurações', 
@@ -132,6 +186,22 @@ export default function Sidebar() {
     // Manter menu compras expandido quando estiver na área de compras
     if (pathname.startsWith('/compras')) {
       setExpandedMenus(prev => new Set([...prev, 'compras']));
+    }
+    // Manter menu frente de caixa expandido quando estiver na área de frente de caixa
+    if (pathname.startsWith('/frente-caixa')) {
+      setExpandedMenus(prev => new Set([...prev, 'frente-caixa']));
+    }
+    // Manter menu crédito expandido quando estiver na área de crédito
+    if (pathname.startsWith('/credito')) {
+      setExpandedMenus(prev => new Set([...prev, 'credito']));
+    }
+    // Manter menu licitações expandido quando estiver na área de licitações
+    if (pathname.startsWith('/licitacoes')) {
+      setExpandedMenus(prev => new Set([...prev, 'aumente-vendas']));
+    }
+    // Manter menu relatórios expandido quando estiver na área de relatórios
+    if (pathname.startsWith('/relatorios')) {
+      setExpandedMenus(prev => new Set([...prev, 'relatorios']));
     }
   }, [pathname]);
 
@@ -204,16 +274,16 @@ export default function Sidebar() {
               </button>
             </div>
             <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
-              <div className="flex-shrink-0 flex items-center px-4">
-                <div className="flex items-center">
+              <div className="flex-shrink-0 flex items-center px-4 mb-2">
+                <div className="flex items-center w-full p-3 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-100">
                   <div className="flex-shrink-0">
-                    <div className="h-8 w-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
-                      <Building2 className="h-5 w-5 text-white" />
+                    <div className="h-10 w-10 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
+                      <Building2 className="h-6 w-6 text-white" />
                     </div>
                   </div>
                   <div className="ml-3">
-                    <h1 className="text-xl font-bold text-gray-900">Fenix</h1>
-                    <p className="text-sm text-gray-500">Sistema de Gestão</p>
+                    <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Fenix</h1>
+                    <p className="text-xs text-gray-600 font-medium">Sistema de Gestão</p>
                   </div>
                 </div>
               </div>
@@ -236,9 +306,9 @@ export default function Sidebar() {
                         }}
                         className={`${
                           isActive
-                            ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white'
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                        } group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full text-left`}
+                            ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md'
+                            : 'text-gray-600 hover:bg-gradient-to-r hover:from-purple-50 hover:to-blue-50 hover:text-gray-900'
+                        } group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg w-full text-left transition-all duration-200`}
                       >
                         <Icon className="mr-3 h-5 w-5 flex-shrink-0" />
                         {item.label}
@@ -269,11 +339,16 @@ export default function Sidebar() {
                                 onClick={() => handleNavigation(subItem.href)}
                                 className={`${
                                   isSubActive
-                                    ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
-                                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
-                                } group flex items-center px-2 py-1.5 text-sm font-medium rounded-md w-full text-left`}
+                                    ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-sm'
+                                    : 'text-gray-500 hover:bg-purple-50 hover:text-gray-700'
+                                } group flex items-center px-2 py-2 text-sm font-medium rounded-lg w-full text-left transition-all duration-200`}
                               >
                                 <span className="ml-4">{subItem.label}</span>
+                                {subItem.badge && (
+                                  <span className="ml-auto bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                                    {subItem.badge}
+                                  </span>
+                                )}
                               </button>
                             );
                           })}
@@ -284,16 +359,16 @@ export default function Sidebar() {
                 })}
               </nav>
             </div>
-            <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
-              <div className="flex items-center">
+            <div className="flex-shrink-0 border-t border-gray-200 p-3">
+              <div className="flex items-center p-2 rounded-lg bg-gradient-to-r from-purple-50 to-blue-50">
                 <div className="flex-shrink-0">
-                  <div className="h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center">
-                    <UserIcon className="h-5 w-5 text-gray-600" />
+                  <div className="h-10 w-10 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center shadow-md">
+                    <UserIcon className="h-5 w-5 text-white" />
                   </div>
                 </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-700">{user?.name || 'Usuário'}</p>
-                  <p className="text-xs text-gray-500">{user?.email || 'email@exemplo.com'}</p>
+                <div className="ml-3 min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{user?.name || 'Usuário'}</p>
+                  <p className="text-xs text-gray-500 truncate">{user?.email || 'email@exemplo.com'}</p>
                 </div>
               </div>
             </div>
@@ -302,19 +377,19 @@ export default function Sidebar() {
       )}
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0">
-        <div className="flex-1 flex flex-col min-h-0 bg-white border-r border-gray-200">
+      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:z-40">
+        <div className="flex-1 flex flex-col min-h-0 bg-gradient-to-b from-gray-50 via-white to-gray-50 border-r-2 border-purple-100 shadow-xl">
           <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-            <div className="flex items-center flex-shrink-0 px-4">
-              <div className="flex items-center">
+            <div className="flex items-center flex-shrink-0 px-4 mb-2">
+              <div className="flex items-center w-full p-3 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-100">
                 <div className="flex-shrink-0">
-                  <div className="h-8 w-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
-                    <Building2 className="h-5 w-5 text-white" />
+                  <div className="h-10 w-10 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
+                    <Building2 className="h-6 w-6 text-white" />
                   </div>
                 </div>
                 <div className="ml-3">
-                  <h1 className="text-xl font-bold text-gray-900">Fenix</h1>
-                  <p className="text-sm text-gray-500">Sistema de Gestão</p>
+                  <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Fenix</h1>
+                  <p className="text-xs text-gray-600 font-medium">Sistema de Gestão</p>
                 </div>
               </div>
             </div>
@@ -337,9 +412,9 @@ export default function Sidebar() {
                       }}
                       className={`${
                         isActive
-                          ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                      } group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full text-left`}
+                          ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md'
+                          : 'text-gray-600 hover:bg-gradient-to-r hover:from-purple-50 hover:to-blue-50 hover:text-gray-900'
+                      } group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg w-full text-left transition-all duration-200`}
                     >
                       <Icon className="mr-3 h-5 w-5 flex-shrink-0" />
                       {item.label}
@@ -370,11 +445,16 @@ export default function Sidebar() {
                               onClick={() => handleNavigation(subItem.href)}
                               className={`${
                                 isSubActive
-                                  ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
-                                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
-                              } group flex items-center px-2 py-1.5 text-sm font-medium rounded-md w-full text-left`}
+                                  ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-sm'
+                                  : 'text-gray-500 hover:bg-purple-50 hover:text-gray-700'
+                              } group flex items-center px-2 py-2 text-sm font-medium rounded-lg w-full text-left transition-all duration-200`}
                             >
                               <span className="ml-4">{subItem.label}</span>
+                              {subItem.badge && (
+                                <span className="ml-auto bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                                  {subItem.badge}
+                                </span>
+                              )}
                             </button>
                           );
                         })}
@@ -385,20 +465,20 @@ export default function Sidebar() {
               })}
             </nav>
           </div>
-          <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
-            <div className="flex items-center w-full">
+          <div className="flex-shrink-0 border-t border-gray-200 p-3">
+            <div className="flex items-center w-full p-2 rounded-lg hover:bg-gradient-to-r hover:from-purple-50 hover:to-blue-50 transition-all duration-200">
               <div className="flex-shrink-0">
-                <div className="h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center">
-                  <UserIcon className="h-5 w-5 text-gray-600" />
+                <div className="h-10 w-10 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center shadow-md">
+                  <UserIcon className="h-5 w-5 text-white" />
                 </div>
               </div>
-              <div className="ml-3 flex-1">
-                <p className="text-sm font-medium text-gray-700">{user?.name || 'Usuário'}</p>
-                <p className="text-xs text-gray-500">{user?.email || 'email@exemplo.com'}</p>
+              <div className="ml-3 flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">{user?.name || 'Usuário'}</p>
+                <p className="text-xs text-gray-500 truncate">{user?.email || 'email@exemplo.com'}</p>
               </div>
               <button
                 onClick={handleLogout}
-                className="ml-2 p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                className="ml-2 p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                 title="Sair"
               >
                 <LogOut className="h-4 w-4" />
