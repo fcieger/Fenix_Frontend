@@ -71,3 +71,4 @@ export async function criarIndicesFluxoCaixa(client: PoolClient) {
   console.log('✅ Índices criados com sucesso');
 }
 
+
