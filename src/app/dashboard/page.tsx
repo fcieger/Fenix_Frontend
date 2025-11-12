@@ -5,93 +5,351 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import Layout from '@/components/Layout';
 import { motion } from 'framer-motion';
-import { Card } from '@/components/ui/card';
 import { 
   DollarSign,
-  Users,
-  Package,
-  BarChart3,
+  ShoppingCart,
   TrendingUp,
   TrendingDown,
   ArrowUpRight,
-  UserPlus,
-  Activity
+  Package,
+  BarChart3,
+  Loader2,
+  Wallet,
+  Activity,
+  AlertTriangle,
+  Calendar,
+  Users,
+  FileText,
+  Sparkles
 } from 'lucide-react';
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  ComposedChart,
+  Area,
+  AreaChart
+} from 'recharts';
+
+interface DashboardMetrics {
+  vendas: {
+    totalVendasPeriodo: number;
+    valorTotalVendasPeriodo: number;
+    totalOrcamentosPeriodo: number;
+    mediaVendasDiaria: number;
+    taxaConversao: number;
+    variacaoVendas: number;
+    variacaoValor: number;
+  };
+  compras: {
+    totalComprasPeriodo: number;
+    valorTotalComprasPeriodo: number;
+    comprasPendentes: number;
+    comprasEntregues: number;
+    comprasFaturadas: number;
+    mediaComprasDiaria: number;
+    taxaEntrega: number;
+    variacaoCompras: number;
+    variacaoValor: number;
+  };
+  financeiro: {
+    saldoAtual: number;
+    fluxoCaixa: number;
+    contasVencidas: number;
+    proximosVencimentos: number;
+    faturamentoMes: number;
+    despesasMes: number;
+    lucroBruto: number;
+    margemLucro: number;
+  };
+}
+
+interface GraficoVendas {
+  data: string;
+  quantidade: number;
+  valor: number;
+}
+
+interface GraficoCompras {
+  data: string;
+  quantidade: number;
+  valor: number;
+}
+
+interface GraficoFluxo {
+  data: string;
+  receitas: number;
+  despesas: number;
+}
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, logout, isAuthenticated, isLoading } = useAuth();
+  const { token, activeCompanyId, isLoading: authLoading, isAuthenticated } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [graficoVendas, setGraficoVendas] = useState<GraficoVendas[]>([]);
+  const [graficoCompras, setGraficoCompras] = useState<GraficoCompras[]>([]);
+  const [graficoFluxo, setGraficoFluxo] = useState<GraficoFluxo[]>([]);
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (!authLoading && !isAuthenticated) {
       router.push('/login');
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, authLoading, router]);
 
-  if (isLoading) {
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      if (!token || !activeCompanyId || authLoading) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        const hoje = new Date();
+        const dataInicio = new Date(hoje.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const dataInicioStr = dataInicio.toISOString().split('T')[0];
+        const dataFimStr = hoje.toISOString().split('T')[0];
+
+        // Buscar dados das três APIs em paralelo
+        const [vendasRes, comprasRes, financeiroRes] = await Promise.all([
+          fetch(`/api/vendas/dashboard?company_id=${activeCompanyId}&dataInicio=${dataInicioStr}&dataFim=${dataFimStr}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }),
+          fetch(`/api/compras/dashboard?company_id=${activeCompanyId}&dataInicio=${dataInicioStr}&dataFim=${dataFimStr}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }),
+          fetch(`/api/financeiro/dashboard?company_id=${activeCompanyId}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          })
+        ]);
+
+        // Parsear respostas com tratamento de erro
+        let vendasData: any = {};
+        let comprasData: any = {};
+        let financeiroData: any = {};
+
+        try {
+          const vendasText = await vendasRes.text();
+          vendasData = vendasText ? JSON.parse(vendasText) : {};
+        } catch (e) {
+          console.error('❌ Erro ao parsear resposta de vendas:', e);
+          vendasData = { success: false, error: 'Erro ao processar resposta da API' };
+        }
+
+        try {
+          const comprasText = await comprasRes.text();
+          comprasData = comprasText ? JSON.parse(comprasText) : {};
+        } catch (e) {
+          console.error('❌ Erro ao parsear resposta de compras:', e);
+          comprasData = { success: false, error: 'Erro ao processar resposta da API' };
+        }
+
+        try {
+          const financeiroText = await financeiroRes.text();
+          financeiroData = financeiroText ? JSON.parse(financeiroText) : {};
+        } catch (e) {
+          console.error('❌ Erro ao parsear resposta financeiro:', e);
+          financeiroData = { success: false, error: 'Erro ao processar resposta da API' };
+        }
+
+        // Verificar status de cada resposta
+        if (!vendasRes.ok) {
+          console.error('❌ Erro HTTP na API de vendas:', vendasRes.status, vendasRes.statusText);
+          console.error('❌ Resposta da API de vendas:', vendasData);
+          throw new Error(`Erro ao buscar dados de vendas (${vendasRes.status}): ${vendasData.error || vendasRes.statusText || 'Erro desconhecido'}`);
+        }
+
+        if (!comprasRes.ok) {
+          console.error('❌ Erro HTTP na API de compras:', comprasRes.status, comprasRes.statusText);
+          console.error('❌ Resposta da API de compras:', comprasData);
+          throw new Error(`Erro ao buscar dados de compras (${comprasRes.status}): ${comprasData.error || comprasRes.statusText || 'Erro desconhecido'}`);
+        }
+
+        if (!financeiroRes.ok) {
+          console.error('❌ Erro HTTP na API financeiro:', financeiroRes.status, financeiroRes.statusText);
+          console.error('❌ Resposta da API financeiro:', financeiroData);
+          throw new Error(`Erro ao buscar dados financeiro (${financeiroRes.status}): ${financeiroData.error || financeiroRes.statusText || 'Erro desconhecido'}`);
+        }
+
+        // Verificar se retornaram success
+        if (!vendasData.success) {
+          console.error('❌ API de vendas não retornou success:', vendasData);
+          throw new Error(`Erro ao buscar dados de vendas: ${vendasData.error || 'Erro desconhecido'}`);
+        }
+
+        if (!comprasData.success) {
+          console.error('❌ API de compras não retornou success:', comprasData);
+          throw new Error(`Erro ao buscar dados de compras: ${comprasData.error || 'Erro desconhecido'}`);
+        }
+
+        if (!financeiroData.success) {
+          console.error('❌ API financeiro não retornou success:', financeiroData);
+          throw new Error(`Erro ao buscar dados financeiro: ${financeiroData.error || 'Erro desconhecido'}`);
+        }
+
+        setMetrics({
+          vendas: vendasData.data.metrics,
+          compras: comprasData.data.metrics,
+          financeiro: financeiroData.data.metrics
+        });
+
+        // Mapear dados dos gráficos para o formato esperado
+        setGraficoVendas((vendasData.data.graficoVendas || []).map((item: any) => ({
+          data: item.data,
+          quantidade: item.quantidade || 0,
+          valor: item.valorTotal || item.valor || 0
+        })));
+        
+        setGraficoCompras((comprasData.data.graficoCompras || []).map((item: any) => ({
+          data: item.data,
+          quantidade: item.quantidade || 0,
+          valor: item.valorTotal || item.valor || 0
+        })));
+        
+        setGraficoFluxo(financeiroData.data.graficoFluxo || []);
+      } catch (error: any) {
+        console.error('Erro ao carregar dashboard:', error);
+        setError(error.message || 'Erro ao carregar dados do dashboard');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboardData();
+  }, [token, activeCompanyId, authLoading]);
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
+  const formatNumber = (value: number) => {
+    return new Intl.NumberFormat('pt-BR').format(value);
+  };
+
+  if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="flex flex-col items-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
-          <p className="text-purple-600 mt-4 font-medium">Carregando dashboard...</p>
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="flex flex-col items-center">
+            <Loader2 className="h-12 w-12 animate-spin text-purple-600 mb-4" />
+            <p className="text-purple-600 font-medium">Carregando dashboard...</p>
+          </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 
-  if (!isAuthenticated || !user) {
+  if (!isAuthenticated || !token || !activeCompanyId) {
     return null;
   }
 
-  const metrics = [
+  if (error) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg max-w-md">
+            <div className="flex items-center">
+              <AlertTriangle className="w-6 h-6 text-red-500 mr-3" />
+              <p className="text-red-700 font-medium">{error}</p>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  const metricsCards = metrics ? [
     {
       title: 'Total de Vendas',
-      value: 'R$ 45.231',
+      value: formatCurrency(metrics.vendas.valorTotalVendasPeriodo),
       icon: DollarSign,
       color: 'bg-green-500',
-      trend: '+12% vs mês anterior',
-      trendUp: true
+      trend: metrics.vendas.variacaoValor >= 0 ? `+${metrics.vendas.variacaoValor.toFixed(1)}%` : `${metrics.vendas.variacaoValor.toFixed(1)}%`,
+      trendUp: metrics.vendas.variacaoValor >= 0,
+      subtitle: `${formatNumber(metrics.vendas.totalVendasPeriodo)} vendas`
     },
     {
-      title: 'Novos Clientes',
-      value: '1.234',
-      icon: Users,
+      title: 'Total de Compras',
+      value: formatCurrency(metrics.compras.valorTotalComprasPeriodo),
+      icon: ShoppingCart,
       color: 'bg-blue-500',
-      trend: '+8% vs mês anterior',
-      trendUp: true
+      trend: metrics.compras.variacaoValor >= 0 ? `+${metrics.compras.variacaoValor.toFixed(1)}%` : `${metrics.compras.variacaoValor.toFixed(1)}%`,
+      trendUp: metrics.compras.variacaoValor >= 0,
+      subtitle: `${formatNumber(metrics.compras.totalComprasPeriodo)} compras`
     },
     {
-      title: 'Produtos Ativos',
-      value: '567',
-      icon: Package,
+      title: 'Saldo Atual',
+      value: formatCurrency(metrics.financeiro.saldoAtual),
+      icon: Wallet,
       color: 'bg-purple-500',
-      trend: '+3% vs mês anterior',
-      trendUp: true
+      trend: formatCurrency(metrics.financeiro.fluxoCaixa),
+      trendUp: metrics.financeiro.fluxoCaixa >= 0,
+      subtitle: 'Fluxo de caixa (30 dias)'
     },
     {
-      title: 'Taxa de Conversão',
-      value: '3.2%',
-      icon: BarChart3,
+      title: 'Lucro Bruto',
+      value: formatCurrency(metrics.financeiro.lucroBruto),
+      icon: TrendingUp,
       color: 'bg-orange-500',
-      trend: '-2% vs mês anterior',
-      trendUp: false
+      trend: `${metrics.financeiro.margemLucro.toFixed(1)}% margem`,
+      trendUp: metrics.financeiro.lucroBruto >= 0,
+      subtitle: `Faturamento: ${formatCurrency(metrics.financeiro.faturamentoMes)}`
     }
-  ];
+  ] : [];
 
-  const quickActions = [
-    { label: 'Novo Cadastro', icon: UserPlus, color: 'text-blue-600', href: '/cadastros/novo' },
-    { label: 'Novo Produto', icon: Package, color: 'text-green-600', href: '/produtos/novo' },
-    { label: 'Nova Venda', icon: DollarSign, color: 'text-purple-600', href: '/vendas/novo' },
-    { label: 'Relatórios', icon: BarChart3, color: 'text-orange-600', href: '/relatorios' }
-  ];
-
-  const recentActivities = [
-    { action: 'Novo cadastro realizado', detail: 'Cliente: João Silva', time: '2 min atrás' },
-    { action: 'Produto atualizado', detail: 'Produto: Notebook Dell', time: '15 min atrás' },
-    { action: 'Venda realizada', detail: 'Valor: R$ 1.250', time: '1 hora atrás' },
-    { action: 'Cadastro editado', detail: 'Cliente: Maria Santos', time: '2 horas atrás' },
-    { action: 'Novo produto criado', detail: 'Produto: Mouse Gamer', time: '3 horas atrás' }
-  ];
+  const alertCards = metrics ? [
+    {
+      title: 'Contas Vencidas',
+      value: formatCurrency(metrics.financeiro.contasVencidas),
+      icon: AlertTriangle,
+      color: 'bg-red-500',
+      href: '/financeiro/contas-pagar'
+    },
+    {
+      title: 'Próximos Vencimentos',
+      value: formatCurrency(metrics.financeiro.proximosVencimentos),
+      icon: Calendar,
+      color: 'bg-yellow-500',
+      href: '/financeiro/contas-pagar'
+    },
+    {
+      title: 'Compras Pendentes',
+      value: formatNumber(metrics.compras.comprasPendentes),
+      icon: Package,
+      color: 'bg-indigo-500',
+      href: '/compras'
+    },
+    {
+      title: 'Orçamentos',
+      value: formatNumber(metrics.vendas.totalOrcamentosPeriodo),
+      icon: FileText,
+      color: 'bg-cyan-500',
+      href: '/orcamentos'
+    }
+  ] : [];
 
         return (
     <Layout>
@@ -106,10 +364,10 @@ export default function DashboardPage() {
                 <div>
                   <h1 className="text-2xl lg:text-3xl font-bold mb-2 flex items-center">
                     <BarChart3 className="w-8 h-8 lg:w-10 lg:h-10 mr-3" />
-                    Dashboard
+                Dashboard Geral
                   </h1>
                   <p className="text-purple-100 text-sm lg:text-base">
-                    Bem-vindo de volta! Aqui está um resumo do seu negócio.
+                Visão consolidada do seu negócio - Últimos 30 dias
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -120,8 +378,9 @@ export default function DashboardPage() {
             </motion.div>
 
             {/* Metrics Cards */}
+        {metrics && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-              {metrics.map((metric, index) => {
+            {metricsCards.map((metric, index) => {
                 const Icon = metric.icon;
                 return (
                   <motion.div
@@ -143,6 +402,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="text-xl lg:text-2xl font-bold text-gray-900 mb-1">{metric.value}</div>
                     <div className="text-xs lg:text-sm text-gray-600 mb-2">{metric.title}</div>
+                  <div className="text-xs text-gray-500 mb-1">{metric.subtitle}</div>
                     <div className={`text-xs font-medium ${metric.trendUp ? 'text-green-600' : 'text-red-600'}`}>
                       {metric.trend}
                     </div>
@@ -150,105 +410,340 @@ export default function DashboardPage() {
                 );
               })}
             </div>
+        )}
 
-            {/* Quick Actions and Recent Activities */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8">
-              {/* Quick Actions */}
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.2 }}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 lg:p-6"
-              >
-                <div className="flex items-center space-x-3 mb-6">
-                  <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
-                    <Activity className="w-4 h-4 text-white" />
+        {/* Alert Cards */}
+        {metrics && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+            {alertCards.map((alert, index) => {
+              const Icon = alert.icon;
+              return (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: (metricsCards.length + index) * 0.1 }}
+                  onClick={() => alert.href && router.push(alert.href)}
+                  className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 lg:p-6 hover:shadow-lg transition-all duration-200 group cursor-pointer"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className={`w-10 h-10 lg:w-12 lg:h-12 ${alert.color} rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-200`}>
+                      <Icon className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
+                    </div>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900">Ações Rápidas</h3>
-                </div>
-                <div className="grid grid-cols-2 gap-3 lg:gap-4">
-                  {quickActions.map((action, index) => {
-                    const Icon = action.icon;
-                    return (
-                      <motion.button
-                        key={index}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => router.push(action.href)}
-                        className="flex flex-col items-center p-3 lg:p-4 rounded-xl border border-gray-200 hover:border-purple-300 hover:bg-gradient-to-br hover:from-purple-50 hover:to-indigo-50 transition-all duration-200 group"
-                      >
-                        <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center mb-2 group-hover:shadow-lg transition-all duration-200">
-                          <Icon className={`w-4 h-4 lg:w-5 lg:h-5 ${action.color} group-hover:scale-110 transition-transform`} />
-                        </div>
-                        <span className="text-xs lg:text-sm font-medium text-gray-700 group-hover:text-purple-700 text-center">{action.label}</span>
-                      </motion.button>
-                    );
-                  })}
-                </div>
-              </motion.div>
+                  <div className="text-xl lg:text-2xl font-bold text-gray-900 mb-1">{alert.value}</div>
+                  <div className="text-xs lg:text-sm text-gray-600">{alert.title}</div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
 
-              {/* Recent Activities */}
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.3 }}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 lg:p-6"
-              >
-                <div className="flex items-center space-x-3 mb-6">
-                  <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
-                    <Activity className="w-4 h-4 text-white" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900">Atividades Recentes</h3>
+        {/* Assistentes IA */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.5 }}
+          onClick={() => router.push('/assistentes')}
+          className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-2xl shadow-xl border-2 border-white p-6 lg:p-8 cursor-pointer hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02]"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center">
+                <Sparkles className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-2xl font-bold text-white">🤖 Assistentes de IA</h3>
+                  <span className="px-3 py-1 bg-white/20 backdrop-blur rounded-full text-xs font-bold text-white">NOVO</span>
                 </div>
-                <div className="space-y-3 lg:space-y-4">
-                  {recentActivities.map((activity, index) => (
-                    <motion.div 
-                      key={index}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: 0.4 + index * 0.1 }}
-                      className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors duration-200"
-                    >
-                      <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0 animate-pulse"></div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900">{activity.action}</p>
-                        <p className="text-xs lg:text-sm text-gray-600">{activity.detail}</p>
-                      </div>
-                      <div className="text-xs text-gray-500 flex-shrink-0">{activity.time}</div>
-                    </motion.div>
-                  ))}
+                <p className="text-white/90 text-sm">
+                  Automatize tarefas com inteligência artificial: cadastros, produtos, notas fiscais e mais
+                </p>
+                <div className="mt-3 flex items-center gap-4 text-white/80 text-xs">
+                  <span>👥 Cadastros</span>
+                  <span>📦 Produtos</span>
+                  <span>📸 OCR</span>
+                  <span>⚡ Automação</span>
                 </div>
-                <div className="mt-6">
-                  <button className="text-sm text-purple-600 hover:text-purple-800 font-medium transition-colors duration-200">
-                    Ver todas as atividades
-                  </button>
-                </div>
-              </motion.div>
+              </div>
             </div>
+            <ArrowUpRight className="w-8 h-8 text-white opacity-80" />
+          </div>
+        </motion.div>
 
-            {/* Sales Chart */}
+        {/* Charts Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Gráfico de Vendas */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.4 }}
+                className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 lg:p-6"
+              >
+                <div className="flex items-center space-x-3 mb-6">
+              <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
+                <DollarSign className="w-4 h-4 text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Vendas dos Últimos 30 Dias</h3>
+                  </div>
+            {graficoVendas.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={graficoVendas}>
+                  <defs>
+                    <linearGradient id="colorValor" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis 
+                    dataKey="data" 
+                    stroke="#6b7280"
+                    style={{ fontSize: '11px' }}
+                  />
+                  <YAxis 
+                    stroke="#6b7280"
+                    style={{ fontSize: '11px' }}
+                    tickFormatter={(value) => {
+                      if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                      if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+                      return value.toString();
+                    }}
+                  />
+                  <Tooltip
+                    formatter={(value: number) => formatCurrency(value)}
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="valor" 
+                    stroke="#10b981" 
+                    fillOpacity={1} 
+                    fill="url(#colorValor)"
+                    name="Valor"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
+                <div className="text-center">
+                  <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                  <p className="text-gray-500 text-sm">Nenhum dado disponível</p>
+                </div>
+              </div>
+            )}
+          </motion.div>
+
+          {/* Gráfico de Compras */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.5 }}
+            className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 lg:p-6"
+          >
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
+                <ShoppingCart className="w-4 h-4 text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Compras dos Últimos 30 Dias</h3>
+                        </div>
+            {graficoCompras.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={graficoCompras}>
+                  <defs>
+                    <linearGradient id="colorCompras" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis 
+                    dataKey="data" 
+                    stroke="#6b7280"
+                    style={{ fontSize: '11px' }}
+                  />
+                  <YAxis 
+                    stroke="#6b7280"
+                    style={{ fontSize: '11px' }}
+                    tickFormatter={(value) => {
+                      if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                      if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+                      return value.toString();
+                    }}
+                  />
+                  <Tooltip
+                    formatter={(value: number) => formatCurrency(value)}
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="valor" 
+                    stroke="#3b82f6" 
+                    fillOpacity={1} 
+                    fill="url(#colorCompras)"
+                    name="Valor"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
+                <div className="text-center">
+                  <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                  <p className="text-gray-500 text-sm">Nenhum dado disponível</p>
+                </div>
+              </div>
+            )}
+              </motion.div>
+        </div>
+
+        {/* Fluxo de Caixa */}
+        {metrics && graficoFluxo.length > 0 && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.6 }}
+                className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 lg:p-6"
+              >
+                <div className="flex items-center space-x-3 mb-6">
+              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                    <Activity className="w-4 h-4 text-white" />
+                  </div>
+              <h3 className="text-lg font-semibold text-gray-900">Fluxo de Caixa - Últimos 30 Dias</h3>
+            </div>
+            <ResponsiveContainer width="100%" height={350}>
+              <ComposedChart data={graficoFluxo}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis 
+                  dataKey="data" 
+                  stroke="#6b7280"
+                  style={{ fontSize: '11px' }}
+                />
+                <YAxis 
+                  stroke="#6b7280"
+                  style={{ fontSize: '11px' }}
+                  tickFormatter={(value) => {
+                    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                    if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+                    return value.toString();
+                  }}
+                />
+                <Tooltip
+                  formatter={(value: number) => formatCurrency(value)}
+                  contentStyle={{
+                    backgroundColor: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px'
+                  }}
+                />
+                <Legend />
+                <Bar 
+                  dataKey="receitas" 
+                  fill="#10b981" 
+                  name="Receitas"
+                  radius={[4, 4, 0, 0]}
+                />
+                <Bar 
+                  dataKey="despesas" 
+                  fill="#ef4444" 
+                  name="Despesas"
+                  radius={[4, 4, 0, 0]}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </motion.div>
+        )}
+
+        {/* Quick Stats */}
+        {metrics && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.4 }}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 lg:p-6"
+              transition={{ duration: 0.3, delay: 0.7 }}
+              className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200"
             >
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                  <BarChart3 className="w-4 h-4 text-white" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900">Vendas dos Últimos 30 Dias</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-sm font-semibold text-gray-700">Vendas</h4>
+                <DollarSign className="w-5 h-5 text-green-600" />
               </div>
-              <div className="h-48 lg:h-64 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl flex items-center justify-center border border-gray-200 hover:shadow-md transition-shadow duration-200">
-                <div className="text-center">
-                  <div className="w-16 h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <BarChart3 className="w-8 h-8 lg:w-10 lg:h-10 text-purple-500" />
-                  </div>
-                  <p className="text-sm lg:text-base text-gray-600 font-medium">Gráfico de vendas em desenvolvimento</p>
-                  <p className="text-xs text-gray-500 mt-1">Em breve: visualizações interativas</p>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Média diária:</span>
+                  <span className="font-semibold text-gray-900">{formatNumber(metrics.vendas.mediaVendasDiaria)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Taxa de conversão:</span>
+                  <span className="font-semibold text-gray-900">{metrics.vendas.taxaConversao.toFixed(1)}%</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Orçamentos:</span>
+                  <span className="font-semibold text-gray-900">{formatNumber(metrics.vendas.totalOrcamentosPeriodo)}</span>
+                </div>
+                </div>
+              </motion.div>
+
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.8 }}
+              className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-6 border border-blue-200"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-sm font-semibold text-gray-700">Compras</h4>
+                <ShoppingCart className="w-5 h-5 text-blue-600" />
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Média diária:</span>
+                  <span className="font-semibold text-gray-900">{formatNumber(metrics.compras.mediaComprasDiaria)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Taxa de entrega:</span>
+                  <span className="font-semibold text-gray-900">{metrics.compras.taxaEntrega.toFixed(1)}%</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Entregues:</span>
+                  <span className="font-semibold text-gray-900">{formatNumber(metrics.compras.comprasEntregues)}</span>
                 </div>
               </div>
             </motion.div>
+
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.9 }}
+              className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl p-6 border border-purple-200"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-sm font-semibold text-gray-700">Financeiro</h4>
+                <Wallet className="w-5 h-5 text-purple-600" />
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Faturamento:</span>
+                  <span className="font-semibold text-gray-900">{formatCurrency(metrics.financeiro.faturamentoMes)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Despesas:</span>
+                  <span className="font-semibold text-gray-900">{formatCurrency(metrics.financeiro.despesasMes)}</span>
+                  </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Margem:</span>
+                  <span className="font-semibold text-gray-900">{metrics.financeiro.margemLucro.toFixed(1)}%</span>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
           </div>
     </Layout>
   );
