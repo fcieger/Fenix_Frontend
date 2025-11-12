@@ -35,7 +35,7 @@ import { listarOrcamentos, excluirOrcamento, alterarStatusOrcamento, obterOrcame
 
 export default function OrcamentosPage() {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, activeCompanyId } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -57,11 +57,13 @@ export default function OrcamentosPage() {
 
   // Carregar orçamentos
   useEffect(() => {
+    if (!isAuthenticated || !activeCompanyId) return; // Aguardar autenticação e company_id
+    
     const loadOrcamentos = async () => {
       try {
         setIsLoadingOrcamentos(true);
         setError(null);
-        const result = await listarOrcamentos();
+        const result = await listarOrcamentos({ companyId: activeCompanyId });
         const mapped = (result || []).map((o: any) => ({
           id: o.id,
           status: o.status === 'pendente' ? 'Pendente' : 'Concluído',
@@ -83,10 +85,8 @@ export default function OrcamentosPage() {
       }
     };
 
-    if (isAuthenticated) {
-      loadOrcamentos();
-    }
-  }, [isAuthenticated]);
+    loadOrcamentos();
+  }, [isAuthenticated, activeCompanyId]);
 
   if (isLoading) {
     return (
