@@ -68,28 +68,42 @@ export async function GET(request: NextRequest) {
     }
 
     // 1. Total de vendas no período
-    const vendasPeriodoQuery = await query(`
-      SELECT 
-        COUNT(*) as total_vendas,
-        COALESCE(SUM("totalGeral"), 0) as valor_total_vendas,
-        COALESCE(SUM("totalProdutos"), 0) as valor_produtos
-      FROM pedidos_venda
-      WHERE "companyId" = $1::uuid
-        AND DATE("dataEmissao") >= $2::date
-        AND DATE("dataEmissao") <= $3::date
-        AND status NOT IN ('cancelado', 'rascunho')
-    `, [company_id, dataInicioPeriodo, dataFimPeriodo]);
+    let vendasPeriodoQuery;
+    try {
+      vendasPeriodoQuery = await query(`
+        SELECT 
+          COUNT(*) as total_vendas,
+          COALESCE(SUM("totalGeral"), 0) as valor_total_vendas,
+          COALESCE(SUM("totalProdutos"), 0) as valor_produtos
+        FROM pedidos_venda
+        WHERE "companyId" = $1::uuid
+          AND DATE("dataEmissao") >= $2::date
+          AND DATE("dataEmissao") <= $3::date
+          AND status NOT IN ('cancelado', 'rascunho')
+      `, [company_id, dataInicioPeriodo, dataFimPeriodo]);
+    } catch (sqlError: any) {
+      console.error('❌ Erro SQL ao buscar vendas do período:', sqlError);
+      // Se a tabela não existir, retornar valores zerados
+      vendasPeriodoQuery = { rows: [{ total_vendas: 0, valor_total_vendas: 0, valor_produtos: 0 }] };
+    }
 
     // 1b. Total de orçamentos no período
-    const orcamentosPeriodoQuery = await query(`
-      SELECT 
-        COUNT(*) as total_orcamentos,
-        COALESCE(SUM("totalGeral"), 0) as valor_total_orcamentos
-      FROM orcamentos
-      WHERE "companyId" = $1::uuid
-        AND DATE("dataEmissao") >= $2::date
-        AND DATE("dataEmissao") <= $3::date
-    `, [company_id, dataInicioPeriodo, dataFimPeriodo]);
+    let orcamentosPeriodoQuery;
+    try {
+      orcamentosPeriodoQuery = await query(`
+        SELECT 
+          COUNT(*) as total_orcamentos,
+          COALESCE(SUM("totalGeral"), 0) as valor_total_orcamentos
+        FROM orcamentos
+        WHERE "companyId" = $1::uuid
+          AND DATE("dataEmissao") >= $2::date
+          AND DATE("dataEmissao") <= $3::date
+      `, [company_id, dataInicioPeriodo, dataFimPeriodo]);
+    } catch (sqlError: any) {
+      console.error('❌ Erro SQL ao buscar orçamentos do período:', sqlError);
+      // Se a tabela não existir, retornar valores zerados
+      orcamentosPeriodoQuery = { rows: [{ total_orcamentos: 0, valor_total_orcamentos: 0 }] };
+    }
 
     const vendasPeriodo = vendasPeriodoQuery.rows[0];
     const totalVendasPeriodo = parseInt(vendasPeriodo?.total_vendas || 0);
@@ -105,20 +119,26 @@ export async function GET(request: NextRequest) {
     const mediaVendasDiaria = diasPeriodo > 0 ? totalVendasPeriodo / diasPeriodo : 0;
 
     // 2. Orçamentos do período (para gráfico)
-    const graficoOrcamentosQuery = await query(`
-      SELECT 
-        DATE("dataEmissao") as data,
-        COUNT(*) as quantidade,
-        COALESCE(SUM("totalGeral"), 0) as valor_total,
-        COUNT(CASE WHEN status = 'concluido' THEN 1 END) as quantidade_concluidos,
-        COUNT(CASE WHEN status = 'pendente' THEN 1 END) as quantidade_pendentes
-      FROM orcamentos
-      WHERE "companyId" = $1::uuid
-        AND DATE("dataEmissao") >= $2::date
-        AND DATE("dataEmissao") <= $3::date
-      GROUP BY DATE("dataEmissao")
-      ORDER BY DATE("dataEmissao") ASC
-    `, [company_id, dataInicioPeriodo, dataFimPeriodo]);
+    let graficoOrcamentosQuery;
+    try {
+      graficoOrcamentosQuery = await query(`
+        SELECT 
+          DATE("dataEmissao") as data,
+          COUNT(*) as quantidade,
+          COALESCE(SUM("totalGeral"), 0) as valor_total,
+          COUNT(CASE WHEN status = 'concluido' THEN 1 END) as quantidade_concluidos,
+          COUNT(CASE WHEN status = 'pendente' THEN 1 END) as quantidade_pendentes
+        FROM orcamentos
+        WHERE "companyId" = $1::uuid
+          AND DATE("dataEmissao") >= $2::date
+          AND DATE("dataEmissao") <= $3::date
+        GROUP BY DATE("dataEmissao")
+        ORDER BY DATE("dataEmissao") ASC
+      `, [company_id, dataInicioPeriodo, dataFimPeriodo]);
+    } catch (sqlError: any) {
+      console.error('❌ Erro SQL ao buscar gráfico de orçamentos:', sqlError);
+      graficoOrcamentosQuery = { rows: [] };
+    }
 
     const graficoOrcamentos = graficoOrcamentosQuery.rows.map((row: any) => ({
       data: format(new Date(row.data), 'dd/MM'),
@@ -129,19 +149,25 @@ export async function GET(request: NextRequest) {
     }));
 
     // 3. Vendas do período (para gráfico)
-    const graficoVendasQuery = await query(`
-      SELECT 
-        DATE("dataEmissao") as data,
-        COUNT(*) as quantidade,
-        COALESCE(SUM("totalGeral"), 0) as valor_total
-      FROM pedidos_venda
-      WHERE "companyId" = $1::uuid
-        AND DATE("dataEmissao") >= $2::date
-        AND DATE("dataEmissao") <= $3::date
-        AND status NOT IN ('cancelado', 'rascunho')
-      GROUP BY DATE("dataEmissao")
-      ORDER BY DATE("dataEmissao") ASC
-    `, [company_id, dataInicioPeriodo, dataFimPeriodo]);
+    let graficoVendasQuery;
+    try {
+      graficoVendasQuery = await query(`
+        SELECT 
+          DATE("dataEmissao") as data,
+          COUNT(*) as quantidade,
+          COALESCE(SUM("totalGeral"), 0) as valor_total
+        FROM pedidos_venda
+        WHERE "companyId" = $1::uuid
+          AND DATE("dataEmissao") >= $2::date
+          AND DATE("dataEmissao") <= $3::date
+          AND status NOT IN ('cancelado', 'rascunho')
+        GROUP BY DATE("dataEmissao")
+        ORDER BY DATE("dataEmissao") ASC
+      `, [company_id, dataInicioPeriodo, dataFimPeriodo]);
+    } catch (sqlError: any) {
+      console.error('❌ Erro SQL ao buscar gráfico de vendas:', sqlError);
+      graficoVendasQuery = { rows: [] };
+    }
 
     const graficoVendas = graficoVendasQuery.rows.map((row: any) => ({
       data: format(new Date(row.data), 'dd/MM'),
@@ -150,22 +176,28 @@ export async function GET(request: NextRequest) {
     }));
 
     // 4. Top clientes do período
-    const topClientesQuery = await query(`
-      SELECT 
-        c.id,
-        COALESCE(c."nomeRazaoSocial", c."nomeFantasia", 'Cliente sem nome') as nome,
-        COUNT(pv.id) as total_vendas,
-        COALESCE(SUM(pv."totalGeral"), 0) as valor_total
-      FROM pedidos_venda pv
-      INNER JOIN cadastros c ON pv."clienteId" = c.id
-      WHERE pv."companyId" = $1::uuid
-        AND DATE(pv."dataEmissao") >= $2::date
-        AND DATE(pv."dataEmissao") <= $3::date
-        AND pv.status NOT IN ('cancelado', 'rascunho')
-      GROUP BY c.id, c."nomeRazaoSocial", c."nomeFantasia"
-      ORDER BY valor_total DESC
-      LIMIT 10
-    `, [company_id, dataInicioPeriodo, dataFimPeriodo]);
+    let topClientesQuery;
+    try {
+      topClientesQuery = await query(`
+        SELECT 
+          c.id,
+          COALESCE(c."nomeRazaoSocial", c."nomeFantasia", 'Cliente sem nome') as nome,
+          COUNT(pv.id) as total_vendas,
+          COALESCE(SUM(pv."totalGeral"), 0) as valor_total
+        FROM pedidos_venda pv
+        INNER JOIN cadastros c ON pv."clienteId" = c.id
+        WHERE pv."companyId" = $1::uuid
+          AND DATE(pv."dataEmissao") >= $2::date
+          AND DATE(pv."dataEmissao") <= $3::date
+          AND pv.status NOT IN ('cancelado', 'rascunho')
+        GROUP BY c.id, c."nomeRazaoSocial", c."nomeFantasia"
+        ORDER BY valor_total DESC
+        LIMIT 10
+      `, [company_id, dataInicioPeriodo, dataFimPeriodo]);
+    } catch (sqlError: any) {
+      console.error('❌ Erro SQL ao buscar top clientes:', sqlError);
+      topClientesQuery = { rows: [] };
+    }
 
     const topClientes = topClientesQuery.rows.map((row: any) => ({
       id: row.id,
@@ -175,24 +207,30 @@ export async function GET(request: NextRequest) {
     }));
 
     // 5. Top produtos vendidos do período - agrupa por ID do produto
-    const topProdutosQuery = await query(`
-      SELECT 
-        pvi."produtoId" as id,
-        MAX(pvi.codigo) as codigo,
-        MAX(pvi.nome) as nome,
-        COALESCE(SUM(pvi.quantidade), 0) as quantidade_total,
-        COALESCE(SUM(pvi."totalItem"), 0) as valor_total
-      FROM pedidos_venda_itens pvi
-      INNER JOIN pedidos_venda pv ON pvi."pedidoVendaId" = pv.id
-      WHERE pv."companyId" = $1::uuid
-        AND pvi."produtoId" IS NOT NULL
-        AND DATE(pv."dataEmissao") >= $2::date
-        AND DATE(pv."dataEmissao") <= $3::date
-        AND pv.status NOT IN ('cancelado', 'rascunho')
-      GROUP BY pvi."produtoId"
-      ORDER BY valor_total DESC
-      LIMIT 10
-    `, [company_id, dataInicioPeriodo, dataFimPeriodo]);
+    let topProdutosQuery;
+    try {
+      topProdutosQuery = await query(`
+        SELECT 
+          pvi."produtoId" as id,
+          MAX(pvi.codigo) as codigo,
+          MAX(pvi.nome) as nome,
+          COALESCE(SUM(pvi.quantidade), 0) as quantidade_total,
+          COALESCE(SUM(pvi."totalItem"), 0) as valor_total
+        FROM pedidos_venda_itens pvi
+        INNER JOIN pedidos_venda pv ON pvi."pedidoVendaId" = pv.id
+        WHERE pv."companyId" = $1::uuid
+          AND pvi."produtoId" IS NOT NULL
+          AND DATE(pv."dataEmissao") >= $2::date
+          AND DATE(pv."dataEmissao") <= $3::date
+          AND pv.status NOT IN ('cancelado', 'rascunho')
+        GROUP BY pvi."produtoId"
+        ORDER BY valor_total DESC
+        LIMIT 10
+      `, [company_id, dataInicioPeriodo, dataFimPeriodo]);
+    } catch (sqlError: any) {
+      console.error('❌ Erro SQL ao buscar top produtos:', sqlError);
+      topProdutosQuery = { rows: [] };
+    }
 
     const topProdutos = topProdutosQuery.rows.map((row: any, index: number) => ({
       id: row.id || `produto-${index}`,
@@ -203,22 +241,28 @@ export async function GET(request: NextRequest) {
     }));
 
     // 6. Vendas por vendedor do período
-    const vendasPorVendedorQuery = await query(`
-      SELECT 
-        v.id,
-        COALESCE(v."nomeRazaoSocial", v."nomeFantasia", 'Sem vendedor') as nome,
-        COUNT(pv.id) as total_vendas,
-        COALESCE(SUM(pv."totalGeral"), 0) as valor_total
-      FROM pedidos_venda pv
-      LEFT JOIN cadastros v ON pv."vendedorId" = v.id
-      WHERE pv."companyId" = $1::uuid
-        AND DATE(pv."dataEmissao") >= $2::date
-        AND DATE(pv."dataEmissao") <= $3::date
-        AND pv.status NOT IN ('cancelado', 'rascunho')
-      GROUP BY v.id, v."nomeRazaoSocial", v."nomeFantasia"
-      ORDER BY valor_total DESC
-      LIMIT 10
-    `, [company_id, dataInicioPeriodo, dataFimPeriodo]);
+    let vendasPorVendedorQuery;
+    try {
+      vendasPorVendedorQuery = await query(`
+        SELECT 
+          v.id,
+          COALESCE(v."nomeRazaoSocial", v."nomeFantasia", 'Sem vendedor') as nome,
+          COUNT(pv.id) as total_vendas,
+          COALESCE(SUM(pv."totalGeral"), 0) as valor_total
+        FROM pedidos_venda pv
+        LEFT JOIN cadastros v ON pv."vendedorId" = v.id
+        WHERE pv."companyId" = $1::uuid
+          AND DATE(pv."dataEmissao") >= $2::date
+          AND DATE(pv."dataEmissao") <= $3::date
+          AND pv.status NOT IN ('cancelado', 'rascunho')
+        GROUP BY v.id, v."nomeRazaoSocial", v."nomeFantasia"
+        ORDER BY valor_total DESC
+        LIMIT 10
+      `, [company_id, dataInicioPeriodo, dataFimPeriodo]);
+    } catch (sqlError: any) {
+      console.error('❌ Erro SQL ao buscar vendas por vendedor:', sqlError);
+      vendasPorVendedorQuery = { rows: [] };
+    }
 
     const vendasPorVendedor = vendasPorVendedorQuery.rows.map((row: any) => ({
       id: row.id,
@@ -231,23 +275,29 @@ export async function GET(request: NextRequest) {
     const periodoAnteriorFim = subDays(dataInicioPeriodo, 1);
     const periodoAnteriorInicio = subDays(periodoAnteriorFim, diasPeriodo - 1);
 
-    const comparativoQuery = await query(`
-      SELECT 
-        CASE 
-          WHEN DATE("dataEmissao") >= $2::date AND DATE("dataEmissao") <= $3::date THEN 'atual'
-          WHEN DATE("dataEmissao") >= $4::date AND DATE("dataEmissao") <= $5::date THEN 'anterior'
-        END as periodo,
-        COUNT(*) as total_vendas,
-        COALESCE(SUM("totalGeral"), 0) as valor_total
-      FROM pedidos_venda
-      WHERE "companyId" = $1::uuid
-        AND (
-          (DATE("dataEmissao") >= $2::date AND DATE("dataEmissao") <= $3::date)
-          OR (DATE("dataEmissao") >= $4::date AND DATE("dataEmissao") <= $5::date)
-        )
-        AND status NOT IN ('cancelado', 'rascunho')
-      GROUP BY periodo
-    `, [company_id, dataInicioPeriodo, dataFimPeriodo, periodoAnteriorInicio, periodoAnteriorFim]);
+    let comparativoQuery;
+    try {
+      comparativoQuery = await query(`
+        SELECT 
+          CASE 
+            WHEN DATE("dataEmissao") >= $2::date AND DATE("dataEmissao") <= $3::date THEN 'atual'
+            WHEN DATE("dataEmissao") >= $4::date AND DATE("dataEmissao") <= $5::date THEN 'anterior'
+          END as periodo,
+          COUNT(*) as total_vendas,
+          COALESCE(SUM("totalGeral"), 0) as valor_total
+        FROM pedidos_venda
+        WHERE "companyId" = $1::uuid
+          AND (
+            (DATE("dataEmissao") >= $2::date AND DATE("dataEmissao") <= $3::date)
+            OR (DATE("dataEmissao") >= $4::date AND DATE("dataEmissao") <= $5::date)
+          )
+          AND status NOT IN ('cancelado', 'rascunho')
+        GROUP BY periodo
+      `, [company_id, dataInicioPeriodo, dataFimPeriodo, periodoAnteriorInicio, periodoAnteriorFim]);
+    } catch (sqlError: any) {
+      console.error('❌ Erro SQL ao buscar comparativo:', sqlError);
+      comparativoQuery = { rows: [] };
+    }
 
     const comparativo = {
       atual: {
