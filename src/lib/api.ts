@@ -435,8 +435,10 @@ class ApiService {
 
   async getProfile(token: string): Promise<AuthResponse['user']> {
     try {
-      const response = await fetch(`${BASE_URL}/api/auth/profile`, {
-        method: 'POST',
+      // Usar URL relativa para Next.js API routes
+      const apiUrl = typeof window !== 'undefined' ? '' : (BASE_URL || 'http://localhost:3004');
+      const response = await fetch(`${apiUrl}/api/users/profile`, {
+        method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -477,10 +479,14 @@ class ApiService {
     })
   }
 
-  async getCadastros(): Promise<any[]> {
-    return this.request<any[]>('/api/cadastros', {
+  async getCadastros(companyId?: string): Promise<any[]> {
+    const queryParam = companyId ? `?company_id=${companyId}` : '';
+    const response = await this.request<any>(`/api/cadastros${queryParam}`, {
       method: 'GET',
-    })
+    });
+    // Se a resposta tem estrutura { success, data }, retornar apenas data
+    // Senão, retornar a resposta direta (para compatibilidade com backend NestJS)
+    return response?.data || response || [];
   }
 
   async getCadastro(id: string, token: string): Promise<any> {
@@ -541,13 +547,14 @@ class ApiService {
     }
   }
 
-  async getProdutos(): Promise<ProdutoData[]> {
+  async getProdutos(companyId?: string): Promise<ProdutoData[]> {
     try {
-      console.log('🔄 API getProdutos iniciado');
+      console.log('🔄 API getProdutos iniciado', { companyId });
       const token = this.getToken();
       console.log('🔑 Token para produtos:', token ? 'presente' : 'ausente');
       
-      const result = await this.request<ProdutoData[]>('/api/produtos', {
+      const queryParam = companyId ? `?company_id=${companyId}` : '';
+      const result = await this.request<ProdutoData[]>(`/api/produtos${queryParam}`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -652,10 +659,11 @@ class ApiService {
   }
 
   // ===== NATUREZA DE OPERAÇÃO =====
-  async getNaturezasOperacao(): Promise<NaturezaOperacao[]> {
+  async getNaturezasOperacao(companyId?: string): Promise<NaturezaOperacao[]> {
     try {
-      console.log('🔄 API getNaturezasOperacao iniciado');
-      const result = await this.request<NaturezaOperacao[]>(`/api/natureza-operacao`, {
+      const queryParam = companyId ? `?company_id=${companyId}` : '';
+      console.log('🔄 API getNaturezasOperacao iniciado', { companyId });
+      const result = await this.request<NaturezaOperacao[]>(`/api/natureza-operacao${queryParam}`, {
         method: 'GET',
       });
       console.log('✅ API getNaturezasOperacao sucesso:', result);
@@ -829,10 +837,11 @@ class ApiService {
     }
   }
 
-  async getNaturezaOperacao(id: string, token: string): Promise<NaturezaOperacao> {
+  async getNaturezaOperacao(id: string, token: string, companyId?: string): Promise<NaturezaOperacao> {
     try {
-      console.log('🔄 API getNaturezaOperacao iniciado:', { id, token: token ? 'presente' : 'ausente' });
-      const result = await this.request<NaturezaOperacao>(`/api/natureza-operacao/${id}`, {
+      const queryParam = companyId ? `?company_id=${companyId}` : '';
+      console.log('🔄 API getNaturezaOperacao iniciado:', { id, companyId, token: token ? 'presente' : 'ausente' });
+      const result = await this.request<NaturezaOperacao>(`/api/natureza-operacao/${id}${queryParam}`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
