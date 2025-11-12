@@ -128,29 +128,41 @@ export default function DashboardComprasPage() {
         // Adicionar parâmetros de data baseado no filtro selecionado
         if (filtroPeriodo === 'personalizado' && dataInicioCustom && dataFimCustom) {
           url += `&dataInicio=${dataInicioCustom}&dataFim=${dataFimCustom}`;
-        } else {
+        } else if (filtroPeriodo !== '30dias') {
+          // Só enviar datas se não for o padrão de 30 dias, deixar API usar seu padrão (90 dias ou desde primeira compra)
           const hoje = new Date();
-          const hojeString = hoje.toISOString().split('T')[0];
           let dataInicio: Date;
           let dataFim: Date = hoje;
           
           switch (filtroPeriodo) {
             case 'hoje':
-              dataInicio = hoje;
-              dataFim = hoje;
+              dataInicio = new Date(hoje);
+              dataInicio.setHours(0, 0, 0, 0);
+              dataFim = new Date(hoje);
+              dataFim.setHours(23, 59, 59, 999);
               break;
             case '5dias':
               dataInicio = new Date(hoje.getTime() - 5 * 24 * 60 * 60 * 1000);
+              dataInicio.setHours(0, 0, 0, 0);
+              dataFim = new Date(hoje);
+              dataFim.setHours(23, 59, 59, 999);
               break;
             case '90dias':
               dataInicio = new Date(hoje.getTime() - 90 * 24 * 60 * 60 * 1000);
+              dataInicio.setHours(0, 0, 0, 0);
+              dataFim = new Date(hoje);
+              dataFim.setHours(23, 59, 59, 999);
               break;
-            default: // 30 dias
-              dataInicio = new Date(hoje.getTime() - 30 * 24 * 60 * 60 * 1000);
+            default:
+              // Não enviar datas para filtro padrão (30dias)
+              break;
           }
           
-          url += `&dataInicio=${dataInicio.toISOString().split('T')[0]}&dataFim=${dataFim.toISOString().split('T')[0]}`;
+          if (filtroPeriodo !== '30dias') {
+            url += `&dataInicio=${dataInicio.toISOString().split('T')[0]}&dataFim=${dataFim.toISOString().split('T')[0]}`;
+          }
         }
+        // Se filtroPeriodo === '30dias', não enviar parâmetros de data para a API usar seu padrão (90 dias ou desde primeira compra)
 
         const response = await fetch(url, {
           headers: {
@@ -168,11 +180,27 @@ export default function DashboardComprasPage() {
 
         const data = await response.json();
         
+        console.log('[Dashboard Frontend] Resposta da API:', {
+          success: data.success,
+          hasData: !!data.data,
+          metrics: data.data?.metrics,
+          totalComprasPeriodo: data.data?.metrics?.totalComprasPeriodo,
+          comprasPendentes: data.data?.metrics?.comprasPendentes
+        });
+        
         if (!data.success || !data.data) {
+          console.error('[Dashboard Frontend] ❌ Resposta inválida:', data);
           throw new Error('Resposta inválida do servidor');
         }
 
         const { metrics: metricsData, graficoComprasPorStatus: graficoComprasPorStatusData, graficoCompras: graficoComprasData, topFornecedores: topFornecedoresData, topProdutos: topProdutosData, comprasPorComprador: comprasPorCompradorData } = data.data;
+        
+        console.log('[Dashboard Frontend] Dados extraídos:', {
+          totalComprasPeriodo: metricsData?.totalComprasPeriodo,
+          comprasPendentes: metricsData?.comprasPendentes,
+          graficoCompras: graficoComprasData?.length || 0,
+          topFornecedores: topFornecedoresData?.length || 0
+        });
 
         setMetrics(metricsData);
         setGraficoComprasPorStatus(graficoComprasPorStatusData || []);
