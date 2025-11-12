@@ -77,3 +77,8 @@ export interface PedidoCompra {
   companyId: string;
   itens: PedidoCompraItem[];
 }
+
+
+
+
+
