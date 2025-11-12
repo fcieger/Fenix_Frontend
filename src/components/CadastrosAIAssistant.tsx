@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Send, Bot, ArrowLeft, Sparkles } from 'lucide-react';
 import { apiService } from '@/lib/api';
+import { useAuth } from '@/contexts/auth-context';
 
 interface Message {
   id: string;
@@ -17,6 +18,7 @@ interface CadastrosAIAssistantProps {
 }
 
 export default function CadastrosAIAssistant({ isOpen, onClose }: CadastrosAIAssistantProps) {
+  const { activeCompanyId, token } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -441,16 +443,40 @@ export default function CadastrosAIAssistant({ isOpen, onClose }: CadastrosAIAss
   };
 
   const handleApplyData = async () => {
+    console.log('🔵 handleApplyData iniciado');
+    console.log('🔵 Estado inicial - isSaving:', isSaving);
+    console.log('🔵 activeCompanyId:', activeCompanyId);
+    console.log('🔵 token:', token ? 'presente' : 'ausente');
+    
     const data = (window as any).generatedCadastroData;
-    if (!data) return;
+    if (!data) {
+      console.log('❌ Nenhum dado gerado encontrado');
+      return;
+    }
 
+    console.log('🔵 Dados gerados:', data);
     setIsSaving(true);
+    console.log('🔵 isSaving setado para true');
     
     try {
       // Preparar dados para envio - usando dados processados inteligentemente
       const extractedData = data.extractedData || {};
       
+      // Verificar se tem company_id
+      if (!activeCompanyId) {
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          type: 'ai',
+          content: '❌ Erro: Empresa não identificada. Por favor, faça login novamente.',
+          timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, errorMessage]);
+        setIsSaving(false);
+        return;
+      }
+
       const cadastroData = {
+        companyId: activeCompanyId, // ✅ Backend espera companyId (camelCase)
         nomeRazaoSocial: data.userInput,
         tipoPessoa: data.tipoPessoa as "Pessoa Física" | "Pessoa Jurídica",
         nomeFantasia: extractedData.nomeFantasia || (data.tipoPessoa === 'Pessoa Jurídica' ? data.userInput : ''),
@@ -478,9 +504,25 @@ export default function CadastrosAIAssistant({ isOpen, onClose }: CadastrosAIAss
       };
 
       // Salvar no banco de dados
-      // Obter token do localStorage ou usar um token padrão
-      const token = localStorage.getItem('fenix_token') || '';
-      await apiService.createCadastro(cadastroData, token);
+      const authToken = token || localStorage.getItem('fenix_token') || '';
+      
+      if (!authToken) {
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          type: 'ai',
+          content: '❌ Erro: Token de autenticação não encontrado. Por favor, faça login novamente.',
+          timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, errorMessage]);
+        setIsSaving(false);
+        return;
+      }
+
+      console.log('💾 Salvando cadastro com company_id:', activeCompanyId);
+      console.log('📋 Dados do cadastro:', JSON.stringify(cadastroData, null, 2));
+      
+      const result = await apiService.createCadastro(cadastroData, authToken);
+      console.log('✅ Resultado do salvamento:', result);
       
       // Adicionar mensagem de sucesso
       const successMessage: Message = {
@@ -491,6 +533,7 @@ export default function CadastrosAIAssistant({ isOpen, onClose }: CadastrosAIAss
       };
       
       setMessages(prev => [...prev, successMessage]);
+      setIsSaving(false);
       
       // Fechar modal e redirecionar após um pequeno delay
       setTimeout(() => {
@@ -499,18 +542,20 @@ export default function CadastrosAIAssistant({ isOpen, onClose }: CadastrosAIAss
         window.location.href = '/cadastros';
       }, 2000);
       
-    } catch (error) {
-      console.error('Erro ao salvar cadastro:', error);
+    } catch (error: any) {
+      console.error('❌ Erro ao salvar cadastro:', error);
+      console.error('❌ Detalhes do erro:', error?.message, error?.response);
+      
+      const errorMsg = error?.message || 'Erro desconhecido ao salvar o cadastro';
       
       const errorMessage: Message = {
         id: (Date.now() + 2).toString(),
         type: 'ai',
-        content: '❌ Erro ao salvar o cadastro. Tente novamente.',
+        content: `❌ Erro ao salvar o cadastro: ${errorMsg}\n\nPor favor, tente novamente ou verifique os dados.`,
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
       };
       
       setMessages(prev => [...prev, errorMessage]);
-    } finally {
       setIsSaving(false);
     }
   };
