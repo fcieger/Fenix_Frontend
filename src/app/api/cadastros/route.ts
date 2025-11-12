@@ -55,7 +55,8 @@ export async function GET(request: NextRequest) {
         cnpj, 
         cpf, 
         email, 
-        telefone, 
+        "telefoneComercial", 
+        celular,
         "tipoPessoa",
         "createdAt",
         "updatedAt"
@@ -91,6 +92,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    console.log('🔵 Backend /api/cadastros POST - Body recebido:', JSON.stringify(body, null, 2));
     
     // Verificar autenticação
     const authHeader = request.headers.get('authorization');
@@ -107,6 +109,7 @@ export async function POST(request: NextRequest) {
     // Se tiver NEXT_PUBLIC_API_URL configurado, redirecionar para backend NestJS
     if (process.env.NEXT_PUBLIC_API_URL) {
       try {
+        console.log('🔵 Redirecionando para backend NestJS:', process.env.NEXT_PUBLIC_API_URL);
         const backendResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/cadastros`, {
           method: 'POST',
           headers: {
@@ -118,10 +121,12 @@ export async function POST(request: NextRequest) {
 
         if (!backendResponse.ok) {
           const errorData = await backendResponse.json().catch(() => ({ message: 'Erro ao criar cadastro no backend' }));
+          console.error('❌ Erro do backend NestJS:', errorData);
           throw new Error(errorData.message || `Erro ${backendResponse.status}`);
         }
 
         const data = await backendResponse.json();
+        console.log('✅ Resposta do backend NestJS:', data);
         return NextResponse.json({
           success: true,
           data: data,
@@ -134,9 +139,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Fallback: Criar no banco local diretamente
+    console.log('🔵 Criando no banco local...');
     const { companyId, ...cadastroData } = body;
+    console.log('🔵 companyId extraído:', companyId);
+    console.log('🔵 cadastroData extraído:', cadastroData);
     
     if (!companyId) {
+      console.error('❌ companyId não encontrado no body!');
+      console.error('❌ Keys do body:', Object.keys(body));
       return NextResponse.json(
         { 
           success: false, 
@@ -164,9 +174,10 @@ export async function POST(request: NextRequest) {
         cnpj, 
         cpf, 
         email, 
-        telefone, 
+        "telefoneComercial", 
+        celular,
         "tipoPessoa"
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *`,
       [
         companyId,
@@ -175,7 +186,8 @@ export async function POST(request: NextRequest) {
         cadastroData.cnpj || null,
         cadastroData.cpf || null,
         cadastroData.email || null,
-        cadastroData.telefone || cadastroData.phone || null,
+        cadastroData.telefone || cadastroData.telefoneComercial || cadastroData.phone || null,
+        cadastroData.celular || null,
         cadastroData.tipoPessoa || (cadastroData.cnpj ? 'juridica' : 'fisica')
       ]
     );
