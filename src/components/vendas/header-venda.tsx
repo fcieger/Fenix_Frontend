@@ -2,14 +2,16 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ShoppingCart, Plus, Save, FileText, ChevronDown } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Plus, Save, FileText, ChevronDown, Download, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface HeaderVendaProps {
   onBack: () => void;
   onSave: () => void;
   onAddProduct: () => void;
+  onExportPDF?: () => void;
   isSaving?: boolean;
+  isExportingPDF?: boolean;
   totalItems?: number;
   totalValue?: number;
   title?: string;
@@ -19,13 +21,17 @@ interface HeaderVendaProps {
   status?: string;
   onStatusChange?: (status: string) => void;
   showStatus?: boolean;
+  // Se o pedido já foi salvo (tem ID)
+  pedidoId?: string;
 }
 
 export default function HeaderVenda({
   onBack,
   onSave,
   onAddProduct,
+  onExportPDF,
   isSaving = false,
+  isExportingPDF = false,
   totalItems = 0,
   totalValue = 0,
   title = 'Nova Venda',
@@ -33,7 +39,8 @@ export default function HeaderVenda({
   progressLabel = 'Progresso da Venda',
   status,
   onStatusChange,
-  showStatus = false
+  showStatus = false,
+  pedidoId
 }: HeaderVendaProps) {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -176,6 +183,25 @@ export default function HeaderVenda({
             className="flex flex-col lg:items-end space-y-4"
           >
             <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+              {onExportPDF && pedidoId && (
+                <Button
+                  onClick={onExportPDF}
+                  disabled={isExportingPDF}
+                  className="bg-white/20 hover:bg-white/30 text-white border-white/30 hover:border-white/50 px-6 py-3 rounded-xl font-medium transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isExportingPDF ? (
+                    <div className="flex items-center space-x-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Gerando PDF...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2">
+                      <Download className="w-4 h-4" />
+                      <span>Exportar PDF</span>
+                    </div>
+                  )}
+                </Button>
+              )}
               <Button
                 onClick={onSave}
                 disabled={isSaving}
