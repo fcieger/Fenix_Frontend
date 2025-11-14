@@ -140,3 +140,4 @@ export function VendasPeriodoPDF({ dados, filtros }: VendasPeriodoPDFProps) {
 
 
 
+
