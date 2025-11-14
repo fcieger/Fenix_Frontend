@@ -2,6 +2,8 @@
  * Funções auxiliares para carregar dados dos relatórios
  */
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 function construirQueryParams(baseParams: any, filtrosEspecificos?: any): string {
   const params = new URLSearchParams();
   
@@ -166,7 +168,7 @@ export async function carregarDadosRelatorio(
           filtrosEspecificos
         );
         const orcamentosRes = await fetch(
-          `/api/orcamentos?${orcamentosParams}`,
+          `${API_BASE_URL}/api/orcamentos?${orcamentosParams}`,
           { headers }
         );
         return orcamentosRes.ok ? await orcamentosRes.json() : null;
