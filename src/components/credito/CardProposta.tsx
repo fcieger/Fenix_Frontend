@@ -124,3 +124,4 @@ export default function CardProposta({ proposta }: CardPropostaProps) {
 
 
 
+
