@@ -98,6 +98,7 @@ export default function DashboardPage() {
   const [graficoVendas, setGraficoVendas] = useState<GraficoVendas[]>([]);
   const [graficoCompras, setGraficoCompras] = useState<GraficoCompras[]>([]);
   const [graficoFluxo, setGraficoFluxo] = useState<GraficoFluxo[]>([]);
+  const [filtroStatus, setFiltroStatus] = useState<'todos' | 'entregue' | 'rascunho'>('todos');
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -116,20 +117,25 @@ export default function DashboardPage() {
         setLoading(true);
         setError(null);
 
+        console.log('🔵 [Dashboard] Carregando dados com filtro:', filtroStatus);
+
         const hoje = new Date();
         const dataInicio = new Date(hoje.getTime() - 30 * 24 * 60 * 60 * 1000);
         const dataInicioStr = dataInicio.toISOString().split('T')[0];
         const dataFimStr = hoje.toISOString().split('T')[0];
+        
+        console.log('🔵 [Dashboard] Período:', dataInicioStr, 'até', dataFimStr);
+        console.log('🔵 [Dashboard] Company ID:', activeCompanyId);
 
         // Buscar dados das três APIs em paralelo
         const [vendasRes, comprasRes, financeiroRes] = await Promise.all([
-          fetch(`/api/vendas/dashboard?company_id=${activeCompanyId}&dataInicio=${dataInicioStr}&dataFim=${dataFimStr}`, {
+          fetch(`/api/vendas/dashboard?company_id=${activeCompanyId}&dataInicio=${dataInicioStr}&dataFim=${dataFimStr}&filtroStatus=${filtroStatus}`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
             }
           }),
-          fetch(`/api/compras/dashboard?company_id=${activeCompanyId}&dataInicio=${dataInicioStr}&dataFim=${dataFimStr}`, {
+          fetch(`/api/compras/dashboard?company_id=${activeCompanyId}&dataInicio=${dataInicioStr}&dataFim=${dataFimStr}&filtroStatus=${filtroStatus}`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -207,6 +213,11 @@ export default function DashboardPage() {
           throw new Error(`Erro ao buscar dados financeiro: ${financeiroData.error || 'Erro desconhecido'}`);
         }
 
+        console.log('✅ [Dashboard] Dados de vendas recebidos:', vendasData.data);
+        console.log('✅ [Dashboard] Dados de compras recebidos:', comprasData.data);
+        console.log('✅ [Dashboard] Gráfico de vendas RAW:', vendasData.data.graficoVendas);
+        console.log('✅ [Dashboard] Gráfico de compras RAW:', comprasData.data.graficoCompras);
+
         setMetrics({
           vendas: vendasData.data.metrics,
           compras: comprasData.data.metrics,
@@ -214,17 +225,23 @@ export default function DashboardPage() {
         });
 
         // Mapear dados dos gráficos para o formato esperado
-        setGraficoVendas((vendasData.data.graficoVendas || []).map((item: any) => ({
+        const vendasMapeadas = (vendasData.data.graficoVendas || []).map((item: any) => ({
           data: item.data,
           quantidade: item.quantidade || 0,
           valor: item.valorTotal || item.valor || 0
-        })));
+        }));
+        console.log('✅ [Dashboard] Vendas mapeadas para o gráfico:', vendasMapeadas);
+        console.log('✅ [Dashboard] Total de pontos no gráfico de vendas:', vendasMapeadas.length);
+        setGraficoVendas(vendasMapeadas);
         
-        setGraficoCompras((comprasData.data.graficoCompras || []).map((item: any) => ({
+        const comprasMapeadas = (comprasData.data.graficoCompras || []).map((item: any) => ({
           data: item.data,
           quantidade: item.quantidade || 0,
           valor: item.valorTotal || item.valor || 0
-        })));
+        }));
+        console.log('✅ [Dashboard] Compras mapeadas para o gráfico:', comprasMapeadas);
+        console.log('✅ [Dashboard] Total de pontos no gráfico de compras:', comprasMapeadas.length);
+        setGraficoCompras(comprasMapeadas);
         
         setGraficoFluxo(financeiroData.data.graficoFluxo || []);
       } catch (error: any) {
@@ -236,7 +253,7 @@ export default function DashboardPage() {
     };
 
     loadDashboardData();
-  }, [token, activeCompanyId, authLoading]);
+  }, [token, activeCompanyId, authLoading, filtroStatus]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -370,9 +387,25 @@ export default function DashboardPage() {
                 Visão consolidada do seu negócio - Últimos 30 dias
                   </p>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                  <span className="text-white/80 text-sm font-medium">Sistema ativo</span>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                  {/* Filtro de Status */}
+                  <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2">
+                    <span className="text-white/90 text-sm font-medium">Exibir:</span>
+                    <select
+                      value={filtroStatus}
+                      onChange={(e) => setFiltroStatus(e.target.value as any)}
+                      className="bg-white/20 border border-white/30 rounded-md px-3 py-1 text-sm font-medium text-white cursor-pointer hover:bg-white/30 transition-colors focus:outline-none focus:ring-2 focus:ring-white/50"
+                    >
+                      <option value="todos" className="text-gray-900">Todos os pedidos</option>
+                      <option value="entregue" className="text-gray-900">Apenas entregues</option>
+                      <option value="rascunho" className="text-gray-900">Apenas rascunhos</option>
+                    </select>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                    <span className="text-white/80 text-sm font-medium">Sistema ativo</span>
+                  </div>
                 </div>
               </div>
             </motion.div>
