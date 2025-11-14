@@ -68,7 +68,7 @@ const novoOrcamento = (): Orcamento => ({
   companyId: '',
   clienteId: '',
   dataEmissao: new Date().toISOString().slice(0,10),
-  status: 'rascunho',
+  status: 'pendente',
   itens: [],
 });
 
@@ -579,7 +579,7 @@ function OrcamentoFormPage() {
                   ? orcamento.dataValidade.split('T')[0] 
                   : new Date(orcamento.dataValidade).toISOString().split('T')[0])
               : '',
-            status: orcamento.status || 'rascunho',
+            status: orcamento.status || 'pendente',
             motivoPerda: orcamento.motivoPerda || '',
             frete: orcamento.frete || '1',
             valorFrete: Number(orcamento.valorFrete) || 0,
@@ -738,7 +738,7 @@ function OrcamentoFormPage() {
     if (!model.itens || model.itens.length === 0) { error('Erro', 'Adicione ao menos um item'); return; }
     
     // Validar motivoPerda quando status for PERDIDO
-    const statusAtual = formData.status || model.status || 'rascunho';
+    const statusAtual = formData.status || model.status || 'pendente';
     if (statusAtual === 'perdido' && (!formData.motivoPerda || formData.motivoPerda.trim() === '')) {
       error('Erro', 'É obrigatório informar o motivo da perda quando o status é "Perdido"');
       return;
@@ -802,7 +802,7 @@ function OrcamentoFormPage() {
         dataEmissao: formData.dataEmissao || model.dataEmissao,
         dataPrevisaoEntrega: formData.dataPrevisao ? new Date(formData.dataPrevisao).toISOString().split('T')[0] : model.dataPrevisaoEntrega,
         dataValidade: formData.dataValidade ? new Date(formData.dataValidade).toISOString().split('T')[0] : model.dataValidade,
-        status: formData.status || model.status || 'rascunho',
+        status: formData.status || model.status || 'pendente',
         motivoPerda: formData.motivoPerda || model.motivoPerda,
         observacoes: formData.observacoes || model.observacoes,
       };
@@ -923,6 +923,14 @@ function OrcamentoFormPage() {
     }
   }
 
+  // Buscar pedidos gerados quando o orçamento for carregado
+  useEffect(() => {
+    if (model.id && !isNovo) {
+      buscarPedidosDoOrcamento(model.id);
+    }
+  }, [model.id, isNovo]);
+
+  // Loading state - must be after all hooks
   if (isLoading) {
     return (
       <Layout>
@@ -1134,13 +1142,6 @@ function OrcamentoFormPage() {
       setIsLoadingPedidosGerados(false);
     }
   };
-
-  // Buscar pedidos gerados quando o orçamento for carregado
-  useEffect(() => {
-    if (model.id && !isNovo) {
-      buscarPedidosDoOrcamento(model.id);
-    }
-  }, [model.id, isNovo]);
 
   // Tabs para navegação
   const tabs = [
@@ -1427,7 +1428,7 @@ function OrcamentoFormPage() {
           title={isNovo ? 'Novo Orçamento' : `Orçamento #${model.numero || 'N/A'}`}
           description={isNovo ? 'Crie um novo orçamento com produtos e configurações personalizadas' : 'Edite o orçamento com produtos e configurações personalizadas'}
           progressLabel="Progresso do Orçamento"
-          status={formData.status || model.status || 'rascunho'}
+          status={formData.status || model.status || 'pendente'}
           onStatusChange={(newStatus) => handleInputChange('status', newStatus)}
           showStatus={true}
         />
@@ -1537,7 +1538,7 @@ function OrcamentoFormPage() {
                         'cancelado': { bg: 'bg-red-100', text: 'text-red-800' },
                         'finalizado': { bg: 'bg-green-100', text: 'text-green-800' },
                       };
-                      const config = statusConfig[status] || statusConfig['rascunho'];
+                      const config = statusConfig[status] || statusConfig['pendente'];
                       return (
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
                           {status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ')}
