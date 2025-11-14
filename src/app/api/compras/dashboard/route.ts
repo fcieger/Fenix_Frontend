@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
     const company_id = searchParams.get('company_id');
     const dataInicio = searchParams.get('dataInicio');
     const dataFim = searchParams.get('dataFim');
+    const filtroStatus = searchParams.get('filtroStatus') || 'todos';
     
     if (!company_id) {
       return NextResponse.json(
@@ -186,6 +187,17 @@ export async function GET(request: NextRequest) {
       console.warn('[Dashboard Compras] Erro ao validar total de pedidos:', e);
     }
 
+    // Construir filtro de status baseado no parâmetro
+    let statusFilter = '';
+    if (filtroStatus === 'entregue') {
+      statusFilter = "AND status IN ('entregue', 'faturado')";
+    } else if (filtroStatus === 'rascunho') {
+      statusFilter = "AND status = 'rascunho'";
+    } else {
+      // 'todos' - excluir apenas cancelados
+      statusFilter = "AND status != 'cancelado'";
+    }
+
     // VALIDAÇÃO: Buscar pedidos específicos do período para confirmar
     try {
       const pedidosNoPeriodoQuery = await query(`
@@ -251,7 +263,7 @@ export async function GET(request: NextRequest) {
         WHERE "companyId" = $1::uuid
           AND "dataEmissao" >= $2::date
           AND "dataEmissao" <= $3::date
-          AND status != 'cancelado'
+          ${statusFilter}
       `, [company_id, format(dataInicioPeriodo, 'yyyy-MM-dd'), format(dataFimPeriodo, 'yyyy-MM-dd')]);
       
       console.log('[Dashboard Compras] Compras no período (com status):', comprasPeriodoQuery.rows[0]);
@@ -328,6 +340,7 @@ export async function GET(request: NextRequest) {
         WHERE "companyId" = $1::uuid
           AND "dataEmissao" >= $2::date
           AND "dataEmissao" <= $3::date
+          ${statusFilter}
         GROUP BY "dataEmissao"
         ORDER BY "dataEmissao" ASC
       `, [company_id, format(dataInicioPeriodo, 'yyyy-MM-dd'), format(dataFimPeriodo, 'yyyy-MM-dd')]);
@@ -360,7 +373,7 @@ export async function GET(request: NextRequest) {
         WHERE "companyId" = $1::uuid
           AND "dataEmissao" >= $2::date
           AND "dataEmissao" <= $3::date
-          AND status != 'cancelado'
+          ${statusFilter}
         GROUP BY "dataEmissao"
         ORDER BY "dataEmissao" ASC
       `, [company_id, format(dataInicioPeriodo, 'yyyy-MM-dd'), format(dataFimPeriodo, 'yyyy-MM-dd')]);
