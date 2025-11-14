@@ -2,7 +2,6 @@ import axios from 'axios';
 import { PedidoCompra } from '../types/pedido-compra';
 
 // Sempre usar URL relativa porque as rotas de compras estão no Next.js
-// (diferente de vendas que usa backend externo na porta 3001)
 const getApiUrl = () => {
   // Sempre URL relativa para Next.js API routes
   return typeof window !== 'undefined' ? '' : 'http://localhost:3004';
