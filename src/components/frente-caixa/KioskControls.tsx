@@ -146,3 +146,4 @@ export function KioskControls({ senhaKiosk = '1234' }: KioskControlsProps) {
 
 
 
+
