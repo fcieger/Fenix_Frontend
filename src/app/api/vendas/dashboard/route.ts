@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
     const company_id = searchParams.get('company_id');
     const dataInicio = searchParams.get('dataInicio');
     const dataFim = searchParams.get('dataFim');
+    const filtroStatus = searchParams.get('filtroStatus') || 'todos';
     
     if (!company_id) {
       return NextResponse.json(
@@ -67,6 +68,17 @@ export async function GET(request: NextRequest) {
       dataFimPeriodo = hoje;
     }
 
+    // Construir filtro de status baseado no parâmetro
+    let statusFilter = '';
+    if (filtroStatus === 'entregue') {
+      statusFilter = "AND status IN ('entregue', 'enviado')";
+    } else if (filtroStatus === 'rascunho') {
+      statusFilter = "AND status = 'rascunho'";
+    } else {
+      // 'todos' - excluir apenas cancelados
+      statusFilter = "AND status != 'cancelado'";
+    }
+
     // 1. Total de vendas no período
     let vendasPeriodoQuery;
     try {
@@ -79,7 +91,7 @@ export async function GET(request: NextRequest) {
         WHERE "companyId" = $1::uuid
           AND DATE("dataEmissao") >= $2::date
           AND DATE("dataEmissao") <= $3::date
-          AND status NOT IN ('cancelado', 'rascunho')
+          ${statusFilter}
       `, [company_id, dataInicioPeriodo, dataFimPeriodo]);
     } catch (sqlError: any) {
       console.error('❌ Erro SQL ao buscar vendas do período:', sqlError);
@@ -160,10 +172,16 @@ export async function GET(request: NextRequest) {
         WHERE "companyId" = $1::uuid
           AND DATE("dataEmissao") >= $2::date
           AND DATE("dataEmissao") <= $3::date
-          AND status NOT IN ('cancelado', 'rascunho')
+          ${statusFilter}
         GROUP BY DATE("dataEmissao")
         ORDER BY DATE("dataEmissao") ASC
       `, [company_id, dataInicioPeriodo, dataFimPeriodo]);
+      
+      console.log('[Dashboard Vendas] Resultado da query de vendas:', {
+        totalRows: graficoVendasQuery.rows.length,
+        periodo: { inicio: dataInicioPeriodo, fim: dataFimPeriodo },
+        rows: graficoVendasQuery.rows
+      });
     } catch (sqlError: any) {
       console.error('❌ Erro SQL ao buscar gráfico de vendas:', sqlError);
       graficoVendasQuery = { rows: [] };
@@ -174,6 +192,8 @@ export async function GET(request: NextRequest) {
       quantidade: parseInt(row.quantidade || 0),
       valorTotal: parseFloat(row.valor_total || 0)
     }));
+    
+    console.log('[Dashboard Vendas] Gráfico de vendas final:', graficoVendas);
 
     // 4. Top clientes do período
     let topClientesQuery;
@@ -189,7 +209,7 @@ export async function GET(request: NextRequest) {
         WHERE pv."companyId" = $1::uuid
           AND DATE(pv."dataEmissao") >= $2::date
           AND DATE(pv."dataEmissao") <= $3::date
-          AND pv.status NOT IN ('cancelado', 'rascunho')
+          ${statusFilter}
         GROUP BY c.id, c."nomeRazaoSocial", c."nomeFantasia"
         ORDER BY valor_total DESC
         LIMIT 10
@@ -222,7 +242,7 @@ export async function GET(request: NextRequest) {
           AND pvi."produtoId" IS NOT NULL
           AND DATE(pv."dataEmissao") >= $2::date
           AND DATE(pv."dataEmissao") <= $3::date
-          AND pv.status NOT IN ('cancelado', 'rascunho')
+          ${statusFilter}
         GROUP BY pvi."produtoId"
         ORDER BY valor_total DESC
         LIMIT 10
@@ -254,7 +274,7 @@ export async function GET(request: NextRequest) {
         WHERE pv."companyId" = $1::uuid
           AND DATE(pv."dataEmissao") >= $2::date
           AND DATE(pv."dataEmissao") <= $3::date
-          AND pv.status NOT IN ('cancelado', 'rascunho')
+          ${statusFilter}
         GROUP BY v.id, v."nomeRazaoSocial", v."nomeFantasia"
         ORDER BY valor_total DESC
         LIMIT 10
@@ -291,7 +311,7 @@ export async function GET(request: NextRequest) {
             (DATE("dataEmissao") >= $2::date AND DATE("dataEmissao") <= $3::date)
             OR (DATE("dataEmissao") >= $4::date AND DATE("dataEmissao") <= $5::date)
           )
-          AND status NOT IN ('cancelado', 'rascunho')
+          ${statusFilter}
         GROUP BY periodo
       `, [company_id, dataInicioPeriodo, dataFimPeriodo, periodoAnteriorInicio, periodoAnteriorFim]);
     } catch (sqlError: any) {
