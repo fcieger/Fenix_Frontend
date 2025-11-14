@@ -136,3 +136,4 @@ export function useBarcodeScanner(config: BarcodeScannerConfig) {
 
 
 
+
