@@ -32,7 +32,7 @@ export async function exportPedidoVendaPDF(options: ExportPedidoVendaPDFOptions)
     const pedido = result.data;
 
     // 2. Gerar PDF
-    const pdfResponse = await fetch('/api/relatorios/export/pdf', {
+    const pdfResponse = await fetch('/api/reports/export/pdf', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -1,33 +1,89 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import Layout from '@/components/Layout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Progress } from '@/components/ui/progress';
-import { 
-  FileText, Plus, Search, Download, Eye, Trash2, AlertCircle, CheckCircle, Clock, XCircle,
-  Send, Copy, Ban, CheckSquare, FileDown, RotateCcw, Edit3, Mail, Grid3X3, Printer, 
-  Edit, Save, Search as SearchIcon, X, FileIcon, RefreshCw, DollarSign
-} from 'lucide-react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { useAuth } from '@/contexts/auth-context';
-import { API_CONFIG } from '@/config/api';
-import { apiService } from '@/lib/api';
-import NFeIntegration from '@/components/nfe/nfe-integration';
-import { toast } from 'sonner';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import Layout from "@/components/Layout";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
+import {
+  FileText,
+  Plus,
+  Search,
+  Download,
+  Eye,
+  Trash2,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  XCircle,
+  Send,
+  Copy,
+  Ban,
+  CheckSquare,
+  FileDown,
+  RotateCcw,
+  Edit3,
+  Mail,
+  Grid3X3,
+  Printer,
+  Edit,
+  Save,
+  Search as SearchIcon,
+  X,
+  FileIcon,
+  RefreshCw,
+  DollarSign,
+} from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { useAuth } from "@/contexts/auth-context";
+import { API_CONFIG } from "@/config/api";
+import {
+  listNfes,
+  syncNfeIntegration,
+  issueNfeIntegration,
+  cancelNfeIntegration,
+  downloadNfeXml,
+} from "@/services/nfe-service";
+import NFeIntegration from "@/components/nfe/nfe-integration";
+import { toast } from "sonner";
 
 interface NFeItem {
   id: string;
@@ -65,14 +121,46 @@ interface NFe {
 }
 
 const statusConfig = {
-  RASCUNHO: { label: 'Rascunho', color: 'bg-gray-100 text-gray-800', icon: FileText },
-  PENDENTE: { label: 'Pendente', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
-  PROCESSANDO: { label: 'Processando', color: 'bg-blue-100 text-blue-800', icon: Clock },
-  AUTORIZADA: { label: 'Autorizada', color: 'bg-green-100 text-green-800', icon: CheckCircle },
-  REJEITADA: { label: 'Rejeitada', color: 'bg-red-100 text-red-800', icon: XCircle },
-  CANCELADA: { label: 'Cancelada', color: 'bg-gray-100 text-gray-800', icon: XCircle },
-  INUTILIZADA: { label: 'Inutilizada', color: 'bg-gray-100 text-gray-800', icon: XCircle },
-  CONTINGENCIA: { label: 'Contingência', color: 'bg-orange-100 text-orange-800', icon: AlertCircle },
+  RASCUNHO: {
+    label: "Rascunho",
+    color: "bg-gray-100 text-gray-800",
+    icon: FileText,
+  },
+  PENDENTE: {
+    label: "Pendente",
+    color: "bg-yellow-100 text-yellow-800",
+    icon: Clock,
+  },
+  PROCESSANDO: {
+    label: "Processando",
+    color: "bg-blue-100 text-blue-800",
+    icon: Clock,
+  },
+  AUTORIZADA: {
+    label: "Autorizada",
+    color: "bg-green-100 text-green-800",
+    icon: CheckCircle,
+  },
+  REJEITADA: {
+    label: "Rejeitada",
+    color: "bg-red-100 text-red-800",
+    icon: XCircle,
+  },
+  CANCELADA: {
+    label: "Cancelada",
+    color: "bg-gray-100 text-gray-800",
+    icon: XCircle,
+  },
+  INUTILIZADA: {
+    label: "Inutilizada",
+    color: "bg-gray-100 text-gray-800",
+    icon: XCircle,
+  },
+  CONTINGENCIA: {
+    label: "Contingência",
+    color: "bg-orange-100 text-orange-800",
+    icon: AlertCircle,
+  },
 };
 
 export default function NFePage() {
@@ -82,68 +170,67 @@ export default function NFePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showNewNFeDialog, setShowNewNFeDialog] = useState(false);
-  
+
   // Estados para ações
   const [isTransmitting, setIsTransmitting] = useState(false);
   const [isCanceling, setIsCanceling] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [processStatus, setProcessStatus] = useState(0);
-  const [processMessage, setProcessMessage] = useState('');
-  
+  const [processMessage, setProcessMessage] = useState("");
+
   // Filtros baseados na imagem
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusSefazFilter, setStatusSefazFilter] = useState('ALL');
-  const [modeloNfFilter, setModeloNfFilter] = useState('ALL');
-  const [ambienteFilter, setAmbienteFilter] = useState('ALL');
-  const [tipoPesquisaFilter, setTipoPesquisaFilter] = useState('ALL');
-  const [statusNfFilter, setStatusNfFilter] = useState('ALL');
-  const [tipoModeloFilter, setTipoModeloFilter] = useState('ALL');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusSefazFilter, setStatusSefazFilter] = useState("ALL");
+  const [modeloNfFilter, setModeloNfFilter] = useState("ALL");
+  const [ambienteFilter, setAmbienteFilter] = useState("ALL");
+  const [tipoPesquisaFilter, setTipoPesquisaFilter] = useState("ALL");
+  const [statusNfFilter, setStatusNfFilter] = useState("ALL");
+  const [tipoModeloFilter, setTipoModeloFilter] = useState("ALL");
   const [dataInicialEnabled, setDataInicialEnabled] = useState(true);
   const [dataFinalEnabled, setDataFinalEnabled] = useState(true);
-  
+
   // Configurar datas padrão: hoje como data final, ontem como data inicial
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-  
+
   const formatDateForInput = (date: Date) => {
-    return date.toISOString().split('T')[0];
+    return date.toISOString().split("T")[0];
   };
-  
+
   const [dataInicial, setDataInicial] = useState(formatDateForInput(yesterday));
   const [dataFinal, setDataFinal] = useState(formatDateForInput(today));
   const [selectAll, setSelectAll] = useState(false);
   const [selectedNFes, setSelectedNFes] = useState<string[]>([]);
-  
 
   // Estados para nova NFe
   const [newNFe, setNewNFe] = useState({
-    naturezaOperacao: '',
-    destinatarioCnpj: '',
-    destinatarioNome: '',
-    observacoes: '',
-    itens: [] as NFeItem[]
+    naturezaOperacao: "",
+    destinatarioCnpj: "",
+    destinatarioNome: "",
+    observacoes: "",
+    itens: [] as NFeItem[],
   });
 
   const [newItem, setNewItem] = useState({
-    codigoProduto: '',
-    descricao: '',
-    ncm: '',
-    cfop: '5102',
-    unidadeComercial: 'UN',
+    codigoProduto: "",
+    descricao: "",
+    ncm: "",
+    cfop: "5102",
+    unidadeComercial: "UN",
     quantidade: 1,
     valorUnitario: 0,
     aliquotaIcms: 18,
     aliquotaIpi: 0,
     aliquotaPis: 1.65,
-    aliquotaCofins: 7.60
+    aliquotaCofins: 7.6,
   });
 
   useEffect(() => {
     // Só tenta carregar após sabermos o estado de autenticação
     if (!isLoading) {
-    loadNFes();
+      loadNFes();
     }
   }, [isLoading, isAuthenticated, activeCompanyId, token]);
 
@@ -151,27 +238,20 @@ export default function NFePage() {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Se autenticado e com empresa ativa, tentar backend
       if (isAuthenticated && token && activeCompanyId) {
         try {
-          const response = await fetch(`${API_CONFIG.BASE_URL}/api/nfe`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          });
-
-          if (!response.ok) {
-            throw new Error(`Erro ao listar NFes (${response.status})`);
-          }
-
-          const data = await response.json();
-          setNfes(data as NFe[]);
+          // company_id is handled automatically by JWT token
+          const response = await listNfes();
+          const nfesData = response.data || response;
+          setNfes(Array.isArray(nfesData) ? nfesData : []);
           return;
         } catch (e) {
-          console.error('Falha ao carregar NFes do backend:', e);
-          setError('Erro ao carregar notas fiscais. Tente novamente mais tarde.');
+          console.error("Falha ao carregar NFes do backend:", e);
+          setError(
+            "Erro ao carregar notas fiscais. Tente novamente mais tarde."
+          );
           setNfes([]);
           return;
         }
@@ -179,10 +259,10 @@ export default function NFePage() {
 
       // Se não estiver autenticado, mostrar lista vazia
       setNfes([]);
-      setError('É necessário estar logado para visualizar as notas fiscais.');
+      setError("É necessário estar logado para visualizar as notas fiscais.");
     } catch (err) {
-      setError('Erro ao carregar NFes');
-      console.error('Erro ao carregar NFes:', err);
+      setError("Erro ao carregar NFes");
+      console.error("Erro ao carregar NFes:", err);
       setNfes([]);
     } finally {
       setLoading(false);
@@ -191,68 +271,81 @@ export default function NFePage() {
 
   const sincronizarNFe = async (nfeId: string) => {
     if (!token) {
-      toast.error('Token não encontrado');
+      toast.error("Token não encontrado");
       return;
     }
-    
+
     try {
-      const response = await apiService.sincronizarNFe(nfeId, token);
-      
+      const response = await syncNfeIntegration(nfeId);
+
       if (response.success) {
         // Recarregar a lista para atualizar o status
         await loadNFes();
+        toast.success("NFe sincronizada com sucesso!");
       } else {
-        throw new Error(response.message);
+        throw new Error(response.message || "Erro ao sincronizar");
       }
     } catch (error: any) {
-      console.error('Erro ao sincronizar NFe:', error);
-      setError(error.message || 'Erro ao sincronizar NFe');
+      console.error("Erro ao sincronizar NFe:", error);
+      setError(error.message || "Erro ao sincronizar NFe");
+      toast.error("Erro ao sincronizar NFe", {
+        description: error.message,
+      });
     }
   };
 
   const handleEmitirNFe = async () => {
     try {
       setLoading(true);
-      
+
       // Validar dados
-      if (!newNFe.naturezaOperacao || !newNFe.destinatarioCnpj || !newNFe.destinatarioNome) {
-        setError('Preencha todos os campos obrigatórios');
+      if (
+        !newNFe.naturezaOperacao ||
+        !newNFe.destinatarioCnpj ||
+        !newNFe.destinatarioNome
+      ) {
+        setError("Preencha todos os campos obrigatórios");
         return;
       }
-      
+
       if (newNFe.itens.length === 0) {
-        setError('Adicione pelo menos um item');
+        setError("Adicione pelo menos um item");
         return;
       }
-      
+
       // Em produção, fazer chamada para o backend
-      console.log('Emitindo NFe:', newNFe);
-      
+      console.log("Emitindo NFe:", newNFe);
+
       // Simular sucesso
       setShowNewNFeDialog(false);
       setNewNFe({
-        naturezaOperacao: '',
-        destinatarioCnpj: '',
-        destinatarioNome: '',
-        observacoes: '',
-        itens: []
+        naturezaOperacao: "",
+        destinatarioCnpj: "",
+        destinatarioNome: "",
+        observacoes: "",
+        itens: [],
       });
-      
+
       await loadNFes();
     } catch (err) {
-      setError('Erro ao emitir NFe');
-      console.error('Erro ao emitir NFe:', err);
+      setError("Erro ao emitir NFe");
+      console.error("Erro ao emitir NFe:", err);
     } finally {
       setLoading(false);
     }
   };
 
   const handleAddItem = () => {
-    if (!newItem.codigoProduto || !newItem.descricao || newItem.quantidade <= 0 || newItem.valorUnitario <= 0) {
-      setError('Preencha todos os campos do item');
+    if (
+      !newItem.codigoProduto ||
+      !newItem.descricao ||
+      newItem.quantidade <= 0 ||
+      newItem.valorUnitario <= 0
+    ) {
+      setError("Preencha todos os campos do item");
       return;
     }
-    
+
     const valorTotal = newItem.quantidade * newItem.valorUnitario;
     const item: NFeItem = {
       id: Date.now().toString(),
@@ -263,82 +356,103 @@ export default function NFePage() {
       unidadeComercial: newItem.unidadeComercial,
       quantidade: newItem.quantidade,
       valorUnitario: newItem.valorUnitario,
-      valorTotal: valorTotal
+      valorTotal: valorTotal,
     };
-    
-    setNewNFe(prev => ({
+
+    setNewNFe((prev) => ({
       ...prev,
-      itens: [...prev.itens, item]
+      itens: [...prev.itens, item],
     }));
-    
+
     setNewItem({
-      codigoProduto: '',
-      descricao: '',
-      ncm: '',
-      cfop: '5102',
-      unidadeComercial: 'UN',
+      codigoProduto: "",
+      descricao: "",
+      ncm: "",
+      cfop: "5102",
+      unidadeComercial: "UN",
       quantidade: 1,
       valorUnitario: 0,
       aliquotaIcms: 18,
       aliquotaIpi: 0,
       aliquotaPis: 1.65,
-      aliquotaCofins: 7.60
+      aliquotaCofins: 7.6,
     });
   };
 
   const handleRemoveItem = (itemId: string) => {
-    setNewNFe(prev => ({
+    setNewNFe((prev) => ({
       ...prev,
-      itens: prev.itens.filter(item => item.id !== itemId)
+      itens: prev.itens.filter((item) => item.id !== itemId),
     }));
   };
 
-  const filteredNFes = nfes.filter(nfe => {
-    const matchesSearch = nfe.numeroNfe.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         nfe.destinatarioRazaoSocial.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (nfe.chaveAcesso && nfe.chaveAcesso.includes(searchTerm)) ||
-                         nfe.numeroPedido?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatusSefaz = statusSefazFilter === 'ALL' || nfe.status === statusSefazFilter;
-    const matchesModeloNf = modeloNfFilter === 'ALL' || nfe.modelo === modeloNfFilter;
-    const matchesAmbiente = ambienteFilter === 'ALL' || nfe.ambiente === ambienteFilter;
-    const matchesTipoPesquisa = tipoPesquisaFilter === 'ALL' || nfe.tipoOperacao === tipoPesquisaFilter;
-    const matchesStatusNf = statusNfFilter === 'ALL' || nfe.status === statusNfFilter;
-    const matchesTipoModelo = tipoModeloFilter === 'ALL' || nfe.tipoOperacao === tipoModeloFilter;
-    
+  const filteredNFes = nfes.filter((nfe) => {
+    const matchesSearch =
+      nfe.numeroNfe.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      nfe.destinatarioRazaoSocial
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      (nfe.chaveAcesso && nfe.chaveAcesso.includes(searchTerm)) ||
+      nfe.numeroPedido?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatusSefaz =
+      statusSefazFilter === "ALL" || nfe.status === statusSefazFilter;
+    const matchesModeloNf =
+      modeloNfFilter === "ALL" || nfe.modelo === modeloNfFilter;
+    const matchesAmbiente =
+      ambienteFilter === "ALL" || nfe.ambiente === ambienteFilter;
+    const matchesTipoPesquisa =
+      tipoPesquisaFilter === "ALL" || nfe.tipoOperacao === tipoPesquisaFilter;
+    const matchesStatusNf =
+      statusNfFilter === "ALL" || nfe.status === statusNfFilter;
+    const matchesTipoModelo =
+      tipoModeloFilter === "ALL" || nfe.tipoOperacao === tipoModeloFilter;
+
     // Filtro de data
     const nfeDate = new Date(nfe.dataEmissao);
     const dataInicialDate = dataInicialEnabled ? new Date(dataInicial) : null;
     const dataFinalDate = dataFinalEnabled ? new Date(dataFinal) : null;
-    
-    const matchesDataInicial = !dataInicialEnabled || !dataInicialDate || nfeDate >= dataInicialDate;
-    const matchesDataFinal = !dataFinalEnabled || !dataFinalDate || nfeDate <= dataFinalDate;
-    
-    return matchesSearch && matchesStatusSefaz && matchesModeloNf && matchesAmbiente && 
-           matchesTipoPesquisa && matchesStatusNf && matchesTipoModelo && 
-           matchesDataInicial && matchesDataFinal;
+
+    const matchesDataInicial =
+      !dataInicialEnabled || !dataInicialDate || nfeDate >= dataInicialDate;
+    const matchesDataFinal =
+      !dataFinalEnabled || !dataFinalDate || nfeDate <= dataFinalDate;
+
+    return (
+      matchesSearch &&
+      matchesStatusSefaz &&
+      matchesModeloNf &&
+      matchesAmbiente &&
+      matchesTipoPesquisa &&
+      matchesStatusNf &&
+      matchesTipoModelo &&
+      matchesDataInicial &&
+      matchesDataFinal
+    );
   });
 
   const getStatusConfig = (status: string) => {
-    return statusConfig[status as keyof typeof statusConfig] || statusConfig.PENDENTE;
+    return (
+      statusConfig[status as keyof typeof statusConfig] || statusConfig.PENDENTE
+    );
   };
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
     }).format(value);
   };
 
   const formatDate = (dateString: string) => {
-    return format(new Date(dateString), 'dd/MM/yyyy', { locale: ptBR });
+    return format(new Date(dateString), "dd/MM/yyyy", { locale: ptBR });
   };
 
   // Funções de seleção
   const handleSelectAll = (checked: boolean) => {
     setSelectAll(checked);
     if (checked) {
-      setSelectedNFes(filteredNFes.map(nfe => nfe.id));
+      setSelectedNFes(filteredNFes.map((nfe) => nfe.id));
     } else {
       setSelectedNFes([]);
     }
@@ -346,78 +460,84 @@ export default function NFePage() {
 
   const handleSelectNFe = (nfeId: string, checked: boolean) => {
     if (checked) {
-      setSelectedNFes(prev => [...prev, nfeId]);
+      setSelectedNFes((prev) => [...prev, nfeId]);
     } else {
-      setSelectedNFes(prev => prev.filter(id => id !== nfeId));
+      setSelectedNFes((prev) => prev.filter((id) => id !== nfeId));
     }
   };
 
   // Funções de ação
   const handleTransmitirNFe = async () => {
     if (selectedNFes.length === 0) {
-      toast.error('Selecione pelo menos uma NFe para transmitir');
+      toast.error("Selecione pelo menos uma NFe para transmitir");
       return;
     }
 
     if (!token) {
-      toast.error('Token não encontrado');
+      toast.error("Token não encontrado");
       return;
     }
 
     setIsTransmitting(true);
     setProcessStatus(0);
-    setProcessMessage('Iniciando transmissão...');
+    setProcessMessage("Iniciando transmissão...");
 
     try {
       for (let i = 0; i < selectedNFes.length; i++) {
         const nfeId = selectedNFes[i];
-        setProcessMessage(`Transmitindo NFe ${i + 1} de ${selectedNFes.length}...`);
-        
-        await apiService.emitirNFeExterna(nfeId, token);
-        
+        setProcessMessage(
+          `Transmitindo NFe ${i + 1} de ${selectedNFes.length}...`
+        );
+
+        await issueNfeIntegration(nfeId);
+
         setProcessStatus(((i + 1) / selectedNFes.length) * 100);
       }
 
-      setProcessMessage('100% - Transmissão concluída!');
-      toast.success(`${selectedNFes.length} NFe(s) transmitida(s) com sucesso!`);
-      
+      setProcessMessage("100% - Transmissão concluída!");
+      toast.success(
+        `${selectedNFes.length} NFe(s) transmitida(s) com sucesso!`
+      );
+
       // Recarregar lista
       await loadNFes();
-      
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || 'Erro desconhecido';
-      toast.error('Erro na transmissão', {
-        description: errorMessage
+      const errorMessage =
+        error.response?.data?.message || error.message || "Erro desconhecido";
+      toast.error("Erro na transmissão", {
+        description: errorMessage,
       });
-      setProcessMessage('Erro na transmissão');
+      setProcessMessage("Erro na transmissão");
     } finally {
       setIsTransmitting(false);
       setTimeout(() => {
         setProcessStatus(0);
-        setProcessMessage('');
+        setProcessMessage("");
       }, 3000);
     }
   };
 
   const handleCopiarNFe = () => {
-    console.log('Copiando NFes:', selectedNFes);
-    toast.info('Funcionalidade de cópia em desenvolvimento');
+    console.log("Copiando NFes:", selectedNFes);
+    toast.info("Funcionalidade de cópia em desenvolvimento");
   };
 
   const handleCancelarNFe = async () => {
     if (selectedNFes.length === 0) {
-      toast.error('Selecione pelo menos uma NFe para cancelar');
+      toast.error("Selecione pelo menos uma NFe para cancelar");
       return;
     }
 
     if (!token) {
-      toast.error('Token não encontrado');
+      toast.error("Token não encontrado");
       return;
     }
 
-    const justificativa = prompt('Digite a justificativa para o cancelamento (mínimo 15 caracteres):');
+    const justificativa = prompt(
+      "Digite a justificativa para o cancelamento (mínimo 15 caracteres):"
+    );
     if (!justificativa || justificativa.trim().length < 15) {
-      toast.error('Justificativa deve ter pelo menos 15 caracteres');
+      toast.error("Justificativa deve ter pelo menos 15 caracteres");
       return;
     }
 
@@ -425,16 +545,16 @@ export default function NFePage() {
 
     try {
       for (const nfeId of selectedNFes) {
-        await apiService.cancelarNFeExterna(nfeId, justificativa, token);
+        await cancelNfeIntegration(nfeId, justificativa);
       }
 
       toast.success(`${selectedNFes.length} NFe(s) cancelada(s) com sucesso!`);
       await loadNFes();
-      
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || 'Erro desconhecido';
-      toast.error('Erro no cancelamento', {
-        description: errorMessage
+      const errorMessage =
+        error.response?.data?.message || error.message || "Erro desconhecido";
+      toast.error("Erro no cancelamento", {
+        description: errorMessage,
       });
     } finally {
       setIsCanceling(false);
@@ -443,7 +563,7 @@ export default function NFePage() {
 
   const handleValidarXML = async () => {
     if (selectedNFes.length === 0) {
-      toast.error('Selecione pelo menos uma NFe para validar');
+      toast.error("Selecione pelo menos uma NFe para validar");
       return;
     }
 
@@ -451,10 +571,10 @@ export default function NFePage() {
 
     try {
       // TODO: Implementar validação de XML
-      toast.info('Funcionalidade de validação XML em desenvolvimento');
+      toast.info("Funcionalidade de validação XML em desenvolvimento");
     } catch (error: any) {
-      toast.error('Erro na validação', {
-        description: error.message
+      toast.error("Erro na validação", {
+        description: error.message,
       });
     } finally {
       setIsValidating(false);
@@ -463,12 +583,12 @@ export default function NFePage() {
 
   const handleExportarXML = async () => {
     if (selectedNFes.length === 0) {
-      toast.error('Selecione pelo menos uma NFe para exportar');
+      toast.error("Selecione pelo menos uma NFe para exportar");
       return;
     }
 
     if (!token) {
-      toast.error('Token não encontrado');
+      toast.error("Token não encontrado");
       return;
     }
 
@@ -476,12 +596,12 @@ export default function NFePage() {
 
     try {
       for (const nfeId of selectedNFes) {
-        const response = await apiService.downloadXMLNFe(nfeId, token);
-        
+        const response = await downloadNfeXml(nfeId);
+
         // Criar e baixar arquivo
-        const blob = new Blob([response.xml], { type: 'application/xml' });
+        const blob = new Blob([response.xml], { type: "application/xml" });
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = url;
         a.download = response.filename;
         a.click();
@@ -489,11 +609,11 @@ export default function NFePage() {
       }
 
       toast.success(`${selectedNFes.length} XML(s) baixado(s) com sucesso!`);
-      
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || 'Erro desconhecido';
-      toast.error('Erro no download', {
-        description: errorMessage
+      const errorMessage =
+        error.response?.data?.message || error.message || "Erro desconhecido";
+      toast.error("Erro no download", {
+        description: errorMessage,
       });
     } finally {
       setIsDownloading(false);
@@ -501,31 +621,29 @@ export default function NFePage() {
   };
 
   const handleEnviarEmail = () => {
-    console.log('Enviando email para NFes:', selectedNFes);
-    toast.info('Funcionalidade de envio por email em desenvolvimento');
+    console.log("Enviando email para NFes:", selectedNFes);
+    toast.info("Funcionalidade de envio por email em desenvolvimento");
   };
 
   const handleImprimir = () => {
-    console.log('Imprimindo NFes:', selectedNFes);
-    toast.info('Funcionalidade de impressão em desenvolvimento');
+    console.log("Imprimindo NFes:", selectedNFes);
+    toast.info("Funcionalidade de impressão em desenvolvimento");
   };
 
   const handleSalvar = () => {
-    console.log('Salvando NFes:', selectedNFes);
-    toast.info('Funcionalidade de salvamento em desenvolvimento');
+    console.log("Salvando NFes:", selectedNFes);
+    toast.info("Funcionalidade de salvamento em desenvolvimento");
   };
 
   const handleRetorno = () => {
-    console.log('Processando retorno para NFes:', selectedNFes);
-    toast.info('Funcionalidade de retorno em desenvolvimento');
+    console.log("Processando retorno para NFes:", selectedNFes);
+    toast.info("Funcionalidade de retorno em desenvolvimento");
   };
 
   const handleExcluir = () => {
-    console.log('Excluindo NFes:', selectedNFes);
-    toast.info('Funcionalidade de exclusão em desenvolvimento');
+    console.log("Excluindo NFes:", selectedNFes);
+    toast.info("Funcionalidade de exclusão em desenvolvimento");
   };
-
-
 
   if (loading) {
     return (
@@ -541,17 +659,21 @@ export default function NFePage() {
     <Layout>
       <div className="space-y-6">
         {/* Header */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6"
         >
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Notas Fiscais Eletrônicas</h1>
-              <p className="text-gray-600">Gerencie suas notas fiscais eletrônicas</p>
-          </div>
-            
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Notas Fiscais Eletrônicas
+              </h1>
+              <p className="text-gray-600">
+                Gerencie suas notas fiscais eletrônicas
+              </p>
+            </div>
+
             <div className="flex flex-col sm:flex-row gap-3">
               <Button
                 variant="outline"
@@ -560,19 +682,19 @@ export default function NFePage() {
                 <Download className="w-4 h-4 mr-2" />
                 Exportar
               </Button>
-            <Button
-              onClick={() => router.push('/nfe/nova')}
-              className="bg-purple-600 hover:bg-purple-700 text-white"
-            >
-            <Plus className="w-4 h-4 mr-2" />
-            Nova NFe
-          </Button>
-        </div>
+              <Button
+                onClick={() => router.push("/nfe/nova")}
+                className="bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Nova NFe
+              </Button>
+            </div>
           </div>
         </motion.div>
 
         {/* Stats Cards */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
@@ -585,7 +707,9 @@ export default function NFePage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total</p>
-                <p className="text-2xl font-bold text-gray-900">{nfes.length}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {nfes.length}
+                </p>
               </div>
             </div>
           </div>
@@ -597,7 +721,9 @@ export default function NFePage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Autorizadas</p>
-                <p className="text-2xl font-bold text-gray-900">{nfes.filter(n => n.status === 'AUTORIZADA').length}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {nfes.filter((n) => n.status === "AUTORIZADA").length}
+                </p>
               </div>
             </div>
           </div>
@@ -609,7 +735,9 @@ export default function NFePage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Rascunhos</p>
-                <p className="text-2xl font-bold text-gray-900">{nfes.filter(n => n.status === 'RASCUNHO').length}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {nfes.filter((n) => n.status === "RASCUNHO").length}
+                </p>
               </div>
             </div>
           </div>
@@ -621,7 +749,9 @@ export default function NFePage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Rejeitadas</p>
-                <p className="text-2xl font-bold text-gray-900">{nfes.filter(n => n.status === 'REJEITADA').length}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {nfes.filter((n) => n.status === "REJEITADA").length}
+                </p>
               </div>
             </div>
           </div>
@@ -633,14 +763,18 @@ export default function NFePage() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Valor Total</p>
-                <p className="text-2xl font-bold text-gray-900">{formatCurrency(nfes.reduce((acc, n) => acc + n.valorTotalNota, 0))}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {formatCurrency(
+                    nfes.reduce((acc, n) => acc + n.valorTotalNota, 0)
+                  )}
+                </p>
               </div>
             </div>
           </div>
         </motion.div>
 
         {/* Filters and Search */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -653,10 +787,10 @@ export default function NFePage() {
                 <input
                   type="text"
                   placeholder="Buscar NFes..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  />
+                />
               </div>
 
               <div className="flex gap-2">
@@ -687,8 +821,8 @@ export default function NFePage() {
 
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-3 border border-gray-200">
-                <Checkbox 
-                  id="dataInicial" 
+                <Checkbox
+                  id="dataInicial"
                   checked={dataInicialEnabled}
                   onCheckedChange={(checked) => {
                     setDataInicialEnabled(checked as boolean);
@@ -703,7 +837,10 @@ export default function NFePage() {
                   }}
                   className=""
                 />
-                <Label htmlFor="dataInicial" className="text-sm font-medium text-gray-700 cursor-pointer">
+                <Label
+                  htmlFor="dataInicial"
+                  className="text-sm font-medium text-gray-700 cursor-pointer"
+                >
                   Data Inicial
                 </Label>
                 <Input
@@ -718,17 +855,17 @@ export default function NFePage() {
                   }}
                   disabled={!dataInicialEnabled}
                   className={`w-36 transition-all duration-200 ${
-                    dataInicialEnabled 
-                      ? 'bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500' 
-                      : 'bg-gray-100 border-gray-200 text-gray-400'
+                    dataInicialEnabled
+                      ? "bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      : "bg-gray-100 border-gray-200 text-gray-400"
                   }`}
                   max={dataFinal || undefined}
                 />
               </div>
-              
+
               <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-3 border border-gray-200">
-                <Checkbox 
-                  id="dataFinal" 
+                <Checkbox
+                  id="dataFinal"
                   checked={dataFinalEnabled}
                   onCheckedChange={(checked) => {
                     setDataFinalEnabled(checked as boolean);
@@ -741,7 +878,10 @@ export default function NFePage() {
                   }}
                   className=""
                 />
-                <Label htmlFor="dataFinal" className="text-sm font-medium text-gray-700 cursor-pointer">
+                <Label
+                  htmlFor="dataFinal"
+                  className="text-sm font-medium text-gray-700 cursor-pointer"
+                >
                   Data Final
                 </Label>
                 <Input
@@ -756,15 +896,15 @@ export default function NFePage() {
                   }}
                   disabled={!dataFinalEnabled}
                   className={`w-36 transition-all duration-200 ${
-                    dataFinalEnabled 
-                      ? 'bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500' 
-                      : 'bg-gray-100 border-gray-200 text-gray-400'
+                    dataFinalEnabled
+                      ? "bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      : "bg-gray-100 border-gray-200 text-gray-400"
                   }`}
                   min={dataInicial || undefined}
                   max={formatDateForInput(new Date())}
                 />
               </div>
-              
+
               {/* Botão para resetar filtros de data */}
               <Button
                 variant="outline"
@@ -789,7 +929,7 @@ export default function NFePage() {
 
         {/* Content */}
         {loading ? (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12"
@@ -800,32 +940,39 @@ export default function NFePage() {
             </div>
           </motion.div>
         ) : error ? (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12"
           >
             <div className="text-center">
               <p className="text-red-600 mb-4">{error}</p>
-              <Button onClick={() => window.location.reload()} variant="outline">
+              <Button
+                onClick={() => window.location.reload()}
+                variant="outline"
+              >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Tentar novamente
               </Button>
             </div>
           </motion.div>
         ) : filteredNFes.length === 0 ? (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12"
           >
             <div className="text-center">
               <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma NFe encontrada</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Nenhuma NFe encontrada
+              </h3>
               <p className="text-gray-500 mb-4">
-                {searchTerm || statusSefazFilter !== 'ALL' ? 'Tente ajustar os filtros de busca.' : 'Comece criando sua primeira NFe.'}
+                {searchTerm || statusSefazFilter !== "ALL"
+                  ? "Tente ajustar os filtros de busca."
+                  : "Comece criando sua primeira NFe."}
               </p>
-              {!searchTerm && statusSefazFilter === 'ALL' && (
+              {!searchTerm && statusSefazFilter === "ALL" && (
                 <Button onClick={() => setShowNewNFeDialog(true)}>
                   <Plus className="w-4 h-4 mr-2" />
                   Nova NFe
@@ -834,7 +981,7 @@ export default function NFePage() {
             </div>
           </motion.div>
         ) : (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
@@ -845,7 +992,7 @@ export default function NFePage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <Checkbox 
+                      <Checkbox
                         checked={selectAll}
                         onCheckedChange={handleSelectAll}
                       />
@@ -899,19 +1046,23 @@ export default function NFePage() {
                     const status = getStatusConfig(nfe.status);
                     const StatusIcon = status.icon;
                     const isSelected = selectedNFes.includes(nfe.id);
-                    
+
                     return (
                       <motion.tr
                         key={nfe.id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.05 }}
-                        className={`hover:bg-gray-50 ${isSelected ? 'bg-blue-50' : ''}`}
+                        className={`hover:bg-gray-50 ${
+                          isSelected ? "bg-blue-50" : ""
+                        }`}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <Checkbox 
+                          <Checkbox
                             checked={isSelected}
-                            onCheckedChange={(checked) => handleSelectNFe(nfe.id, checked as boolean)}
+                            onCheckedChange={(checked) =>
+                              handleSelectNFe(nfe.id, checked as boolean)
+                            }
                           />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -924,7 +1075,9 @@ export default function NFePage() {
                           {nfe.serie}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-semibold text-gray-900">#{nfe.numeroNfe}</div>
+                          <div className="text-sm font-semibold text-gray-900">
+                            #{nfe.numeroNfe}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                           {nfe.numeroPedido}
@@ -933,7 +1086,7 @@ export default function NFePage() {
                           {formatDate(nfe.dataEmissao)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {nfe.dataSaida ? formatDate(nfe.dataSaida) : '-'}
+                          {nfe.dataSaida ? formatDate(nfe.dataSaida) : "-"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
                           {nfe.destinatarioCnpjCpf}
@@ -942,7 +1095,10 @@ export default function NFePage() {
                           {nfe.destinatarioUF}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900 truncate max-w-48" title={nfe.destinatarioRazaoSocial}>
+                          <div
+                            className="text-sm font-medium text-gray-900 truncate max-w-48"
+                            title={nfe.destinatarioRazaoSocial}
+                          >
                             {nfe.destinatarioRazaoSocial}
                           </div>
                         </td>
@@ -957,7 +1113,8 @@ export default function NFePage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
-                            {(nfe.status === 'PENDENTE' || nfe.status === 'AUTORIZADA') && (
+                            {(nfe.status === "PENDENTE" ||
+                              nfe.status === "AUTORIZADA") && (
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -976,9 +1133,13 @@ export default function NFePage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                          >
                             <Edit className="w-4 h-4" />
-                            </Button>
+                          </Button>
                         </td>
                       </motion.tr>
                     );
@@ -991,14 +1152,16 @@ export default function NFePage() {
 
         {/* Ações em Lote */}
         {selectedNFes.length > 0 && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
             className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6"
           >
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900">Ações em Lote</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Ações em Lote
+              </h3>
               <div className="text-sm text-gray-600 bg-gray-50 px-3 py-1 rounded-full">
                 {selectedNFes.length} NFe(s) selecionada(s)
               </div>
@@ -1006,7 +1169,7 @@ export default function NFePage() {
 
             {/* Primeira linha - Ações principais */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
-              <Button 
+              <Button
                 onClick={handleTransmitirNFe}
                 disabled={isTransmitting || selectedNFes.length === 0}
                 className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1023,13 +1186,17 @@ export default function NFePage() {
                   </>
                 )}
               </Button>
-              <Button variant="outline" onClick={handleCopiarNFe} className="border-gray-200 hover:bg-gray-50">
+              <Button
+                variant="outline"
+                onClick={handleCopiarNFe}
+                className="border-gray-200 hover:bg-gray-50"
+              >
                 <Copy className="w-4 h-4 mr-2" />
                 Copiar
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={handleCancelarNFe} 
+              <Button
+                variant="outline"
+                onClick={handleCancelarNFe}
                 disabled={isCanceling || selectedNFes.length === 0}
                 className="border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -1045,9 +1212,9 @@ export default function NFePage() {
                   </>
                 )}
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={handleValidarXML} 
+              <Button
+                variant="outline"
+                onClick={handleValidarXML}
                 disabled={isValidating || selectedNFes.length === 0}
                 className="border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -1063,9 +1230,9 @@ export default function NFePage() {
                   </>
                 )}
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={handleExportarXML} 
+              <Button
+                variant="outline"
+                onClick={handleExportarXML}
                 disabled={isDownloading || selectedNFes.length === 0}
                 className="border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -1081,8 +1248,8 @@ export default function NFePage() {
                   </>
                 )}
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={handleRetorno}
                 disabled={selectedNFes.length === 0}
                 className="border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1094,24 +1261,24 @@ export default function NFePage() {
 
             {/* Segunda linha - Ações secundárias */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 disabled={selectedNFes.length === 0}
                 className="border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Edit3 className="w-4 h-4 mr-2" />
                 Carta de Correção
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 disabled={selectedNFes.length === 0}
                 className="border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FileText className="w-4 h-4 mr-2" />
                 Origem
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={handleEnviarEmail}
                 disabled={selectedNFes.length === 0}
                 className="border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1119,8 +1286,8 @@ export default function NFePage() {
                 <Mail className="w-4 h-4 mr-2" />
                 Enviar por Email
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={handleImprimir}
                 disabled={selectedNFes.length === 0}
                 className="border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1128,8 +1295,8 @@ export default function NFePage() {
                 <Printer className="w-4 h-4 mr-2" />
                 Imprimir
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={handleSalvar}
                 disabled={selectedNFes.length === 0}
                 className="border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1137,8 +1304,8 @@ export default function NFePage() {
                 <Save className="w-4 h-4 mr-2" />
                 Salvar
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={handleExcluir}
                 disabled={selectedNFes.length === 0}
                 className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 hover:border-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1176,29 +1343,50 @@ export default function NFePage() {
               {/* Dados da NFe */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="naturezaOperacao">Natureza da Operação *</Label>
+                  <Label htmlFor="naturezaOperacao">
+                    Natureza da Operação *
+                  </Label>
                   <Input
                     id="naturezaOperacao"
                     value={newNFe.naturezaOperacao}
-                    onChange={(e) => setNewNFe(prev => ({ ...prev, naturezaOperacao: e.target.value }))}
+                    onChange={(e) =>
+                      setNewNFe((prev) => ({
+                        ...prev,
+                        naturezaOperacao: e.target.value,
+                      }))
+                    }
                     placeholder="Ex: Venda"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="destinatarioCnpj">CNPJ do Destinatário *</Label>
+                  <Label htmlFor="destinatarioCnpj">
+                    CNPJ do Destinatário *
+                  </Label>
                   <Input
                     id="destinatarioCnpj"
                     value={newNFe.destinatarioCnpj}
-                    onChange={(e) => setNewNFe(prev => ({ ...prev, destinatarioCnpj: e.target.value }))}
+                    onChange={(e) =>
+                      setNewNFe((prev) => ({
+                        ...prev,
+                        destinatarioCnpj: e.target.value,
+                      }))
+                    }
                     placeholder="00.000.000/0000-00"
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <Label htmlFor="destinatarioNome">Nome do Destinatário *</Label>
+                  <Label htmlFor="destinatarioNome">
+                    Nome do Destinatário *
+                  </Label>
                   <Input
                     id="destinatarioNome"
                     value={newNFe.destinatarioNome}
-                    onChange={(e) => setNewNFe(prev => ({ ...prev, destinatarioNome: e.target.value }))}
+                    onChange={(e) =>
+                      setNewNFe((prev) => ({
+                        ...prev,
+                        destinatarioNome: e.target.value,
+                      }))
+                    }
                     placeholder="Nome da empresa destinatária"
                   />
                 </div>
@@ -1207,7 +1395,12 @@ export default function NFePage() {
                   <Textarea
                     id="observacoes"
                     value={newNFe.observacoes}
-                    onChange={(e) => setNewNFe(prev => ({ ...prev, observacoes: e.target.value }))}
+                    onChange={(e) =>
+                      setNewNFe((prev) => ({
+                        ...prev,
+                        observacoes: e.target.value,
+                      }))
+                    }
                     placeholder="Observações adicionais"
                     rows={3}
                   />
@@ -1223,7 +1416,12 @@ export default function NFePage() {
                     <Input
                       id="codigoProduto"
                       value={newItem.codigoProduto}
-                      onChange={(e) => setNewItem(prev => ({ ...prev, codigoProduto: e.target.value }))}
+                      onChange={(e) =>
+                        setNewItem((prev) => ({
+                          ...prev,
+                          codigoProduto: e.target.value,
+                        }))
+                      }
                       placeholder="PROD001"
                     />
                   </div>
@@ -1232,7 +1430,9 @@ export default function NFePage() {
                     <Input
                       id="ncm"
                       value={newItem.ncm}
-                      onChange={(e) => setNewItem(prev => ({ ...prev, ncm: e.target.value }))}
+                      onChange={(e) =>
+                        setNewItem((prev) => ({ ...prev, ncm: e.target.value }))
+                      }
                       placeholder="12345678"
                     />
                   </div>
@@ -1241,7 +1441,12 @@ export default function NFePage() {
                     <Input
                       id="cfop"
                       value={newItem.cfop}
-                      onChange={(e) => setNewItem(prev => ({ ...prev, cfop: e.target.value }))}
+                      onChange={(e) =>
+                        setNewItem((prev) => ({
+                          ...prev,
+                          cfop: e.target.value,
+                        }))
+                      }
                       placeholder="5102"
                     />
                   </div>
@@ -1250,7 +1455,12 @@ export default function NFePage() {
                     <Input
                       id="descricao"
                       value={newItem.descricao}
-                      onChange={(e) => setNewItem(prev => ({ ...prev, descricao: e.target.value }))}
+                      onChange={(e) =>
+                        setNewItem((prev) => ({
+                          ...prev,
+                          descricao: e.target.value,
+                        }))
+                      }
                       placeholder="Descrição do produto"
                     />
                   </div>
@@ -1259,7 +1469,12 @@ export default function NFePage() {
                     <Input
                       id="unidadeComercial"
                       value={newItem.unidadeComercial}
-                      onChange={(e) => setNewItem(prev => ({ ...prev, unidadeComercial: e.target.value }))}
+                      onChange={(e) =>
+                        setNewItem((prev) => ({
+                          ...prev,
+                          unidadeComercial: e.target.value,
+                        }))
+                      }
                       placeholder="UN"
                     />
                   </div>
@@ -1270,7 +1485,12 @@ export default function NFePage() {
                       type="number"
                       step="0.001"
                       value={newItem.quantidade}
-                      onChange={(e) => setNewItem(prev => ({ ...prev, quantidade: parseFloat(e.target.value) || 0 }))}
+                      onChange={(e) =>
+                        setNewItem((prev) => ({
+                          ...prev,
+                          quantidade: parseFloat(e.target.value) || 0,
+                        }))
+                      }
                     />
                   </div>
                   <div>
@@ -1280,7 +1500,12 @@ export default function NFePage() {
                       type="number"
                       step="0.01"
                       value={newItem.valorUnitario}
-                      onChange={(e) => setNewItem(prev => ({ ...prev, valorUnitario: parseFloat(e.target.value) || 0 }))}
+                      onChange={(e) =>
+                        setNewItem((prev) => ({
+                          ...prev,
+                          valorUnitario: parseFloat(e.target.value) || 0,
+                        }))
+                      }
                     />
                   </div>
                   <div>
@@ -1313,8 +1538,12 @@ export default function NFePage() {
                           <TableCell>{item.codigoProduto}</TableCell>
                           <TableCell>{item.descricao}</TableCell>
                           <TableCell>{item.quantidade}</TableCell>
-                          <TableCell>{formatCurrency(item.valorUnitario)}</TableCell>
-                          <TableCell>{formatCurrency(item.valorTotal)}</TableCell>
+                          <TableCell>
+                            {formatCurrency(item.valorUnitario)}
+                          </TableCell>
+                          <TableCell>
+                            {formatCurrency(item.valorTotal)}
+                          </TableCell>
                           <TableCell>
                             <Button
                               variant="outline"
@@ -1329,10 +1558,16 @@ export default function NFePage() {
                       ))}
                     </TableBody>
                   </Table>
-                  
+
                   <div className="mt-4 text-right">
                     <div className="text-lg font-medium">
-                      Total: {formatCurrency(newNFe.itens.reduce((sum, item) => sum + item.valorTotal, 0))}
+                      Total:{" "}
+                      {formatCurrency(
+                        newNFe.itens.reduce(
+                          (sum, item) => sum + item.valorTotal,
+                          0
+                        )
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1340,11 +1575,14 @@ export default function NFePage() {
 
               {/* Botões */}
               <div className="flex justify-end space-x-2 pt-6 border-t">
-                <Button variant="outline" onClick={() => setShowNewNFeDialog(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowNewNFeDialog(false)}
+                >
                   Cancelar
                 </Button>
                 <Button onClick={handleEmitirNFe} disabled={loading}>
-                  {loading ? 'Emitindo...' : 'Emitir NFe'}
+                  {loading ? "Emitindo..." : "Emitir NFe"}
                 </Button>
               </div>
             </div>

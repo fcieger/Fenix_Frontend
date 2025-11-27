@@ -1,5 +1,6 @@
 import { apiService } from '@/lib/api';
-import { CadastroData, ProdutoData } from '@/lib/api';
+import { CadastroData } from '@/lib/api';
+import type { Product } from '@/types/sdk';
 import { ParsedNFData } from '@/lib/ocr-parser';
 import { criarPedidoCompra } from './pedidos-compra';
 import type { PedidoCompra, PedidoCompraItem } from '@/types/pedido-compra';
@@ -57,8 +58,8 @@ export class NFProcessor {
       const fornecedor = await this.processarFornecedor(parsedData.fornecedor, autoCreate);
       if (!fornecedor) {
         // Retornar com aviso para usuário selecionar fornecedor
-        return { 
-          success: false, 
+        return {
+          success: false,
           errors: ['Fornecedor não encontrado'],
           warnings: [`Fornecedor "${parsedData.fornecedor.razaoSocial || parsedData.fornecedor.cnpj}" não está cadastrado. Selecione um fornecedor existente ou cadastre-o primeiro.`],
           needsUserInput: true,
@@ -73,11 +74,11 @@ export class NFProcessor {
       // 3. Processar produtos
       const produtos = await this.processarProdutos(parsedData.itens, autoCreate);
       const produtosNaoEncontrados = produtos.filter((p: any) => p.notFound);
-      
+
       if (produtosNaoEncontrados.length > 0) {
         // Retornar com aviso para usuário selecionar produtos
-        return { 
-          success: false, 
+        return {
+          success: false,
           errors: [`${produtosNaoEncontrados.length} produto(s) não encontrado(s)`],
           warnings: [
             `Os seguintes produtos não foram encontrados no cadastro:`,
@@ -88,7 +89,7 @@ export class NFProcessor {
           fornecedor
         };
       }
-      
+
       const produtosEncontrados = produtos.filter((p: any) => !p.notFound);
       if (produtosEncontrados.length > 0) {
         warnings.push(`${produtosEncontrados.length} produto(s) encontrado(s) no cadastro`);
@@ -121,7 +122,7 @@ export class NFProcessor {
 
       // Buscar por CNPJ
       if (dadosFornecedor.cnpj) {
-        const existente = cadastros.find(c => 
+        const existente = cadastros.find(c =>
           c.cnpj === dadosFornecedor.cnpj
         );
 
@@ -154,7 +155,7 @@ export class NFProcessor {
         cnpj: dadosFornecedor.cnpj,
         razaoSocial: dadosFornecedor.razaoSocial
       });
-      
+
       return null;
     } catch (error) {
       console.error('Erro ao processar fornecedor:', error);

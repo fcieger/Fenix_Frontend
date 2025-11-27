@@ -2,6 +2,16 @@ import { query, transaction } from '@/lib/database';
 import { validateUUID } from '@/utils/validations';
 
 /**
+ * Fluxo Caixa Service
+ *
+ * NOTE: This service uses direct database queries instead of API calls.
+ * It's a complex service that aggregates data from multiple sources (movements, accounts payable/receivable).
+ * This is intentional as it provides optimized queries for cash flow reporting.
+ *
+ * This service should remain as-is and does not need SDK migration.
+ */
+
+/**
  * Interface para parâmetros do fluxo de caixa
  */
 export interface FluxoCaixaParams {
@@ -135,19 +145,19 @@ export async function buscarMovimentacoesFinanceiras(
   }
 
   let sql = `
-    SELECT 
+    SELECT
       'movimentacao'::text as origem_tipo,
       m.id::text as origem_id,
       DATE(m.data_movimentacao) as data,
       m.data_movimentacao as data_timestamp,
       cf."companyId"::text as company_id,
       cf.id::text as conta_id,
-      CASE 
+      CASE
         WHEN m.tipo_movimentacao = 'entrada' THEN m.valor_entrada
         WHEN m.tipo_movimentacao = 'transferencia' AND m.valor_entrada > 0 THEN m.valor_entrada
         ELSE 0
       END as valor_entrada,
-      CASE 
+      CASE
         WHEN m.tipo_movimentacao = 'saida' THEN m.valor_saida
         WHEN m.tipo_movimentacao = 'transferencia' AND m.valor_saida > 0 THEN m.valor_saida
         ELSE 0
@@ -192,17 +202,17 @@ export async function buscarMovimentacoesFinanceiras(
   });
 
   const result = await query(sql, params);
-  
+
   console.log('📊 Movimentações encontradas:', result.rows.length);
-  
+
   return result.rows.map(row => {
     // Normalizar data para formato YYYY-MM-DD
-    const data = typeof row.data === 'string' 
-      ? row.data 
-      : row.data instanceof Date 
+    const data = typeof row.data === 'string'
+      ? row.data
+      : row.data instanceof Date
         ? row.data.toISOString().split('T')[0]
         : new Date(row.data_timestamp).toISOString().split('T')[0];
-    
+
     return {
       origem_tipo: row.origem_tipo,
       origem_id: row.origem_id,
@@ -240,11 +250,11 @@ export async function buscarContasReceber(
   // Construir condição de data baseado em tipo_data
   let condicaoData = '';
   let condicaoTimestamp = '';
-  
+
   if (tipo_data === 'pagamento') {
     // Para pagamento: se pago, usar data de pagamento/compensação; se pendente, usar data de vencimento
     condicaoData = `
-      CASE 
+      CASE
         WHEN p.status = 'pago' AND p.data_compensacao IS NOT NULL THEN DATE(p.data_compensacao)
         WHEN p.status = 'pago' AND p.data_pagamento IS NOT NULL THEN DATE(p.data_pagamento)
         WHEN p.status = 'pago' THEN DATE(p.data_vencimento)
@@ -252,7 +262,7 @@ export async function buscarContasReceber(
       END
     `;
     condicaoTimestamp = `
-      CASE 
+      CASE
         WHEN p.status = 'pago' AND p.data_compensacao IS NOT NULL THEN p.data_compensacao::timestamp
         WHEN p.status = 'pago' AND p.data_pagamento IS NOT NULL THEN p.data_pagamento::timestamp
         WHEN p.status = 'pago' THEN p.data_vencimento::timestamp
@@ -266,7 +276,7 @@ export async function buscarContasReceber(
   }
 
   let sql = `
-    SELECT 
+    SELECT
       'conta_receber'::text as origem_tipo,
       p.conta_receber_id::text as origem_id,
       ${condicaoData} as data,
@@ -291,7 +301,7 @@ export async function buscarContasReceber(
   paramCount++;
   sql += ` AND (${condicaoData}) >= $${paramCount}::date`;
   params.push(data_inicio);
-  
+
   paramCount++;
   sql += ` AND (${condicaoData}) <= $${paramCount}::date`;
   params.push(data_fim);
@@ -327,9 +337,9 @@ export async function buscarContasReceber(
   });
 
   const result = await query(sql, params);
-  
+
   console.log('📊 Contas a receber encontradas:', result.rows.length);
-  
+
   // Log de exemplo das primeiras 3 parcelas encontradas
   if (result.rows.length > 0) {
     console.log('📝 Exemplo de parcelas encontradas:', result.rows.slice(0, 3).map(r => ({
@@ -341,15 +351,15 @@ export async function buscarContasReceber(
   } else {
     console.log('⚠️ Nenhuma parcela encontrada - verifique se há parcelas no período com os filtros aplicados');
   }
-  
+
   return result.rows.map(row => {
     // Normalizar data para formato YYYY-MM-DD
-    const data = typeof row.data === 'string' 
-      ? row.data 
-      : row.data instanceof Date 
+    const data = typeof row.data === 'string'
+      ? row.data
+      : row.data instanceof Date
         ? row.data.toISOString().split('T')[0]
         : new Date(row.data_timestamp).toISOString().split('T')[0];
-    
+
     return {
       ...row,
       data,
@@ -379,13 +389,13 @@ export async function buscarContasPagar(
   // Construir condição de data baseado em tipo_data
   let condicaoData = '';
   let condicaoTimestamp = '';
-  
+
   if (tipo_data === 'pagamento') {
-    // Para pagamento: 
+    // Para pagamento:
     // - Se PAGO: usar data de pagamento/compensação (se tiver), senão usar data de vencimento
     // - Se PENDENTE: sempre usar data de vencimento (pois não tem data de pagamento ainda)
     condicaoData = `
-      CASE 
+      CASE
         WHEN p.status = 'pago' AND p.data_compensacao IS NOT NULL THEN DATE(p.data_compensacao)
         WHEN p.status = 'pago' AND p.data_pagamento IS NOT NULL THEN DATE(p.data_pagamento)
         WHEN p.status = 'pago' THEN DATE(p.data_vencimento) -- Fallback para pago sem data de pagamento
@@ -393,7 +403,7 @@ export async function buscarContasPagar(
       END
     `;
     condicaoTimestamp = `
-      CASE 
+      CASE
         WHEN p.status = 'pago' AND p.data_compensacao IS NOT NULL THEN p.data_compensacao::timestamp
         WHEN p.status = 'pago' AND p.data_pagamento IS NOT NULL THEN p.data_pagamento::timestamp
         WHEN p.status = 'pago' THEN p.data_vencimento::timestamp
@@ -407,7 +417,7 @@ export async function buscarContasPagar(
   }
 
   let sql = `
-    SELECT 
+    SELECT
       'conta_pagar'::text as origem_tipo,
       p.conta_pagar_id::text as origem_id,
       ${condicaoData} as data,
@@ -432,7 +442,7 @@ export async function buscarContasPagar(
   paramCount++;
   sql += ` AND (${condicaoData}) >= $${paramCount}::date`;
   params.push(data_inicio);
-  
+
   paramCount++;
   sql += ` AND (${condicaoData}) <= $${paramCount}::date`;
   params.push(data_fim);
@@ -468,9 +478,9 @@ export async function buscarContasPagar(
   });
 
   const result = await query(sql, params);
-  
+
   console.log('📊 Contas a pagar encontradas:', result.rows.length);
-  
+
   // Log de exemplo das primeiras 3 parcelas encontradas
   if (result.rows.length > 0) {
     console.log('📝 Exemplo de parcelas encontradas:', result.rows.slice(0, 3).map(r => ({
@@ -482,15 +492,15 @@ export async function buscarContasPagar(
   } else {
     console.log('⚠️ Nenhuma parcela encontrada - verifique se há parcelas no período com os filtros aplicados');
   }
-  
+
   return result.rows.map(row => {
     // Normalizar data para formato YYYY-MM-DD
-    const data = typeof row.data === 'string' 
-      ? row.data 
-      : row.data instanceof Date 
+    const data = typeof row.data === 'string'
+      ? row.data
+      : row.data instanceof Date
         ? row.data.toISOString().split('T')[0]
         : new Date(row.data_timestamp).toISOString().split('T')[0];
-    
+
     return {
       ...row,
       data,
@@ -573,16 +583,16 @@ export async function calcularSaldoInicial(
 
   // Buscar TODAS as movimentações pagas ANTES do período
   let sqlMov = `
-    SELECT 
+    SELECT
       COALESCE(SUM(
-        CASE 
+        CASE
           WHEN m.tipo_movimentacao = 'entrada' THEN m.valor_entrada
           WHEN m.tipo_movimentacao = 'transferencia' AND m.valor_entrada > 0 THEN m.valor_entrada
           ELSE 0
         END
       ), 0) as total_entradas,
       COALESCE(SUM(
-        CASE 
+        CASE
           WHEN m.tipo_movimentacao = 'saida' THEN m.valor_saida
           WHEN m.tipo_movimentacao = 'transferencia' AND m.valor_saida > 0 THEN m.valor_saida
           ELSE 0
@@ -629,14 +639,14 @@ export async function buscarSaldosContas(
 
   // Calcular saldo_atual dinamicamente usando a mesma lógica do calcularSaldoAtual
   let sql = `
-    SELECT 
+    SELECT
       cf.id::text as conta_id,
       COALESCE(cf.descricao, cf.banco_nome, 'Conta') as descricao,
       COALESCE(
         (
-          SELECT 
+          SELECT
             COALESCE(SUM(
-              CASE 
+              CASE
                 WHEN m.tipo_movimentacao = 'entrada' THEN m.valor_entrada
                 WHEN m.tipo_movimentacao = 'transferencia' AND m.valor_entrada > 0 THEN m.valor_entrada
                 WHEN m.tipo_movimentacao = 'saida' THEN -m.valor_saida
@@ -718,7 +728,7 @@ export function processarDadosDiarios(
   const dias: Date[] = [];
   const dataInicio = new Date(data_inicio);
   const dataFim = new Date(data_fim);
-  
+
   for (let d = new Date(dataInicio); d <= dataFim; d.setDate(d.getDate() + 1)) {
     dias.push(new Date(d));
   }
@@ -727,9 +737,9 @@ export function processarDadosDiarios(
 
   // Agrupar movimentações por dia
   const agrupado = agruparPorDia(movimentacoes);
-  
+
   console.log(`📊 Dias com movimentações: ${agrupado.size} dias`);
-  
+
   // Log das primeiras 5 movimentações para debug
   if (movimentacoes.length > 0) {
     console.log('📝 Primeiras 5 movimentações:', movimentacoes.slice(0, 5).map(m => ({
@@ -804,7 +814,7 @@ export function processarDadosDiarios(
       }
     } else {
       // Para saldo, considerar todas se status = 'todos' ou apenas pendentes
-      const movimentacoesConsideradas = status === 'todos' 
+      const movimentacoesConsideradas = status === 'todos'
         ? movimentacoesDoDia
         : movimentacoesDoDia.filter(m => m.status === status);
       for (const mov of movimentacoesConsideradas) {
@@ -844,8 +854,8 @@ export function formatarResposta(
   filtros_aplicados: any,
   saldos_contas?: SaldoConta[]
 ): FluxoCaixaResponse {
-  const saldo_final = dados_diarios.length > 0 
-    ? dados_diarios[dados_diarios.length - 1].saldo_dia 
+  const saldo_final = dados_diarios.length > 0
+    ? dados_diarios[dados_diarios.length - 1].saldo_dia
     : saldo_inicial;
 
   const totais = {

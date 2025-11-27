@@ -11,6 +11,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Search, Package, DollarSign, Hash, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { API_CONFIG } from '@/config/api';
+import { listProducts } from '@/services/products-service';
+import type { Product } from '@/types/sdk';
+import { mapProductToDisplay } from '@/lib/sdk/field-mappers';
 
 interface Produto {
   id: string;
@@ -50,19 +53,28 @@ export default function ProdutoSearchDialog({ onProdutoSelect, children }: Produ
     setError(null);
 
     try {
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/produtos?search=${encodeURIComponent(term)}&companyId=${activeCompanyId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+      // Use SDK service instead of direct fetch
+      const response = await listProducts({ search: term });
+      const products = response.data || [];
+
+      // Map SDK Product to local Produto format
+      const produtosMapeados = products.map((product: Product) => {
+        const displayProduct = mapProductToDisplay(product);
+        return {
+          id: displayProduct.id,
+          codigo: displayProduct.code,
+          descricao: displayProduct.description,
+          ncm: displayProduct.ncm,
+          cfop: '5102', // Default value
+          unidade: displayProduct.unit,
+          valorUnitario: displayProduct.price,
+          estoqueAtual: 0, // Needs to fetch StockBalance separately if needed
+          categoria: 'Geral', // Not available in SDK
+          marca: 'N/A', // Not available in SDK
+        };
       });
 
-      if (!response.ok) {
-        throw new Error('Erro ao buscar produtos');
-      }
-
-      const data = await response.json();
-      setProdutos(data.produtos || []);
+      setProdutos(produtosMapeados);
     } catch (err) {
       console.error('Erro ao buscar produtos:', err);
       setError('Erro ao buscar produtos. Tente novamente.');
@@ -158,7 +170,7 @@ export default function ProdutoSearchDialog({ onProdutoSelect, children }: Produ
                 <TableBody>
                   {produtos.map((produto) => {
                     const estoqueStatus = getEstoqueStatus(produto.estoqueAtual);
-                    
+
                     return (
                       <TableRow key={produto.id} className="hover:bg-gray-50">
                         <TableCell>

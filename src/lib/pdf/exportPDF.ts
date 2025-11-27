@@ -19,7 +19,7 @@ export async function exportPDF(options: ExportPDFOptions): Promise<void> {
 
   try {
     // Gerar PDF
-    const response = await fetch('/api/relatorios/export/pdf', {
+    const response = await fetch('/api/reports/export/pdf', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

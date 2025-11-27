@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { useAuth } from '@/contexts/auth-context';
+import { useState, useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useAuth } from "@/contexts/auth-context";
 import {
   Home,
   Users,
@@ -29,141 +29,249 @@ import {
   History,
   BookOpen,
   Target,
-  Store
-} from 'lucide-react';
+  Store,
+} from "lucide-react";
 
 // Menu centralizado - ÚNICA FONTE DA VERDADE
 const menuItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: Home, href: '/dashboard' },
-  { id: 'cadastros', label: 'Cadastros', icon: Users, href: '/cadastros' },
-  { id: 'produtos', label: 'Produtos', icon: Package, href: '/produtos' },
-  { 
-    id: 'vendas', 
-    label: 'Vendas', 
-    icon: ShoppingCart, 
-    href: '/vendas',
+  { id: "dashboard", label: "Dashboard", icon: Home, href: "/dashboard" },
+  { id: "partners", label: "Cadastros", icon: Users, href: "/partners" },
+  { id: "products", label: "Produtos", icon: Package, href: "/products" },
+  {
+    id: "sales",
+    label: "Vendas",
+    icon: ShoppingCart,
+    href: "/sales",
     submenu: [
-      { id: 'vendas-dashboard', label: 'Dashboard', href: '/vendas/dashboard' },
-      { id: 'pedido-venda', label: 'Pedido de Venda', href: '/vendas' },
-      { id: 'orcamentos', label: 'Orçamentos', href: '/orcamentos' }
-    ]
+      { id: "sales-dashboard", label: "Dashboard", href: "/sales/dashboard" },
+      { id: "pedido-venda", label: "Pedido de Venda", href: "/sales" },
+      { id: "quotes", label: "Orçamentos", href: "/quotes" },
+    ],
   },
-  { 
-    id: 'frente-caixa', 
-    label: 'Frente de Caixa', 
-    icon: Store, 
-    href: '/frente-caixa',
+  {
+    id: "point-of-sale",
+    label: "Frente de Caixa",
+    icon: Store,
+    href: "/point-of-sale",
     submenu: [
-      { id: 'frente-caixa-dashboard', label: 'Dashboard', href: '/frente-caixa/dashboard' },
-      { id: 'frente-caixa-pdv', label: 'Frente de Caixa', href: '/frente-caixa' }
-    ]
+      {
+        id: "point-of-sale-dashboard",
+        label: "Dashboard",
+        href: "/point-of-sale/dashboard",
+      },
+      {
+        id: "point-of-sale-pdv",
+        label: "Frente de Caixa",
+        href: "/point-of-sale",
+      },
+    ],
   },
-  { 
-    id: 'compras', 
-    label: 'Compras', 
-    icon: ShoppingCart, 
-    href: '/compras',
+  {
+    id: "purchases",
+    label: "Compras",
+    icon: ShoppingCart,
+    href: "/purchases",
     submenu: [
-      { id: 'compras-dashboard', label: 'Dashboard', href: '/compras/dashboard' },
-      { id: 'pedido-compra', label: 'Pedido de Compra', href: '/compras' }
-    ]
+      {
+        id: "purchases-dashboard",
+        label: "Dashboard",
+        href: "/purchases/dashboard",
+      },
+      { id: "pedido-compra", label: "Pedido de Compra", href: "/purchases" },
+    ],
   },
-  { 
-    id: 'impostos', 
-    label: 'Impostos', 
-    icon: Receipt, 
-    href: '/impostos',
+  {
+    id: "taxes",
+    label: "Impostos",
+    icon: Receipt,
+    href: "/taxes",
     submenu: [
-      { id: 'natureza-operacao', label: 'Naturezas de Operação', href: '/impostos/natureza-operacao' }
-    ]
+      {
+        id: "natureza-operacao",
+        label: "Naturezas de Operação",
+        href: "/taxes/natureza-operacao",
+      },
+    ],
   },
-  { id: 'nfe', label: 'Notas Fiscais', icon: FileText, href: '/nfe' },
-  { 
-    id: 'estoque',
-    label: 'Estoque',
+  { id: "nfe", label: "Notas Fiscais", icon: FileText, href: "/nfe" },
+  {
+    id: "stock",
+    label: "Estoque",
     icon: Package,
-    href: '/estoque',
+    href: "/stock",
     submenu: [
-      { id: 'estoque-saldos', label: 'Itens e Saldos', href: '/estoque/saldos' },
-      { id: 'estoque-kardex', label: 'Lançamentos (Kardex)', href: '/estoque/kardex' },
-      { id: 'estoque-lancamento', label: 'Lançamento Manual', href: '/estoque/lancamento' },
-      { id: 'estoque-inventario', label: 'Inventário', href: '/estoque/inventario' },
-      { id: 'estoque-locais', label: 'Locais de Estoque', href: '/estoque/locais' },
-    ]
+      { id: "stock-saldos", label: "Itens e Saldos", href: "/stock/saldos" },
+      {
+        id: "stock-kardex",
+        label: "Lançamentos (Kardex)",
+        href: "/stock/kardex",
+      },
+      {
+        id: "stock-lancamento",
+        label: "Lançamento Manual",
+        href: "/stock/lancamento",
+      },
+      {
+        id: "stock-inventario",
+        label: "Inventário",
+        href: "/stock/inventario",
+      },
+      { id: "stock-locais", label: "Locais de Estoque", href: "/stock/locais" },
+    ],
   },
-  { 
-    id: 'financeiro', 
-    label: 'Financeiro', 
-    icon: DollarSign, 
-    href: '/financeiro',
+  {
+    id: "financial",
+    label: "Financeiro",
+    icon: DollarSign,
+    href: "/financial",
     submenu: [
-      { id: 'financeiro-dashboard', label: 'Dashboard', href: '/financeiro' },
-      { id: 'banco', label: 'Banco', href: '/financeiro/banco' },
-      { id: 'titulos-em-aberto', label: 'Títulos em Aberto', href: '/financeiro/titulos-em-aberto' },
-      { id: 'contas-pagar', label: 'Contas a Pagar', href: '/financeiro/contas-pagar' },
-      { id: 'contas-receber', label: 'Contas a Receber', href: '/financeiro/contas-receber' },
-      { id: 'fluxo-caixa', label: 'Fluxo de Caixa', href: '/financeiro/fluxo-caixa' },
-      { id: 'historico', label: 'Histórico', href: '/financeiro/historico' },
-      { id: 'conta-contabil', label: 'Conta Contábil', href: '/financeiro/conta-contabil' },
-      { id: 'centro-custo', label: 'Centro de Custo', href: '/financeiro/centro-custo' },
-      { id: 'forma-pagamento', label: 'Formas de Pagamento', href: '/financeiro/forma-pagamento' },
-      { id: 'prazos-pagamento', label: 'Prazos de Pagamento', href: '/configuracoes/prazos-pagamento' }
-    ]
+      { id: "financial-dashboard", label: "Dashboard", href: "/financial" },
+      { id: "banco", label: "Banco", href: "/financial/banco" },
+      {
+        id: "titulos-em-aberto",
+        label: "Títulos em Aberto",
+        href: "/financial/titulos-em-aberto",
+      },
+      {
+        id: "contas-pagar",
+        label: "Contas a Pagar",
+        href: "/financial/contas-pagar",
+      },
+      {
+        id: "contas-receber",
+        label: "Contas a Receber",
+        href: "/financial/contas-receber",
+      },
+      {
+        id: "fluxo-caixa",
+        label: "Fluxo de Caixa",
+        href: "/financial/fluxo-caixa",
+      },
+      { id: "historico", label: "Histórico", href: "/financial/historico" },
+      {
+        id: "conta-contabil",
+        label: "Conta Contábil",
+        href: "/financial/conta-contabil",
+      },
+      {
+        id: "centro-custo",
+        label: "Centro de Custo",
+        href: "/financial/centro-custo",
+      },
+      {
+        id: "forma-pagamento",
+        label: "Formas de Pagamento",
+        href: "/financial/forma-pagamento",
+      },
+      {
+        id: "prazos-pagamento",
+        label: "Prazos de Pagamento",
+        href: "/settings/prazos-pagamento",
+      },
+    ],
   },
-  { 
-    id: 'credito', 
-    label: 'Crédito', 
+  {
+    id: "credit",
+    label: "Crédito",
     icon: CreditCard,
-    href: '/credito',
+    href: "/credit",
     submenu: [
-      { id: 'credito-dashboard', label: 'Dashboard', href: '/credito' },
-      { id: 'credito-solicitar', label: 'Solicitar Crédito', href: '/credito/solicitar' },
-      { id: 'credito-solicitacoes', label: 'Minhas Solicitações', href: '/credito/minhas-solicitacoes' },
-      { id: 'credito-documentacao', label: 'Documentação', href: '/credito/documentacao' },
-      { id: 'credito-propostas', label: 'Propostas', href: '/credito/propostas' },
-      { id: 'credito-capital-giro', label: 'Capital de Giro', href: '/credito/capital-giro' },
-      { id: 'credito-antecipacao', label: 'Antecipação', href: '/credito/antecipacao' }
-    ]
+      { id: "credit-dashboard", label: "Dashboard", href: "/credit" },
+      {
+        id: "credit-solicitar",
+        label: "Solicitar Crédito",
+        href: "/credit/solicitar",
+      },
+      {
+        id: "credit-solicitacoes",
+        label: "Minhas Solicitações",
+        href: "/credit/minhas-solicitacoes",
+      },
+      {
+        id: "credit-documentacao",
+        label: "Documentação",
+        href: "/credit/documentacao",
+      },
+      { id: "credit-propostas", label: "Propostas", href: "/credit/propostas" },
+      {
+        id: "credit-capital-giro",
+        label: "Capital de Giro",
+        href: "/credit/capital-giro",
+      },
+      {
+        id: "credit-antecipacao",
+        label: "Antecipação",
+        href: "/credit/antecipacao",
+      },
+    ],
   },
-  { 
-    id: 'aumente-vendas', 
-    label: 'AUMENTE SUAS VENDAS', 
+  {
+    id: "aumente-vendas",
+    label: "AUMENTE SUAS VENDAS",
     icon: TrendingUp,
-    href: '/licitacoes',
+    href: "/tenders",
     submenu: [
-      { id: 'licitacoes-dashboard', label: 'Licitações', href: '/licitacoes' },
-      { id: 'licitacoes-matches', label: 'Matches IA', href: '/licitacoes/matches', badge: 'IA' },
-      { id: 'licitacoes-alertas', label: 'Meus Alertas', href: '/licitacoes/alertas' }
-    ]
+      { id: "tenders-dashboard", label: "Licitações", href: "/tenders" },
+      {
+        id: "tenders-matches",
+        label: "Matches IA",
+        href: "/tenders/matches",
+        badge: "IA",
+      },
+      {
+        id: "tenders-alertas",
+        label: "Meus Alertas",
+        href: "/tenders/alertas",
+      },
+    ],
   },
-  { id: 'cursos-sebrae', label: 'Cursos Sebrae', icon: BookOpen, href: '/cursos-sebrae' },
-  { id: 'assistentes', label: 'Assistentes IA', icon: Bot, href: '/assistentes', badge: 'IA' },
-  { id: 'chat-ia', label: 'Chat IA', icon: Bot, href: '/chat', badge: 'NOVO' },
-  { 
-    id: 'relatorios', 
-    label: 'Relatórios', 
-    icon: BarChart3, 
-    href: '/relatorios',
-    submenu: [
-      { id: 'relatorios-dashboard', label: 'Visão Geral', href: '/relatorios' },
-      { id: 'relatorios-vendas', label: 'Vendas', href: '/relatorios/vendas' },
-      { id: 'relatorios-compras', label: 'Compras', href: '/relatorios/compras' },
-      { id: 'relatorios-financeiro', label: 'Financeiro', href: '/relatorios/financeiro' },
-      { id: 'relatorios-estoque', label: 'Estoque', href: '/relatorios/estoque' },
-      { id: 'relatorios-fiscal', label: 'Fiscal', href: '/relatorios/fiscal' },
-      { id: 'relatorios-caixa', label: 'Frente de Caixa', href: '/relatorios/caixa' },
-      { id: 'relatorios-geral', label: 'Geral', href: '/relatorios/geral' }
-    ]
+  {
+    id: "sebrae-courses",
+    label: "Cursos Sebrae",
+    icon: BookOpen,
+    href: "/sebrae-courses",
   },
-  { 
-    id: 'configuracoes', 
-    label: 'Configurações', 
-    icon: Settings, 
-    href: '/configuracoes',
+  {
+    id: "assistants",
+    label: "Assistentes IA",
+    icon: Bot,
+    href: "/assistants",
+    badge: "IA",
+  },
+  { id: "chat-ia", label: "Chat IA", icon: Bot, href: "/chat", badge: "NOVO" },
+  {
+    id: "reports",
+    label: "Relatórios",
+    icon: BarChart3,
+    href: "/reports",
     submenu: [
-      { id: 'configuracoes-nfe', label: 'Configurações NFe', href: '/configuracoes/nfe' },
-      { id: 'certificado-digital', label: 'Certificado Digital', href: '/configuracoes/certificado' }
-    ]
+      { id: "reports-dashboard", label: "Visão Geral", href: "/reports" },
+      { id: "reports-sales", label: "Vendas", href: "/reports/sales" },
+      { id: "reports-purchases", label: "Compras", href: "/reports/purchases" },
+      {
+        id: "reports-financial",
+        label: "Financeiro",
+        href: "/reports/financial",
+      },
+      { id: "reports-stock", label: "Estoque", href: "/reports/stock" },
+      { id: "reports-fiscal", label: "Fiscal", href: "/reports/fiscal" },
+      { id: "reports-caixa", label: "Frente de Caixa", href: "/reports/caixa" },
+      { id: "reports-geral", label: "Geral", href: "/reports/geral" },
+    ],
+  },
+  {
+    id: "settings",
+    label: "Configurações",
+    icon: Settings,
+    href: "/settings",
+    submenu: [
+      { id: "settings-nfe", label: "Configurações NFe", href: "/settings/nfe" },
+      {
+        id: "certificado-digital",
+        label: "Certificado Digital",
+        href: "/settings/certificado",
+      },
+    ],
   },
 ];
 
@@ -176,32 +284,32 @@ export default function Sidebar() {
 
   // Manter menu financeiro expandido quando estiver na área financeira
   useEffect(() => {
-    if (pathname.startsWith('/financeiro')) {
-      setExpandedMenus(prev => new Set([...prev, 'financeiro']));
+    if (pathname.startsWith("/financial")) {
+      setExpandedMenus((prev) => new Set([...prev, "financial"]));
     }
     // Manter menu vendas expandido quando estiver na área de vendas
-    if (pathname.startsWith('/vendas') || pathname.startsWith('/orcamentos')) {
-      setExpandedMenus(prev => new Set([...prev, 'vendas']));
+    if (pathname.startsWith("/sales") || pathname.startsWith("/quotes")) {
+      setExpandedMenus((prev) => new Set([...prev, "sales"]));
     }
     // Manter menu compras expandido quando estiver na área de compras
-    if (pathname.startsWith('/compras')) {
-      setExpandedMenus(prev => new Set([...prev, 'compras']));
+    if (pathname.startsWith("/purchases")) {
+      setExpandedMenus((prev) => new Set([...prev, "purchases"]));
     }
     // Manter menu frente de caixa expandido quando estiver na área de frente de caixa
-    if (pathname.startsWith('/frente-caixa')) {
-      setExpandedMenus(prev => new Set([...prev, 'frente-caixa']));
+    if (pathname.startsWith("/point-of-sale")) {
+      setExpandedMenus((prev) => new Set([...prev, "point-of-sale"]));
     }
     // Manter menu crédito expandido quando estiver na área de crédito
-    if (pathname.startsWith('/credito')) {
-      setExpandedMenus(prev => new Set([...prev, 'credito']));
+    if (pathname.startsWith("/credit")) {
+      setExpandedMenus((prev) => new Set([...prev, "credit"]));
     }
     // Manter menu licitações expandido quando estiver na área de licitações
-    if (pathname.startsWith('/licitacoes')) {
-      setExpandedMenus(prev => new Set([...prev, 'aumente-vendas']));
+    if (pathname.startsWith("/tenders")) {
+      setExpandedMenus((prev) => new Set([...prev, "aumente-vendas"]));
     }
     // Manter menu relatórios expandido quando estiver na área de relatórios
-    if (pathname.startsWith('/relatorios')) {
-      setExpandedMenus(prev => new Set([...prev, 'relatorios']));
+    if (pathname.startsWith("/reports")) {
+      setExpandedMenus((prev) => new Set([...prev, "reports"]));
     }
   }, [pathname]);
 
@@ -263,7 +371,10 @@ export default function Sidebar() {
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setSidebarOpen(false)} />
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50"
+            onClick={() => setSidebarOpen(false)}
+          />
           <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white">
             <div className="absolute top-0 right-0 -mr-12 pt-2">
               <button
@@ -282,8 +393,12 @@ export default function Sidebar() {
                     </div>
                   </div>
                   <div className="ml-3">
-                    <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Fenix</h1>
-                    <p className="text-xs text-gray-600 font-medium">Sistema de Gestão</p>
+                    <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                      Fenix
+                    </h1>
+                    <p className="text-xs text-gray-600 font-medium">
+                      Sistema de Gestão
+                    </p>
                   </div>
                 </div>
               </div>
@@ -293,7 +408,7 @@ export default function Sidebar() {
                   const isActive = activeItem === item.id;
                   const hasSubmenu = item.submenu && item.submenu.length > 0;
                   const isExpanded = expandedMenus.has(item.id);
-                  
+
                   return (
                     <div key={item.id}>
                       <button
@@ -306,8 +421,8 @@ export default function Sidebar() {
                         }}
                         className={`${
                           isActive
-                            ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md'
-                            : 'text-gray-600 hover:bg-gradient-to-r hover:from-purple-50 hover:to-blue-50 hover:text-gray-900'
+                            ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md"
+                            : "text-gray-600 hover:bg-gradient-to-r hover:from-purple-50 hover:to-blue-50 hover:text-gray-900"
                         } group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg w-full text-left transition-all duration-200`}
                       >
                         <Icon className="mr-3 h-5 w-5 flex-shrink-0" />
@@ -327,7 +442,7 @@ export default function Sidebar() {
                           </span>
                         )}
                       </button>
-                      
+
                       {/* Submenu */}
                       {hasSubmenu && isExpanded && (
                         <div className="ml-4 mt-1 space-y-1">
@@ -339,8 +454,8 @@ export default function Sidebar() {
                                 onClick={() => handleNavigation(subItem.href)}
                                 className={`${
                                   isSubActive
-                                    ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-sm'
-                                    : 'text-gray-500 hover:bg-purple-50 hover:text-gray-700'
+                                    ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-sm"
+                                    : "text-gray-500 hover:bg-purple-50 hover:text-gray-700"
                                 } group flex items-center px-2 py-2 text-sm font-medium rounded-lg w-full text-left transition-all duration-200`}
                               >
                                 <span className="ml-4">{subItem.label}</span>
@@ -367,8 +482,12 @@ export default function Sidebar() {
                   </div>
                 </div>
                 <div className="ml-3 min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{user?.name || 'Usuário'}</p>
-                  <p className="text-xs text-gray-500 truncate">{user?.email || 'email@exemplo.com'}</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate">
+                    {user?.name || "Usuário"}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {user?.email || "email@exemplo.com"}
+                  </p>
                 </div>
               </div>
             </div>
@@ -388,8 +507,12 @@ export default function Sidebar() {
                   </div>
                 </div>
                 <div className="ml-3">
-                  <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Fenix</h1>
-                  <p className="text-xs text-gray-600 font-medium">Sistema de Gestão</p>
+                  <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                    Fenix
+                  </h1>
+                  <p className="text-xs text-gray-600 font-medium">
+                    Sistema de Gestão
+                  </p>
                 </div>
               </div>
             </div>
@@ -399,7 +522,7 @@ export default function Sidebar() {
                 const isActive = activeItem === item.id;
                 const hasSubmenu = item.submenu && item.submenu.length > 0;
                 const isExpanded = expandedMenus.has(item.id);
-                
+
                 return (
                   <div key={item.id}>
                     <button
@@ -412,8 +535,8 @@ export default function Sidebar() {
                       }}
                       className={`${
                         isActive
-                          ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md'
-                          : 'text-gray-600 hover:bg-gradient-to-r hover:from-purple-50 hover:to-blue-50 hover:text-gray-900'
+                          ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md"
+                          : "text-gray-600 hover:bg-gradient-to-r hover:from-purple-50 hover:to-blue-50 hover:text-gray-900"
                       } group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg w-full text-left transition-all duration-200`}
                     >
                       <Icon className="mr-3 h-5 w-5 flex-shrink-0" />
@@ -433,7 +556,7 @@ export default function Sidebar() {
                         </span>
                       )}
                     </button>
-                    
+
                     {/* Submenu */}
                     {hasSubmenu && isExpanded && (
                       <div className="ml-4 mt-1 space-y-1">
@@ -445,8 +568,8 @@ export default function Sidebar() {
                               onClick={() => handleNavigation(subItem.href)}
                               className={`${
                                 isSubActive
-                                  ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-sm'
-                                  : 'text-gray-500 hover:bg-purple-50 hover:text-gray-700'
+                                  ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-sm"
+                                  : "text-gray-500 hover:bg-purple-50 hover:text-gray-700"
                               } group flex items-center px-2 py-2 text-sm font-medium rounded-lg w-full text-left transition-all duration-200`}
                             >
                               <span className="ml-4">{subItem.label}</span>
@@ -473,8 +596,12 @@ export default function Sidebar() {
                 </div>
               </div>
               <div className="ml-3 flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">{user?.name || 'Usuário'}</p>
-                <p className="text-xs text-gray-500 truncate">{user?.email || 'email@exemplo.com'}</p>
+                <p className="text-sm font-semibold text-gray-900 truncate">
+                  {user?.name || "Usuário"}
+                </p>
+                <p className="text-xs text-gray-500 truncate">
+                  {user?.email || "email@exemplo.com"}
+                </p>
               </div>
               <button
                 onClick={handleLogout}

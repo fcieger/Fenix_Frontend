@@ -8,7 +8,7 @@ export default function V2CertificadoRedirect() {
 
   useEffect(() => {
     // Redirecionar imediatamente para a página correta
-    router.replace('/configuracoes/certificado');
+    router.replace('/settings/certificado');
   }, [router]);
 
   return (

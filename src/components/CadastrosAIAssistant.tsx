@@ -539,7 +539,7 @@ export default function CadastrosAIAssistant({ isOpen, onClose }: CadastrosAIAss
       setTimeout(() => {
         onClose();
         // Redirecionar para a página de cadastros
-        window.location.href = '/cadastros';
+        window.location.href = '/partners';
       }, 2000);
       
     } catch (error: any) {

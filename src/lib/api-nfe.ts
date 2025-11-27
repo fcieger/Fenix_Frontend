@@ -104,7 +104,7 @@ export class NFeService {
    */
   static async listarNFes(companyId: string): Promise<NFe[]> {
     try {
-      const response = await api.get(`${this.baseUrl}/empresa/${companyId}`);
+      const response = await api.get(`${this.baseUrl}/companies/${companyId}`);
       return response.data;
     } catch (error: any) {
       console.error('Erro ao listar NFes:', error);

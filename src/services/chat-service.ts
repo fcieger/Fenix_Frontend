@@ -1,5 +1,15 @@
 import { api } from '@/config/api';
 
+/**
+ * Chat Service
+ * Uses Next.js API routes via axios (legacy api instance)
+ *
+ * NOTE: This service uses direct API routes because there's no ChatApiClient in the SDK.
+ *
+ * TODO: Consider adding ChatApiClient to the SDK in the future.
+ * TODO: Migrate from legacy api instance to fetch or SDK when available.
+ */
+
 export interface ChatMessage {
   id: string;
   userMessage: string;

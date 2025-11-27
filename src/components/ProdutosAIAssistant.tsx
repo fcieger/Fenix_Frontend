@@ -432,7 +432,7 @@ export default function ProdutosAIAssistant({ isOpen, onClose }: ProdutosAIAssis
       setTimeout(() => {
         onClose();
         // Redirecionar para a página de produtos
-        window.location.href = '/produtos';
+        window.location.href = '/products';
       }, 2000);
       
     } catch (error) {

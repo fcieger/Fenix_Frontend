@@ -1,6 +1,6 @@
 /**
  * Web Scraper para Portal de Transparência do Paraná
- * URL: https://www.transparencia.pr.gov.br/pte/compras/licitacoes/pesquisar-param
+ * URL: https://www.transparencia.pr.gov.br/pte/purchases/tenders/pesquisar-param
  * 
  * Extrai licitações estaduais do Paraná em tempo real
  */
@@ -31,7 +31,7 @@ export class ParanaScraper {
       console.log('🕷️ Iniciando scraping do Portal do Paraná...');
       
       const response = await axios.get(
-        `${this.BASE_URL}/pte/compras/licitacoes/pesquisar-param`,
+        `${this.BASE_URL}/pte/purchases/tenders/pesquisar-param`,
         {
           timeout: 15000,
           headers: {
@@ -125,7 +125,7 @@ export class ParanaScraper {
           dataAbertura: new Date().toISOString(),
           dataLimite: this.converterDataBR(dataLimite),
           situacao: 'Aberta',
-          link: `${this.BASE_URL}/pte/compras/licitacoes/pesquisar-param`,
+          link: `${this.BASE_URL}/pte/purchases/tenders/pesquisar-param`,
         });
       }
 

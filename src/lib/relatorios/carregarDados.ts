@@ -56,7 +56,7 @@ export async function carregarDadosRelatorio(
           filtrosEspecificos
         );
         const vendasRes = await fetch(
-          `/api/vendas/dashboard?${vendasParams}`,
+          `/api/sales/dashboard?${vendasParams}`,
           { headers }
         );
         return vendasRes.ok ? await vendasRes.json() : null;
@@ -168,7 +168,7 @@ export async function carregarDadosRelatorio(
           filtrosEspecificos
         );
         const orcamentosRes = await fetch(
-          `${API_BASE_URL}/api/orcamentos?${orcamentosParams}`,
+          `${API_BASE_URL}/api/quotes?${orcamentosParams}`,
           { headers }
         );
         return orcamentosRes.ok ? await orcamentosRes.json() : null;
@@ -180,7 +180,7 @@ export async function carregarDadosRelatorio(
           filtrosEspecificos
         );
         const comprasRes = await fetch(
-          `/api/compras/dashboard?${comprasParams}`,
+          `/api/purchases/dashboard?${comprasParams}`,
           { headers }
         );
         return comprasRes.ok ? await comprasRes.json() : null;
@@ -293,7 +293,7 @@ export async function carregarDadosRelatorio(
 
       case 'financeiro-dre':
         const dreRes = await fetch(
-          `/api/financeiro/dre?company_id=${activeCompanyId}&dataInicio=${dataInicio}&dataFim=${dataFim}`,
+          `/api/financial/dre?company_id=${activeCompanyId}&dataInicio=${dataInicio}&dataFim=${dataFim}`,
           { headers }
         );
         return dreRes.ok ? await dreRes.json() : null;
@@ -329,7 +329,7 @@ export async function carregarDadosRelatorio(
           }
         );
         const estoqueRes = await fetch(
-          `/api/estoque/saldos?${estoqueParams}`,
+          `/api/stock/saldos?${estoqueParams}`,
           { headers }
         );
         if (estoqueRes.ok) {
@@ -348,35 +348,35 @@ export async function carregarDadosRelatorio(
           }
         );
         const movimentacoesRes = await fetch(
-          `/api/estoque/movimentos?${movimentacoesParams}`,
+          `/api/stock/movimentos?${movimentacoesParams}`,
           { headers }
         );
         return movimentacoesRes.ok ? { movimentacoes: await movimentacoesRes.json() } : null;
 
       case 'estoque-kardex':
         const kardexRes = await fetch(
-          `/api/estoque/kardex?company_id=${activeCompanyId}&dataInicio=${dataInicio}&dataFim=${dataFim}`,
+          `/api/stock/kardex?company_id=${activeCompanyId}&dataInicio=${dataInicio}&dataFim=${dataFim}`,
           { headers }
         );
         return kardexRes.ok ? await kardexRes.json() : null;
 
       case 'estoque-valorizado':
         const valorizadoRes = await fetch(
-          `/api/estoque/valorizado?company_id=${activeCompanyId}`,
+          `/api/stock/valorizado?company_id=${activeCompanyId}`,
           { headers }
         );
         return valorizadoRes.ok ? await valorizadoRes.json() : null;
 
       case 'estoque-minimo':
         const minimoRes = await fetch(
-          `/api/estoque/saldos?company_id=${activeCompanyId}&abaixo_minimo=true`,
+          `/api/stock/saldos?company_id=${activeCompanyId}&abaixo_minimo=true`,
           { headers }
         );
         return minimoRes.ok ? await minimoRes.json() : null;
 
       case 'estoque-inventario':
         const inventarioRes = await fetch(
-          `/api/estoque/inventarios?company_id=${activeCompanyId}`,
+          `/api/stock/inventarios?company_id=${activeCompanyId}`,
           { headers }
         );
         return inventarioRes.ok ? await inventarioRes.json() : null;
@@ -398,7 +398,7 @@ export async function carregarDadosRelatorio(
 
       case 'impostos-recolhidos':
         const impostosRes = await fetch(
-          `/api/impostos/recolhidos?company_id=${activeCompanyId}&dataInicio=${dataInicio}&dataFim=${dataFim}`,
+          `/api/taxes/recolhidos?company_id=${activeCompanyId}&dataInicio=${dataInicio}&dataFim=${dataFim}`,
           { headers }
         );
         return impostosRes.ok ? await impostosRes.json() : null;
@@ -406,7 +406,7 @@ export async function carregarDadosRelatorio(
       // ============ FRENTE DE CAIXA ============
       case 'caixa-vendas':
         const caixaVendasRes = await fetch(
-          `/api/caixa/vendas?company_id=${activeCompanyId}&dataInicio=${dataInicio}&dataFim=${dataFim}`,
+          `/api/caixa/sales?company_id=${activeCompanyId}&dataInicio=${dataInicio}&dataFim=${dataFim}`,
           { headers }
         );
         return caixaVendasRes.ok ? { vendas: await caixaVendasRes.json() } : null;
@@ -435,21 +435,21 @@ export async function carregarDadosRelatorio(
       // ============ GERAL ============
       case 'clientes':
         const clientesRes = await fetch(
-          `/api/cadastros?company_id=${activeCompanyId}&tipo=cliente`,
+          `/api/partners?company_id=${activeCompanyId}&tipo=cliente`,
           { headers }
         );
         return clientesRes.ok ? { clientes: await clientesRes.json() } : null;
 
       case 'fornecedores':
         const fornecedoresRes = await fetch(
-          `/api/cadastros?company_id=${activeCompanyId}&tipo=fornecedor`,
+          `/api/partners?company_id=${activeCompanyId}&tipo=fornecedor`,
           { headers }
         );
         return fornecedoresRes.ok ? { fornecedores: await fornecedoresRes.json() } : null;
 
       case 'produtos':
         const produtosRes = await fetch(
-          `/api/produtos?company_id=${activeCompanyId}`,
+          `/api/products?company_id=${activeCompanyId}`,
           { headers }
         );
         return produtosRes.ok ? { produtos: await produtosRes.json() } : null;
@@ -457,9 +457,9 @@ export async function carregarDadosRelatorio(
       case 'dashboard-consolidado':
         // Buscar dados de múltiplas fontes
         const [dashVendas, dashCompras, dashFinanceiro] = await Promise.all([
-          fetch(`/api/vendas/dashboard?company_id=${activeCompanyId}&dataInicio=${dataInicio}&dataFim=${dataFim}`, { headers }),
-          fetch(`/api/compras/dashboard?company_id=${activeCompanyId}&dataInicio=${dataInicio}&dataFim=${dataFim}`, { headers }),
-          fetch(`/api/financeiro/dashboard?company_id=${activeCompanyId}`, { headers })
+          fetch(`/api/sales/dashboard?company_id=${activeCompanyId}&dataInicio=${dataInicio}&dataFim=${dataFim}`, { headers }),
+          fetch(`/api/purchases/dashboard?company_id=${activeCompanyId}&dataInicio=${dataInicio}&dataFim=${dataFim}`, { headers }),
+          fetch(`/api/financial/dashboard?company_id=${activeCompanyId}`, { headers })
         ]);
         
         return {

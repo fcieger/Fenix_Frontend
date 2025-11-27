@@ -49,7 +49,7 @@ export class MinasGeraisScraper {
         dataLimite: new Date(hoje.getTime() + 20 * 24 * 60 * 60 * 1000).toISOString(),
         valor: 1650000,
         situacao: 'Aberta',
-        link: 'https://www.ufmg.br/compras',
+        link: 'https://www.ufmg.br/purchases',
       },
       {
         titulo: 'Datacenter para PRODEMGE',

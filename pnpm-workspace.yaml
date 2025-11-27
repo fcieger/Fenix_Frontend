@@ -1,0 +1,12 @@
+onlyBuiltDependencies:
+  - a
+  - esbuild
+  - i
+  - m
+  - p
+  - puppeteer
+  - r
+  - s
+  - sharp
+  - tesseract.js
+  - unrs-resolver

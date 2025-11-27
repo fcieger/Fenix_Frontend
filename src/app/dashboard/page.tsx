@@ -129,19 +129,19 @@ export default function DashboardPage() {
 
         // Buscar dados das três APIs em paralelo
         const [vendasRes, comprasRes, financeiroRes] = await Promise.all([
-          fetch(`/api/vendas/dashboard?company_id=${activeCompanyId}&dataInicio=${dataInicioStr}&dataFim=${dataFimStr}&filtroStatus=${filtroStatus}`, {
+          fetch(`/api/sales/dashboard?company_id=${activeCompanyId}&dataInicio=${dataInicioStr}&dataFim=${dataFimStr}&filtroStatus=${filtroStatus}`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
             }
           }),
-          fetch(`/api/compras/dashboard?company_id=${activeCompanyId}&dataInicio=${dataInicioStr}&dataFim=${dataFimStr}&filtroStatus=${filtroStatus}`, {
+          fetch(`/api/purchases/dashboard?company_id=${activeCompanyId}&dataInicio=${dataInicioStr}&dataFim=${dataFimStr}&filtroStatus=${filtroStatus}`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
             }
           }),
-          fetch(`/api/financeiro/dashboard?company_id=${activeCompanyId}`, {
+          fetch(`/api/financial/dashboard?company_id=${activeCompanyId}`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -343,28 +343,28 @@ export default function DashboardPage() {
       value: formatCurrency(metrics.financeiro.contasVencidas),
       icon: AlertTriangle,
       color: 'bg-red-500',
-      href: '/financeiro/contas-pagar'
+      href: '/financial/contas-pagar'
     },
     {
       title: 'Próximos Vencimentos',
       value: formatCurrency(metrics.financeiro.proximosVencimentos),
       icon: Calendar,
       color: 'bg-yellow-500',
-      href: '/financeiro/contas-pagar'
+      href: '/financial/contas-pagar'
     },
     {
       title: 'Compras Pendentes',
       value: formatNumber(metrics.compras.comprasPendentes),
       icon: Package,
       color: 'bg-indigo-500',
-      href: '/compras'
+      href: '/purchases'
     },
     {
       title: 'Orçamentos',
       value: formatNumber(metrics.vendas.totalOrcamentosPeriodo),
       icon: FileText,
       color: 'bg-cyan-500',
-      href: '/orcamentos'
+      href: '/quotes'
     }
   ] : [];
 
@@ -477,7 +477,7 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.5 }}
-          onClick={() => router.push('/assistentes')}
+          onClick={() => router.push('/assistants')}
           className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-2xl shadow-xl border-2 border-white p-6 lg:p-8 cursor-pointer hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02]"
         >
           <div className="flex items-center justify-between">

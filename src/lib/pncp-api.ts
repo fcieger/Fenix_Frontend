@@ -150,7 +150,7 @@ export class PNCPService {
           console.log(`📡 Buscando licitações do órgão ${codigoOrgao}...`);
           
           const response = await axios.get(
-            `${PORTAL_TRANSPARENCIA_API_URL}/licitacoes`,
+            `${PORTAL_TRANSPARENCIA_API_URL}/tenders`,
             {
               params: {
                 codigoOrgao,
@@ -322,7 +322,7 @@ export class PNCPService {
         situacaoCompra: 'Aberta',
         dataAberturaProposta: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
         dataEncerramentoProposta: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString(),
-        linkSistemaOrigem: 'https://www.prefeitura.sp.gov.br/licitacoes',
+        linkSistemaOrigem: 'https://www.prefeitura.sp.gov.br/tenders',
         uf: 'SP',
         municipio: 'São Paulo',
       },
@@ -397,7 +397,7 @@ export class PNCPService {
         situacaoCompra: 'Aberta',
         dataAberturaProposta: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
         dataEncerramentoProposta: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-        linkSistemaOrigem: 'https://compras.rio.rj.gov.br',
+        linkSistemaOrigem: 'https://purchases.rio.rj.gov.br',
         uf: 'RJ',
         municipio: 'Rio de Janeiro',
       },
@@ -447,7 +447,7 @@ export class PNCPService {
         situacaoCompra: 'Aberta',
         dataAberturaProposta: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
         dataEncerramentoProposta: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-        linkSistemaOrigem: 'https://www.gov.br/compras',
+        linkSistemaOrigem: 'https://www.gov.br/purchases',
         uf: 'DF',
         municipio: 'Brasília',
       },
@@ -472,7 +472,7 @@ export class PNCPService {
         situacaoCompra: 'Aberta',
         dataAberturaProposta: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
         dataEncerramentoProposta: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString(),
-        linkSistemaOrigem: 'https://www.prefeitura.sp.gov.br/licitacoes',
+        linkSistemaOrigem: 'https://www.prefeitura.sp.gov.br/tenders',
         uf: 'SP',
         municipio: 'São Paulo',
       },
@@ -547,7 +547,7 @@ export class PNCPService {
         situacaoCompra: 'Aberta',
         dataAberturaProposta: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
         dataEncerramentoProposta: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(),
-        linkSistemaOrigem: 'https://compras.campinas.sp.gov.br',
+        linkSistemaOrigem: 'https://purchases.campinas.sp.gov.br',
         uf: 'SP',
         municipio: 'Campinas',
       },
@@ -572,7 +572,7 @@ export class PNCPService {
         situacaoCompra: 'Encerrada',
         dataAberturaProposta: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(),
         dataEncerramentoProposta: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-        linkSistemaOrigem: 'https://santos.sp.gov.br/compras',
+        linkSistemaOrigem: 'https://santos.sp.gov.br/purchases',
         uf: 'SP',
         municipio: 'Santos',
       },
@@ -623,7 +623,7 @@ export class PNCPService {
         situacaoCompra: 'Aberta',
         dataAberturaProposta: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
         dataEncerramentoProposta: new Date(Date.now() + 11 * 24 * 60 * 60 * 1000).toISOString(),
-        linkSistemaOrigem: 'https://www.tjrs.jus.br/site/compras',
+        linkSistemaOrigem: 'https://www.tjrs.jus.br/site/purchases',
         uf: 'RS',
         municipio: 'Porto Alegre',
       },
@@ -648,7 +648,7 @@ export class PNCPService {
         situacaoCompra: 'Aberta',
         dataAberturaProposta: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
         dataEncerramentoProposta: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-        linkSistemaOrigem: 'https://www.ufrgs.br/compras',
+        linkSistemaOrigem: 'https://www.ufrgs.br/purchases',
         uf: 'RS',
         municipio: 'Porto Alegre',
       },
@@ -689,7 +689,7 @@ export class PNCPService {
           situacaoCompra: 'Aberta',
           dataAberturaProposta: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
           dataEncerramentoProposta: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-          linkSistemaOrigem: 'https://www.gov.br/compras',
+          linkSistemaOrigem: 'https://www.gov.br/purchases',
           uf: params.uf,
           municipio: 'Capital',
         }];
@@ -797,7 +797,7 @@ export class PNCPService {
     let linkEdital = null;
     if (numeroLicitacao && uasg) {
       // Link para consulta no ComprasNet
-      linkEdital = `https://www.gov.br/compras/pt-br/acesso-a-informacao/licitacoes-e-contratos`;
+      linkEdital = `https://www.gov.br/purchases/pt-br/acesso-a-informacao/tenders-e-contratos`;
     }
 
     // Obter dados da UF (pode vir como nome completo ou sigla)

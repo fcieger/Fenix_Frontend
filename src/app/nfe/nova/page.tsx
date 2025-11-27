@@ -14,8 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
-import { 
-  ArrowLeft, Save, FileText, User, Package, Calculator, 
+import {
+  ArrowLeft, Save, FileText, User, Package, Calculator,
   Truck, CreditCard, FileCheck, Plus, Trash2, Search, AlertCircle,
   Check, Edit, X, MapPin, Info, RefreshCw, ChevronDown
 } from 'lucide-react';
@@ -26,6 +26,9 @@ import { useNumeroSequencial } from '@/hooks/useNumeroSequencial';
 import ClienteSearchDialog from '@/components/nfe/ClienteSearchDialog';
 import ProdutoSearchDialog from '@/components/nfe/ProdutoSearchDialog';
 import NFeIntegration from '@/components/nfe/nfe-integration';
+import { listProducts } from '@/services/products-service';
+import type { Product } from '@/types/sdk';
+import { mapProductToDisplay } from '@/lib/sdk/field-mappers';
 
 interface NFeItem {
   id: string;
@@ -132,31 +135,31 @@ export default function NovaNotaFiscalPage() {
   const [destCodigoPais, setDestCodigoPais] = useState('1058');
   const [destTelefone, setDestTelefone] = useState('');
   const [destEmail, setDestEmail] = useState('');
-  
+
   // Estados para busca de destinatário (igual ao novo pedido)
   const [cadastros, setCadastros] = useState<any[]>([]);
   const [clientes, setClientes] = useState<any[]>([]);
   const [destinatarioSelecionado, setDestinatarioSelecionado] = useState<any | null>(null);
   const [isLoadingCadastros, setIsLoadingCadastros] = useState(false);
-  
+
   // Estados para transportadora
   const [transportadoras, setTransportadoras] = useState<any[]>([]);
   const [transportadoraSelecionada, setTransportadoraSelecionada] = useState<any | null>(null);
   const [showTransportadoraDropdown, setShowTransportadoraDropdown] = useState(false);
   const [showDestinatarioDropdown, setShowDestinatarioDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Estados para busca de produtos
   const [produtosDisponiveis, setProdutosDisponiveis] = useState<any[]>([]);
   const [produtoSelecionado, setProdutoSelecionado] = useState<any | null>(null);
   const [isLoadingProdutos, setIsLoadingProdutos] = useState(false);
   const [showProdutoDropdown, setShowProdutoDropdown] = useState(false);
   const [searchProdutoQuery, setSearchProdutoQuery] = useState('');
-  
+
   // Estados para naturezas de operação
   const [naturezasOperacao, setNaturezasOperacao] = useState<any[]>([]);
   const [isLoadingNaturezas, setIsLoadingNaturezas] = useState(false);
-  
+
   // Estados para cálculo de impostos
   const [impostosCalc, setImpostosCalc] = useState<{ itens: any[]; totais: any } | null>(null);
   const [isCalculandoImpostos, setIsCalculandoImpostos] = useState(false);
@@ -166,7 +169,7 @@ export default function NovaNotaFiscalPage() {
   const [configuracaoNatureza, setConfiguracaoNatureza] = useState<any | null>(null);
   const [isLoadingConfiguracao, setIsLoadingConfiguracao] = useState(false);
   const [ufErrorMessage, setUfErrorMessage] = useState<string | null>(null);
-  
+
   // Estados para validações
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
   const [isValidating, setIsValidating] = useState(false);
@@ -256,7 +259,7 @@ export default function NovaNotaFiscalPage() {
       prepararParaSalvar(configuracaoNfeId);
       // Limpar número anterior
       setNumero('');
-      
+
       // Aplicar configuração selecionada aos campos modelo e série
       const configuracaoSelecionada = configuracoesDisponiveis.find(config => config.id === configuracaoNfeId);
       if (configuracaoSelecionada) {
@@ -265,7 +268,7 @@ export default function NovaNotaFiscalPage() {
           serie: configuracaoSelecionada.serie,
           descricao: configuracaoSelecionada.descricaoModelo
         });
-        
+
         setModelo(configuracaoSelecionada.modelo);
         setSerie(configuracaoSelecionada.serie);
       }
@@ -309,16 +312,16 @@ export default function NovaNotaFiscalPage() {
         setIsValidating(false);
       }
     };
-    
+
     validateNatureza();
   }, [naturezaOperacao, ufDestino]);
 
   const carregarCadastros = async () => {
     if (!token) return;
-    
+
     setIsLoadingCadastros(true);
     try {
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/cadastros`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/partners`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -329,14 +332,14 @@ export default function NovaNotaFiscalPage() {
         const data = await response.json();
         console.log('Cadastros carregados:', data);
         setCadastros(Array.isArray(data) ? data : []);
-        
+
         // Separar clientes e transportadoras dos cadastros
         const clientesData = data.filter((c: any) => c.tiposCliente?.cliente);
         const transportadorasData = data.filter((c: any) => c.tiposCliente?.transportadora);
-        
+
         setClientes(clientesData);
         setTransportadoras(transportadorasData);
-        
+
         console.log('✅ Clientes encontrados:', clientesData.length);
         console.log('✅ Transportadoras encontradas:', transportadorasData.length);
       } else {
@@ -345,11 +348,11 @@ export default function NovaNotaFiscalPage() {
         console.error('Erro ao carregar cadastros:', error);
         setCadastros([]);
         setError('Erro ao carregar cadastros. Tente novamente mais tarde.');
-        
+
         // Se não conseguir carregar dados, não há clientes nem transportadoras
         const clientesData: any[] = [];
         const transportadorasData: any[] = [];
-        
+
         setClientes(clientesData);
         setTransportadoras(transportadorasData);
       }
@@ -366,14 +369,14 @@ export default function NovaNotaFiscalPage() {
 
   const handleSearchCadastros = (query: string) => {
     setSearchQuery(query);
-    
+
     if (!query) {
       setClientes(cadastros.filter((c: any) => c.tiposCliente?.cliente));
       setTransportadoras(cadastros.filter((c: any) => c.tiposCliente?.transportadora));
       return;
     }
 
-    const filtered = cadastros.filter((cadastro: any) => 
+    const filtered = cadastros.filter((cadastro: any) =>
       cadastro.nomeRazaoSocial?.toLowerCase().includes(query.toLowerCase()) ||
       cadastro.cnpj?.includes(query) ||
       cadastro.cpf?.includes(query)
@@ -392,53 +395,33 @@ export default function NovaNotaFiscalPage() {
 
   const carregarProdutos = async () => {
     if (!token) return;
-    
+
     setIsLoadingProdutos(true);
     try {
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/produtos`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+      // Use SDK service instead of direct fetch
+      const response = await listProducts();
+      const products = response.data || [];
+
+      console.log('Produtos carregados do banco:', products);
+
+      // Mapear dados do SDK para o formato esperado pelo frontend
+      const produtosMapeados = products.map((product: Product) => {
+        const displayProduct = mapProductToDisplay(product);
+        return {
+          id: displayProduct.id,
+          codigo: displayProduct.code || 'N/A',
+          descricao: displayProduct.description || 'Sem descrição',
+          ncm: displayProduct.ncm || '',
+          cfop: '5102', // Valor padrão
+          unidade: displayProduct.unit || 'UN',
+          valorUnitario: displayProduct.price || 0,
+          estoqueAtual: 0, // Precisa buscar StockBalance separadamente se necessário
+          categoria: 'Geral', // Não existe no SDK
+          marca: 'N/A' // Não existe no SDK
+        };
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Produtos carregados do banco:', data);
-        
-        // Mapear dados do backend para o formato esperado pelo frontend
-        const produtosMapeados = Array.isArray(data) ? data.map(produto => ({
-          id: produto.id,
-          codigo: produto.sku || produto.nome?.substring(0, 10) || 'N/A',
-          descricao: produto.nome || produto.descricao || 'Sem descrição',
-          ncm: produto.ncm || '',
-          cfop: '5102', // Valor padrão
-          unidade: produto.unidadeMedida || 'UN',
-          valorUnitario: produto.preco ? parseFloat(produto.preco) : 0,
-          estoqueAtual: 0, // Campo não existe no backend atual
-          categoria: produto.categoriaProduto || 'Geral',
-          marca: produto.marca || 'N/A'
-        })) : [];
-        
-        setProdutosDisponiveis(produtosMapeados);
-      } else {
-        console.error('Erro na resposta da API de produtos:', response.status, response.statusText);
-        // Dados de fallback em caso de erro
-        setProdutosDisponiveis([
-          {
-            id: '1',
-            codigo: 'FALLBACK',
-            descricao: 'Produto de Fallback',
-            ncm: '12345678',
-            cfop: '5102',
-            unidade: 'UN',
-            valorUnitario: 0,
-            estoqueAtual: 0,
-            categoria: 'Fallback',
-            marca: 'Sistema'
-          }
-        ]);
-      }
+      setProdutosDisponiveis(produtosMapeados);
     } catch (err) {
       console.error('Erro ao carregar produtos:', err);
       // Dados de fallback em caso de erro
@@ -463,7 +446,7 @@ export default function NovaNotaFiscalPage() {
 
   const carregarNaturezasOperacao = async () => {
     if (!token) return;
-    
+
     setIsLoadingNaturezas(true);
     try {
       const response = await fetch(`${API_CONFIG.BASE_URL}/api/natureza-operacao`, {
@@ -477,7 +460,7 @@ export default function NovaNotaFiscalPage() {
         const data = await response.json();
         console.log('Naturezas de operação carregadas do banco:', data);
         setNaturezasOperacao(Array.isArray(data) ? data : []);
-        
+
         // Se há naturezas disponíveis, selecionar a primeira automaticamente
         if (Array.isArray(data) && data.length > 0 && !naturezaOperacao) {
           console.log('🎯 Selecionando primeira natureza automaticamente:', data[0].id);
@@ -497,14 +480,14 @@ export default function NovaNotaFiscalPage() {
 
   const carregarConfiguracoesNFe = async () => {
     if (!token) return;
-    
+
     setLoadingConfiguracoes(true);
     try {
       console.log('🔄 Carregando configurações NFe...');
       const configuracoes = await apiService.getConfiguracoesNfe(token, true); // apenas ativas
       setConfiguracoesDisponiveis(configuracoes);
       console.log('✅ Configurações NFe carregadas:', configuracoes.length);
-      
+
       // Se há configurações disponíveis, selecionar a primeira automaticamente
       if (configuracoes.length > 0 && !configuracaoNfeId) {
         console.log('🎯 Selecionando primeira configuração automaticamente:', configuracoes[0].id);
@@ -520,7 +503,7 @@ export default function NovaNotaFiscalPage() {
 
   const carregarConfiguracaoNatureza = async (naturezaId: string) => {
     if (!token) return;
-    
+
     setIsLoadingConfiguracao(true);
     try {
       const response = await fetch(`${API_CONFIG.BASE_URL}/api/natureza-operacao/${naturezaId}/configuracao-estados`, {
@@ -568,18 +551,18 @@ export default function NovaNotaFiscalPage() {
     try {
       setIsCalculandoImpostos(true);
       setUfErrorMessage(null); // Limpar mensagem de erro anterior
-      
+
       // Buscar UFs reais
       let ufOrigemAtual = ufOrigem;
       let ufDestinoAtual = ufDestino;
-      
+
       // Buscar UF da empresa (se não tiver, usar SP)
       const empresa = user?.companies?.[0] as any;
       if (empresa?.address?.state) {
         ufOrigemAtual = empresa.address.state;
         setUfOrigem(ufOrigemAtual);
       }
-      
+
       // Buscar UF do destinatário selecionado
       if (destinatarioSelecionado?.enderecos?.length > 0) {
         const enderecoPrincipal = destinatarioSelecionado.enderecos.find((e: any) => e.principal) || destinatarioSelecionado.enderecos[0];
@@ -589,7 +572,7 @@ export default function NovaNotaFiscalPage() {
 
       // VALIDAÇÃO: Verificar se a natureza está habilitada para a UF do destinatário
       console.log('🔍 VALIDAÇÃO UF - Verificando se natureza está habilitada para UF:', ufDestinoAtual);
-      
+
       // Buscar configurações da natureza para validar UF
       const configuracoes = await fetch(`${API_CONFIG.BASE_URL}/api/natureza-operacao/${naturezaOperacaoId}/configuracao-estados`, {
         headers: {
@@ -597,13 +580,13 @@ export default function NovaNotaFiscalPage() {
           'Content-Type': 'application/json',
         },
       }).then(res => res.json());
-      
+
       const configuracaoUF = configuracoes.find((config: any) => config.uf === ufDestinoAtual);
-      
+
       if (!configuracaoUF || !configuracaoUF.habilitado) {
         // Usar configuração de fallback (UF origem ou primeira disponível)
         const configuracaoFallback = configuracoes.find((config: any) => config.uf === ufOrigemAtual) || configuracoes[0];
-        
+
         if (!configuracaoFallback) {
           const mensagemErro = `Natureza de operação não configurada para nenhuma UF`;
           console.log('❌ VALIDAÇÃO UF - Falha:', mensagemErro);
@@ -611,7 +594,7 @@ export default function NovaNotaFiscalPage() {
           setImpostosCalc(null);
           return;
         }
-        
+
         console.log('⚠️ VALIDAÇÃO UF - UF do destinatário não habilitada, usando configuração de fallback:', configuracaoFallback.uf);
         setUfErrorMessage(`Usando configuração de ${configuracaoFallback.uf} para UF ${ufDestinoAtual}`);
       } else {
@@ -642,10 +625,10 @@ export default function NovaNotaFiscalPage() {
           cbenef: produto.codigoBeneficioFiscal,
         }))
       };
-      
+
       console.log('🔄 Enviando payload para cálculo de impostos:', payload);
-      
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/impostos/calcular`, {
+
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/taxes/calcular`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -660,10 +643,10 @@ export default function NovaNotaFiscalPage() {
 
       const resp = await response.json();
       console.log('✅ Resposta do cálculo de impostos:', resp);
-      
+
       setImpostosCalc(resp);
       setUltimaAtualizacaoImpostos(new Date().toLocaleTimeString('pt-BR'));
-      
+
     } catch (e: any) {
       console.error('❌ Falha ao calcular impostos', e);
     } finally {
@@ -711,7 +694,7 @@ export default function NovaNotaFiscalPage() {
     setDestNomeFantasia(cadastro.nomeFantasia || '');
     setDestIE(cadastro.ie || '');
     setDestIM(cadastro.im || '');
-    
+
     // Verificar se tem IE e definir indicador automaticamente
     const temIE = cadastro.ie && cadastro.ie.trim() !== '';
     console.log('🔍 Verificando IE do destinatário:', {
@@ -720,7 +703,7 @@ export default function NovaNotaFiscalPage() {
       temIE,
       indicadorIEOriginal: cadastro.indicadorIE
     });
-    
+
     if (temIE) {
       // Se tem IE, verificar se é isento ou contribuinte
       const indicadorIE = cadastro.indicadorIE || '1'; // 1=Contribuinte, 2=Isento
@@ -732,7 +715,7 @@ export default function NovaNotaFiscalPage() {
       setDestIndicadorIE('NAO_CONTRIBUINTE');
       console.log('❌ Destinatário sem IE: NAO_CONTRIBUINTE');
     }
-    
+
     // Preencher endereço se existir
     if (cadastro.enderecos && cadastro.enderecos.length > 0) {
       const endereco = cadastro.enderecos[0];
@@ -744,7 +727,7 @@ export default function NovaNotaFiscalPage() {
       setDestUF(endereco.estado || '');
       setDestCEP(endereco.cep || '');
     }
-    
+
     setDestTelefone(cadastro.telefoneComercial || '');
     setDestEmail(cadastro.email || '');
     setShowDestinatarioDropdown(false);
@@ -754,7 +737,7 @@ export default function NovaNotaFiscalPage() {
 
   const handleEditDestinatario = (cadastroId: string) => {
     // Abrir modal de edição ou redirecionar para página de edição
-    router.push(`/cadastros/editar?id=${cadastroId}`);
+    router.push(`/partners/editar?id=${cadastroId}`);
   };
 
   const handleProdutoSelect = (produto: any) => {
@@ -777,7 +760,7 @@ export default function NovaNotaFiscalPage() {
 
   const handleEditProduto = (produtoId: string) => {
     // Abrir modal de edição ou redirecionar para página de edição
-    router.push(`/produtos/editar?id=${produtoId}`);
+    router.push(`/products/editar?id=${produtoId}`);
   };
 
   const formatCurrency = (value: number) => {
@@ -795,7 +778,7 @@ export default function NovaNotaFiscalPage() {
   // Validações de campos obrigatórios
   const validateNFe = () => {
     const errors: {[key: string]: string} = {};
-    
+
     console.log('🔍 Validando NFe - Dados atuais:', {
       naturezaOperacao,
       configuracaoNfeId,
@@ -810,63 +793,63 @@ export default function NovaNotaFiscalPage() {
       consumidorFinal,
       indicadorPresenca
     });
-    
+
     if (!naturezaOperacao) {
       errors.naturezaOperacao = 'Natureza de operação é obrigatória';
       console.log('❌ Erro: naturezaOperacao não definida');
     }
-    
+
     if (!configuracaoNfeId) {
       errors.configuracaoNfe = 'Configuração NFe é obrigatória';
       console.log('❌ Erro: configuracaoNfeId não definida');
     }
-    
+
     if (!destinatarioSelecionado) {
       errors.destinatario = 'Destinatário é obrigatório';
       console.log('❌ Erro: destinatarioSelecionado não definido');
     }
-    
+
     if (produtos.length === 0) {
       errors.produtos = 'Adicione pelo menos um produto';
       console.log('❌ Erro: nenhum produto adicionado');
     }
-    
+
     // Validar campos obrigatórios do destinatário
     if (!destRazaoSocial?.trim()) {
       errors.destRazaoSocial = 'Razão Social do destinatário é obrigatória';
       console.log('❌ Erro: destRazaoSocial não preenchida');
     }
-    
+
     if (!destCnpjCpf?.trim()) {
       errors.destCnpjCpf = 'CNPJ/CPF do destinatário é obrigatório';
       console.log('❌ Erro: destCnpjCpf não preenchido');
     }
-    
+
     if (!destLogradouro?.trim()) {
       errors.destLogradouro = 'Logradouro do destinatário é obrigatório';
       console.log('❌ Erro: destLogradouro não preenchido');
     }
-    
+
     if (!destBairro?.trim()) {
       errors.destBairro = 'Bairro do destinatário é obrigatório';
       console.log('❌ Erro: destBairro não preenchido');
     }
-    
+
     if (!destMunicipio?.trim()) {
       errors.destMunicipio = 'Município do destinatário é obrigatório';
       console.log('❌ Erro: destMunicipio não preenchido');
     }
-    
+
     if (!destUF?.trim()) {
       errors.destUF = 'UF do destinatário é obrigatória';
       console.log('❌ Erro: destUF não preenchida');
     }
-    
+
     if (!destCEP?.trim()) {
       errors.destCEP = 'CEP do destinatário é obrigatório';
       console.log('❌ Erro: destCEP não preenchido');
     }
-    
+
     // Validar cada produto
     produtos.forEach((produto, index) => {
       if (!produto.codigo?.trim()) {
@@ -882,7 +865,7 @@ export default function NovaNotaFiscalPage() {
         errors[`produto_${index}_valorUnitario`] = `Valor unitário do produto ${index + 1} deve ser maior que zero`;
       }
     });
-    
+
     // Resumo dos erros encontrados
     const errorCount = Object.keys(errors).length;
     if (errorCount > 0) {
@@ -893,7 +876,7 @@ export default function NovaNotaFiscalPage() {
     } else {
       console.log('✅ VALIDAÇÃO PASSOU: Todos os campos obrigatórios estão preenchidos');
     }
-    
+
     return errors;
   };
 
@@ -902,19 +885,19 @@ export default function NovaNotaFiscalPage() {
     if (!ufOrigem || !ufDestino) {
       return 'UF de origem e destino são obrigatórias';
     }
-    
+
     // Verificar se é operação interestadual baseado na configuração da natureza
     if (ufOrigem === ufDestino && configuracaoNatureza?.localDestinoOperacao === 'interestadual') {
       return 'UF de origem e destino não podem ser iguais para operações interestaduais';
     }
-    
+
     return null;
   };
 
   // Validação de natureza de operação para UF
   const validateNaturezaForUF = async () => {
     if (!naturezaOperacao || !ufDestino) return null;
-    
+
     try {
       const configuracoes = await fetch(`${API_CONFIG.BASE_URL}/api/natureza-operacao/${naturezaOperacao}/configuracao-estados`, {
         headers: {
@@ -922,13 +905,13 @@ export default function NovaNotaFiscalPage() {
           'Content-Type': 'application/json',
         },
       }).then(res => res.json());
-      
+
       const configuracaoUF = configuracoes.find((config: any) => config.uf === ufDestino);
-      
+
       if (!configuracaoUF || !configuracaoUF.habilitado) {
         return `Natureza de operação não está habilitada para a UF ${ufDestino}`;
       }
-      
+
       return null;
     } catch (error) {
       console.error('Erro ao validar natureza para UF:', error);
@@ -955,7 +938,7 @@ export default function NovaNotaFiscalPage() {
   };
 
   const atualizarDuplicata = (id: string, campo: keyof Duplicata, valor: any) => {
-    setDuplicatas(duplicatas.map(d => 
+    setDuplicatas(duplicatas.map(d =>
       d.id === id ? { ...d, [campo]: valor } : d
     ));
   };
@@ -965,11 +948,11 @@ export default function NovaNotaFiscalPage() {
     const errors = validateNFe();
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
-      
+
       // Criar mensagem detalhada dos erros
       const errorMessages = Object.entries(errors).map(([field, message]) => `• ${message}`).join('\n');
       const detailedError = `Corrija os erros antes de salvar:\n\n${errorMessages}`;
-      
+
       setError(detailedError);
       console.log('🚫 Salvamento bloqueado devido a erros de validação');
       return;
@@ -993,7 +976,7 @@ export default function NovaNotaFiscalPage() {
 
     setSaving(true);
     setError(null);
-    
+
     try {
       // Buscar configuração NFe ativa para usar como base
       const configuracoes = await apiService.getConfiguracoesNfe(token, true);
@@ -1036,7 +1019,7 @@ export default function NovaNotaFiscalPage() {
         finalidade: finalidade,
         consumidorFinal: consumidorFinal,
         indicadorPresenca: indicadorPresenca,
-        
+
         // Destinatário (estrutura achatada)
         destinatarioTipo: destTipo === 'cnpj' ? 'J' : 'F',
         destinatarioCnpjCpf: destCnpjCpf || '',
@@ -1065,12 +1048,12 @@ export default function NovaNotaFiscalPage() {
         destinatarioCodigoPais: destCodigoPais || '1058',
         destinatarioTelefone: destTelefone || undefined,
         destinatarioEmail: destEmail || undefined,
-        
+
         // Datas
         dataEmissao: dataEmissao ? new Date(dataEmissao).toISOString() : new Date().toISOString(),
         dataSaida: dataSaida ? new Date(dataSaida).toISOString() : undefined,
         horaSaida: horaSaida || undefined,
-        
+
         // Valores totais
         valorTotalProdutos: valorTotalProdutos || 0,
         baseCalculoICMS: baseCalculoICMS || 0,
@@ -1084,7 +1067,7 @@ export default function NovaNotaFiscalPage() {
         valorIPI: valorIPI || 0,
         tributosAproximados: tributosAproximados || 0,
         valorTotalNota: valorTotalNota || 0,
-        
+
         // Transporte
         modalidadeFrete: modalidadeFrete || 'SEM_FRETE',
         transportadoraNome: transpNome || undefined,
@@ -1092,16 +1075,16 @@ export default function NovaNotaFiscalPage() {
         transportadoraIE: transpIE || undefined,
         veiculoPlaca: veiculoPlaca || undefined,
         veiculoUF: veiculoUF || undefined,
-        
+
         // Pagamento
         formaPagamento: formaPagamento || 'VISTA',
         meioPagamento: meioPagamento || 'DINHEIRO',
-        
+
         // Informações adicionais
         informacoesComplementares: informacoesComplementares || undefined,
         informacoesFisco: informacoesFisco || undefined,
         numeroPedido: numeroPedido || undefined,
-        
+
         // Itens (array de itens)
         itens: produtos.map((p, index) => ({
           numeroItem: index + 1,
@@ -1118,7 +1101,7 @@ export default function NovaNotaFiscalPage() {
           valorTotal: p.valorTotal || 0,
           valorDesconto: p.valorDesconto || 0,
         })),
-        
+
         // Duplicatas (array de duplicatas)
         duplicatas: duplicatas.map(d => ({
           numero: d.numero,
@@ -1133,7 +1116,7 @@ export default function NovaNotaFiscalPage() {
         processed: (configuracaoNfe.ambiente || 'HOMOLOGACAO').toUpperCase(),
         final: nfeData.ambiente
       });
-      
+
       const response = await fetch(`${API_CONFIG.BASE_URL}/api/nfe`, {
         method: 'POST',
         headers: {
@@ -1175,7 +1158,7 @@ export default function NovaNotaFiscalPage() {
     <Layout>
       <div className="p-6 max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6"
@@ -1195,7 +1178,7 @@ export default function NovaNotaFiscalPage() {
                 <p className="text-gray-600">Preencha os dados abaixo para emitir uma NFe</p>
               </div>
             </div>
-            
+
             <div className="flex gap-3">
               <Button
                 variant="outline"
@@ -1253,7 +1236,7 @@ export default function NovaNotaFiscalPage() {
         )}
 
         {/* Tabs de Conteúdo */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
@@ -1344,8 +1327,8 @@ export default function NovaNotaFiscalPage() {
 
                     <div className="lg:col-span-3">
                       <Label htmlFor="configuracaoNfe">Configuração NFe *</Label>
-                      <Select 
-                        value={configuracaoNfeId} 
+                      <Select
+                        value={configuracaoNfeId}
                         onValueChange={setConfiguracaoNfeId}
                         disabled={loadingConfiguracoes}
                       >
@@ -1389,9 +1372,9 @@ export default function NovaNotaFiscalPage() {
 
                     <div>
                       <Label htmlFor="serie">Série *</Label>
-                      <Input 
-                        id="serie" 
-                        value={serie} 
+                      <Input
+                        id="serie"
+                        value={serie}
                         onChange={(e) => setSerie(e.target.value)}
                         placeholder="1"
                       />
@@ -1400,9 +1383,9 @@ export default function NovaNotaFiscalPage() {
                     <div>
                       <Label htmlFor="numero">Número *</Label>
                       <div className="relative">
-                        <Input 
-                          id="numero" 
-                          value={loadingNumero ? "Gerando..." : numero} 
+                        <Input
+                          id="numero"
+                          value={loadingNumero ? "Gerando..." : numero}
                           readOnly
                           className="bg-gray-50 cursor-not-allowed"
                           placeholder={configuracaoNfeId ? "Será gerado ao salvar" : "Selecione uma configuração"}
@@ -1414,7 +1397,7 @@ export default function NovaNotaFiscalPage() {
                         )}
                       </div>
                       <p className="text-sm text-gray-500 mt-1">
-                        {configuracaoNfeId 
+                        {configuracaoNfeId
                           ? "Número será gerado automaticamente ao salvar a nota"
                           : "Selecione uma configuração NFe primeiro"
                         }
@@ -1423,30 +1406,30 @@ export default function NovaNotaFiscalPage() {
 
                     <div>
                       <Label htmlFor="dataEmissao">Data de Emissão *</Label>
-                      <Input 
-                        id="dataEmissao" 
+                      <Input
+                        id="dataEmissao"
                         type="date"
-                        value={dataEmissao} 
+                        value={dataEmissao}
                         onChange={(e) => setDataEmissao(e.target.value)}
                       />
                     </div>
 
                     <div>
                       <Label htmlFor="dataSaida">Data de Saída</Label>
-                      <Input 
-                        id="dataSaida" 
+                      <Input
+                        id="dataSaida"
                         type="date"
-                        value={dataSaida} 
+                        value={dataSaida}
                         onChange={(e) => setDataSaida(e.target.value)}
                       />
                     </div>
 
                     <div>
                       <Label htmlFor="horaSaida">Hora de Saída</Label>
-                      <Input 
-                        id="horaSaida" 
+                      <Input
+                        id="horaSaida"
                         type="time"
-                        value={horaSaida} 
+                        value={horaSaida}
                         onChange={(e) => setHoraSaida(e.target.value)}
                       />
                     </div>
@@ -1480,9 +1463,9 @@ export default function NovaNotaFiscalPage() {
                     </div>
 
                     <div className="flex items-center space-x-2">
-                      <Checkbox 
-                        id="consumidorFinal" 
-                        checked={consumidorFinal} 
+                      <Checkbox
+                        id="consumidorFinal"
+                        checked={consumidorFinal}
                         onCheckedChange={(checked) => setConsumidorFinal(checked as boolean)}
                       />
                       <Label htmlFor="consumidorFinal">Consumidor Final</Label>
@@ -1522,9 +1505,9 @@ export default function NovaNotaFiscalPage() {
                         <p className="text-sm text-red-600 mt-1">{validationErrors.destinatario}</p>
                       )}
                     </div>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => router.push('/cadastros/novo')}
+                    <Button
+                      variant="outline"
+                      onClick={() => router.push('/partners/novo')}
                       className="flex items-center gap-2"
                     >
                       <Plus className="w-4 h-4" />
@@ -1550,7 +1533,7 @@ export default function NovaNotaFiscalPage() {
                           placeholder="Digite o nome do destinatário"
                         />
                         <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        
+
                         {showDestinatarioDropdown && (
                           <motion.div
                             initial={{ opacity: 0, y: -10 }}
@@ -1663,9 +1646,9 @@ export default function NovaNotaFiscalPage() {
 
                     <div>
                       <Label htmlFor="destCnpjCpf">{destTipo === 'cnpj' ? 'CNPJ' : 'CPF'} *</Label>
-                      <Input 
-                        id="destCnpjCpf" 
-                        value={destCnpjCpf} 
+                      <Input
+                        id="destCnpjCpf"
+                        value={destCnpjCpf}
                         onChange={(e) => setDestCnpjCpf(e.target.value)}
                         placeholder={destTipo === 'cnpj' ? '00.000.000/0000-00' : '000.000.000-00'}
                       />
@@ -1687,9 +1670,9 @@ export default function NovaNotaFiscalPage() {
 
                     <div className="lg:col-span-2">
                       <Label htmlFor="destRazaoSocial">Razão Social / Nome *</Label>
-                      <Input 
-                        id="destRazaoSocial" 
-                        value={destRazaoSocial} 
+                      <Input
+                        id="destRazaoSocial"
+                        value={destRazaoSocial}
                         onChange={(e) => setDestRazaoSocial(e.target.value)}
                         placeholder="Nome completo ou razão social"
                       />
@@ -1697,18 +1680,18 @@ export default function NovaNotaFiscalPage() {
 
                     <div>
                       <Label htmlFor="destNomeFantasia">Nome Fantasia</Label>
-                      <Input 
-                        id="destNomeFantasia" 
-                        value={destNomeFantasia} 
+                      <Input
+                        id="destNomeFantasia"
+                        value={destNomeFantasia}
                         onChange={(e) => setDestNomeFantasia(e.target.value)}
                       />
                     </div>
 
                     <div>
                       <Label htmlFor="destIE">Inscrição Estadual</Label>
-                      <Input 
-                        id="destIE" 
-                        value={destIE} 
+                      <Input
+                        id="destIE"
+                        value={destIE}
                         onChange={(e) => setDestIE(e.target.value)}
                         disabled={destIndicadorIE !== 'CONTRIBUINTE_ICMS'}
                       />
@@ -1716,9 +1699,9 @@ export default function NovaNotaFiscalPage() {
 
                     <div>
                       <Label htmlFor="destIM">Inscrição Municipal</Label>
-                      <Input 
-                        id="destIM" 
-                        value={destIM} 
+                      <Input
+                        id="destIM"
+                        value={destIM}
                         onChange={(e) => setDestIM(e.target.value)}
                       />
                     </div>
@@ -1729,9 +1712,9 @@ export default function NovaNotaFiscalPage() {
 
                     <div className="lg:col-span-2">
                       <Label htmlFor="destLogradouro">Logradouro *</Label>
-                      <Input 
-                        id="destLogradouro" 
-                        value={destLogradouro} 
+                      <Input
+                        id="destLogradouro"
+                        value={destLogradouro}
                         onChange={(e) => setDestLogradouro(e.target.value)}
                         placeholder="Rua, Avenida, etc"
                       />
@@ -1739,36 +1722,36 @@ export default function NovaNotaFiscalPage() {
 
                     <div>
                       <Label htmlFor="destNumero">Número *</Label>
-                      <Input 
-                        id="destNumero" 
-                        value={destNumero} 
+                      <Input
+                        id="destNumero"
+                        value={destNumero}
                         onChange={(e) => setDestNumero(e.target.value)}
                       />
                     </div>
 
                     <div>
                       <Label htmlFor="destComplemento">Complemento</Label>
-                      <Input 
-                        id="destComplemento" 
-                        value={destComplemento} 
+                      <Input
+                        id="destComplemento"
+                        value={destComplemento}
                         onChange={(e) => setDestComplemento(e.target.value)}
                       />
                     </div>
 
                     <div>
                       <Label htmlFor="destBairro">Bairro *</Label>
-                      <Input 
-                        id="destBairro" 
-                        value={destBairro} 
+                      <Input
+                        id="destBairro"
+                        value={destBairro}
                         onChange={(e) => setDestBairro(e.target.value)}
                       />
                     </div>
 
                     <div>
                       <Label htmlFor="destCEP">CEP *</Label>
-                      <Input 
-                        id="destCEP" 
-                        value={destCEP} 
+                      <Input
+                        id="destCEP"
+                        value={destCEP}
                         onChange={(e) => setDestCEP(e.target.value)}
                         placeholder="00000-000"
                       />
@@ -1776,9 +1759,9 @@ export default function NovaNotaFiscalPage() {
 
                     <div>
                       <Label htmlFor="destMunicipio">Município *</Label>
-                      <Input 
-                        id="destMunicipio" 
-                        value={destMunicipio} 
+                      <Input
+                        id="destMunicipio"
+                        value={destMunicipio}
                         onChange={(e) => setDestMunicipio(e.target.value)}
                       />
                     </div>
@@ -1823,9 +1806,9 @@ export default function NovaNotaFiscalPage() {
 
                     <div>
                       <Label htmlFor="destCodigoMunicipio">Código do Município</Label>
-                      <Input 
-                        id="destCodigoMunicipio" 
-                        value={destCodigoMunicipio} 
+                      <Input
+                        id="destCodigoMunicipio"
+                        value={destCodigoMunicipio}
                         onChange={(e) => setDestCodigoMunicipio(e.target.value)}
                         placeholder="Código IBGE"
                       />
@@ -1837,9 +1820,9 @@ export default function NovaNotaFiscalPage() {
 
                     <div>
                       <Label htmlFor="destTelefone">Telefone</Label>
-                      <Input 
-                        id="destTelefone" 
-                        value={destTelefone} 
+                      <Input
+                        id="destTelefone"
+                        value={destTelefone}
                         onChange={(e) => setDestTelefone(e.target.value)}
                         placeholder="(00) 00000-0000"
                       />
@@ -1847,10 +1830,10 @@ export default function NovaNotaFiscalPage() {
 
                     <div className="lg:col-span-2">
                       <Label htmlFor="destEmail">Email</Label>
-                      <Input 
-                        id="destEmail" 
+                      <Input
+                        id="destEmail"
                         type="email"
-                        value={destEmail} 
+                        value={destEmail}
                         onChange={(e) => setDestEmail(e.target.value)}
                         placeholder="email@exemplo.com"
                       />
@@ -1872,9 +1855,9 @@ export default function NovaNotaFiscalPage() {
                         <p className="text-sm text-red-600 mt-1">{validationErrors.produtos}</p>
                       )}
                     </div>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => router.push('/produtos/novo')}
+                    <Button
+                      variant="outline"
+                      onClick={() => router.push('/products/novo')}
                       className="flex items-center gap-2"
                     >
                       <Plus className="w-4 h-4" />
@@ -1888,8 +1871,8 @@ export default function NovaNotaFiscalPage() {
                     <div>
                       <Label>Código *</Label>
                       <div className="relative">
-                        <Input 
-                          value={produtoSelecionado ? produtoSelecionado.codigo : (produtoAtual.codigo || '')} 
+                        <Input
+                          value={produtoSelecionado ? produtoSelecionado.codigo : (produtoAtual.codigo || '')}
                           onChange={(e) => {
                             if (!produtoSelecionado) {
                               setProdutoAtual({ ...produtoAtual, codigo: e.target.value });
@@ -1900,7 +1883,7 @@ export default function NovaNotaFiscalPage() {
                           className="pr-12"
                         />
                         <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        
+
                         {showProdutoDropdown && (
                           <motion.div
                             initial={{ opacity: 0, y: -10 }}
@@ -1995,8 +1978,8 @@ export default function NovaNotaFiscalPage() {
                     <div className="lg:col-span-2">
                       <Label>Descrição *</Label>
                       <div className="relative">
-                        <Input 
-                          value={produtoSelecionado ? produtoSelecionado.descricao : (produtoAtual.descricao || '')} 
+                        <Input
+                          value={produtoSelecionado ? produtoSelecionado.descricao : (produtoAtual.descricao || '')}
                           onChange={(e) => {
                             if (!produtoSelecionado) {
                               setProdutoAtual({ ...produtoAtual, descricao: e.target.value });
@@ -2009,7 +1992,7 @@ export default function NovaNotaFiscalPage() {
                           className={`pr-12 ${produtoSelecionado ? "bg-gray-100" : ""}`}
                         />
                         <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        
+
                         {showProdutoDropdown && (
                           <motion.div
                             initial={{ opacity: 0, y: -10 }}
@@ -2065,24 +2048,24 @@ export default function NovaNotaFiscalPage() {
                     </div>
                     <div>
                       <Label>NCM</Label>
-                      <Input 
-                        value={produtoAtual.ncm || ''} 
+                      <Input
+                        value={produtoAtual.ncm || ''}
                         onChange={(e) => setProdutoAtual({ ...produtoAtual, ncm: e.target.value })}
                         placeholder="00000000"
                       />
                     </div>
                     <div>
                       <Label>CFOP *</Label>
-                      <Input 
-                        value={produtoAtual.cfop || '5102'} 
+                      <Input
+                        value={produtoAtual.cfop || '5102'}
                         onChange={(e) => setProdutoAtual({ ...produtoAtual, cfop: e.target.value })}
                         placeholder="5102"
                       />
                     </div>
                     <div>
                       <Label>Natureza de Operação *</Label>
-                      <Select 
-                        value={produtoAtual.naturezaOperacao || ''} 
+                      <Select
+                        value={produtoAtual.naturezaOperacao || ''}
                         onValueChange={(value) => setProdutoAtual({ ...produtoAtual, naturezaOperacao: value })}
                       >
                         <SelectTrigger>
@@ -2105,28 +2088,28 @@ export default function NovaNotaFiscalPage() {
                     </div>
                     <div>
                       <Label>Unidade *</Label>
-                      <Input 
-                        value={produtoAtual.unidade || 'UN'} 
+                      <Input
+                        value={produtoAtual.unidade || 'UN'}
                         onChange={(e) => setProdutoAtual({ ...produtoAtual, unidade: e.target.value })}
                         placeholder="UN"
                       />
                     </div>
                     <div>
                       <Label>Quantidade *</Label>
-                      <Input 
+                      <Input
                         type="number"
                         step="0.01"
-                        value={produtoAtual.quantidade || ''} 
+                        value={produtoAtual.quantidade || ''}
                         onChange={(e) => setProdutoAtual({ ...produtoAtual, quantidade: parseFloat(e.target.value) || 0 })}
                         placeholder="0.00"
                       />
                     </div>
                     <div>
                       <Label>Valor Unitário *</Label>
-                      <Input 
+                      <Input
                         type="number"
                         step="0.01"
-                        value={produtoAtual.valorUnitario || ''} 
+                        value={produtoAtual.valorUnitario || ''}
                         onChange={(e) => setProdutoAtual({ ...produtoAtual, valorUnitario: parseFloat(e.target.value) || 0 })}
                         placeholder="0.00"
                       />
@@ -2183,8 +2166,8 @@ export default function NovaNotaFiscalPage() {
                                 <TableCell className="text-right">R$ {produto.valorUnitario.toFixed(2)}</TableCell>
                                 <TableCell className="text-right font-semibold">R$ {produto.valorTotal.toFixed(2)}</TableCell>
                                 <TableCell className="text-center">
-                                  <Button 
-                                    variant="ghost" 
+                                  <Button
+                                    variant="ghost"
                                     size="sm"
                                     onClick={() => removerProduto(produto.id)}
                                     className="text-red-600 hover:text-red-700"
@@ -2246,7 +2229,7 @@ export default function NovaNotaFiscalPage() {
                     </Button>
                   </div>
                 </div>
-                
+
                 {/* Mensagem de erro de UF */}
                 {ufErrorMessage && (
                   <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -2264,7 +2247,7 @@ export default function NovaNotaFiscalPage() {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Resumo */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                   <div className="bg-gray-50 p-4 rounded-lg">
@@ -2530,7 +2513,7 @@ export default function NovaNotaFiscalPage() {
                       <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                       <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma configuração encontrada</h3>
                       <p className="text-gray-600">
-                        {naturezaOperacao 
+                        {naturezaOperacao
                           ? 'Não foi possível carregar as configurações desta natureza de operação.'
                           : 'Selecione uma natureza de operação para visualizar as configurações.'
                         }
@@ -2548,7 +2531,7 @@ export default function NovaNotaFiscalPage() {
                   <Truck className="w-5 h-5 text-purple-600" />
                   Transporte
                 </h3>
-                
+
                 <div className="space-y-6">
                   {/* Modalidade do Frete */}
                   <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
@@ -2608,7 +2591,7 @@ export default function NovaNotaFiscalPage() {
                       >
                         <ChevronDown className="w-5 h-5" />
                       </button>
-                      
+
                       {showTransportadoraDropdown && (
                         <motion.div
                           initial={{ opacity: 0, y: -10 }}
@@ -2957,32 +2940,32 @@ export default function NovaNotaFiscalPage() {
                               {duplicatas.map((dup) => (
                                 <TableRow key={dup.id}>
                                   <TableCell>
-                                    <Input 
-                                      value={dup.numero} 
+                                    <Input
+                                      value={dup.numero}
                                       onChange={(e) => atualizarDuplicata(dup.id, 'numero', e.target.value)}
                                       className="w-32"
                                     />
                                   </TableCell>
                                   <TableCell>
-                                    <Input 
+                                    <Input
                                       type="date"
-                                      value={dup.vencimento} 
+                                      value={dup.vencimento}
                                       onChange={(e) => atualizarDuplicata(dup.id, 'vencimento', e.target.value)}
                                       className="w-40"
                                     />
                                   </TableCell>
                                   <TableCell>
-                                    <Input 
+                                    <Input
                                       type="number"
                                       step="0.01"
-                                      value={dup.valor} 
+                                      value={dup.valor}
                                       onChange={(e) => atualizarDuplicata(dup.id, 'valor', parseFloat(e.target.value) || 0)}
                                       className="w-32"
                                     />
                                   </TableCell>
                                   <TableCell className="text-center">
-                                    <Button 
-                                      variant="ghost" 
+                                    <Button
+                                      variant="ghost"
                                       size="sm"
                                       onClick={() => removerDuplicata(dup.id)}
                                       className="text-red-600 hover:text-red-700"
@@ -3037,9 +3020,9 @@ export default function NovaNotaFiscalPage() {
                   <div className="space-y-6">
                     <div>
                       <Label htmlFor="numeroPedido">Número do Pedido / Referência</Label>
-                      <Input 
-                        id="numeroPedido" 
-                        value={numeroPedido} 
+                      <Input
+                        id="numeroPedido"
+                        value={numeroPedido}
                         onChange={(e) => setNumeroPedido(e.target.value)}
                         placeholder="Número do pedido de compra"
                       />
@@ -3047,9 +3030,9 @@ export default function NovaNotaFiscalPage() {
 
                     <div>
                       <Label htmlFor="informacoesComplementares">Informações Complementares</Label>
-                      <Textarea 
-                        id="informacoesComplementares" 
-                        value={informacoesComplementares} 
+                      <Textarea
+                        id="informacoesComplementares"
+                        value={informacoesComplementares}
                         onChange={(e) => setInformacoesComplementares(e.target.value)}
                         placeholder="Informações adicionais de interesse do contribuinte"
                         rows={6}
@@ -3062,9 +3045,9 @@ export default function NovaNotaFiscalPage() {
 
                     <div>
                       <Label htmlFor="informacoesFisco">Informações para o Fisco</Label>
-                      <Textarea 
-                        id="informacoesFisco" 
-                        value={informacoesFisco} 
+                      <Textarea
+                        id="informacoesFisco"
+                        value={informacoesFisco}
                         onChange={(e) => setInformacoesFisco(e.target.value)}
                         placeholder="Informações de interesse do fisco"
                         rows={4}
@@ -3091,7 +3074,7 @@ export default function NovaNotaFiscalPage() {
         </motion.div>
 
         {/* Footer fixo com resumo e ações */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -3112,7 +3095,7 @@ export default function NovaNotaFiscalPage() {
                 <p className="text-xl font-bold text-gray-900">{produtos.length}</p>
               </div>
             </div>
-            
+
             <div className="flex gap-3">
               <Button
                 variant="outline"
@@ -3144,8 +3127,8 @@ export default function NovaNotaFiscalPage() {
             transition={{ delay: 0.3 }}
             className="mt-6"
           >
-            <NFeIntegration 
-              nfeId={nfeSalva.id} 
+            <NFeIntegration
+              nfeId={nfeSalva.id}
               nfeStatus={nfeSalva.status}
               onStatusChange={(newStatus) => setNfeSalva(prev => prev ? { ...prev, status: newStatus } : null)}
             />

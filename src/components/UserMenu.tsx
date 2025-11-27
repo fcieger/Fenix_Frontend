@@ -70,7 +70,7 @@ export default function UserMenu() {
     {
       title: 'Perfil',
       icon: User,
-      href: '/perfil',
+      href: '/profile',
       description: 'Gerenciar dados pessoais'
     },
     {
@@ -79,22 +79,22 @@ export default function UserMenu() {
       children: [
         {
           title: 'Plano e faturamento',
-          href: '/empresa/plano',
+          href: '/companies/plano',
           icon: CreditCard
         },
         {
           title: 'Dados da empresa',
-          href: '/empresa/dados',
+          href: '/companies/dados',
           icon: Building2
         },
         {
           title: 'Marca da empresa',
-          href: '/empresa/marca',
+          href: '/companies/marca',
           icon: Shield
         },
         {
           title: 'Meus usuários',
-          href: '/empresa/usuarios',
+          href: '/companies/usuarios',
           icon: Users
         }
       ]
@@ -105,22 +105,22 @@ export default function UserMenu() {
       children: [
         {
           title: 'Configurações de notas fiscais',
-          href: '/configuracoes/nfe',
+          href: '/settings/nfe',
           icon: FileSpreadsheet
         },
         {
           title: 'Certificado Digital',
-          href: '/configuracoes/certificado',
+          href: '/settings/certificado',
           icon: Shield
         },
         {
           title: 'Importar dados',
-          href: '/configuracoes/importar',
+          href: '/settings/importar',
           icon: Download
         },
         {
           title: 'Mais configurações...',
-          href: '/configuracoes',
+          href: '/settings',
           icon: MoreHorizontal
         }
       ]

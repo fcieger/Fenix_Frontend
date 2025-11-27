@@ -1,4 +1,14 @@
 import { api } from '@/config/api';
+
+/**
+ * Credit Service
+ * Uses Next.js API routes via axios (legacy api instance)
+ *
+ * NOTE: This service uses direct API routes because there's no CreditApiClient in the SDK.
+ *
+ * TODO: Consider adding CreditApiClient to the SDK in the future.
+ * TODO: Migrate from legacy api instance to fetch or SDK when available.
+ */
 import {
   SolicitacaoCredito,
   FormSolicitacaoCredito,
@@ -11,24 +21,24 @@ import {
   FormUtilizarCapital,
   FormSolicitarAntecipacao,
   DashboardMetrics,
-} from '@/types/credito';
+} from '@/types/credit';
 
 // ============================================
 // SOLICITAÇÕES DE CRÉDITO
 // ============================================
 
 export const criarSolicitacao = async (data: FormSolicitacaoCredito): Promise<SolicitacaoCredito> => {
-  const response = await api.post('/api/credito/solicitacoes', data);
+  const response = await api.post('/api/credit/solicitacoes', data);
   return response.data;
 };
 
 export const listarMinhasSolicitacoes = async (): Promise<SolicitacaoCredito[]> => {
-  const response = await api.get('/api/credito/solicitacoes');
+  const response = await api.get('/api/credit/solicitacoes');
   return response.data;
 };
 
 export const buscarSolicitacao = async (id: string): Promise<SolicitacaoCredito> => {
-  const response = await api.get(`/api/credito/solicitacoes/${id}`);
+  const response = await api.get(`/api/credit/solicitacoes/${id}`);
   return response.data;
 };
 
@@ -36,12 +46,12 @@ export const atualizarSolicitacao = async (
   id: string,
   data: Partial<FormSolicitacaoCredito>
 ): Promise<SolicitacaoCredito> => {
-  const response = await api.patch(`/api/credito/solicitacoes/${id}`, data);
+  const response = await api.patch(`/api/credit/solicitacoes/${id}`, data);
   return response.data;
 };
 
 export const cancelarSolicitacao = async (id: string): Promise<void> => {
-  await api.delete(`/api/credito/solicitacoes/${id}`);
+  await api.delete(`/api/credit/solicitacoes/${id}`);
 };
 
 // ============================================
@@ -58,7 +68,7 @@ export const uploadDocumento = async (
   formData.append('tipoDocumento', tipoDocumento);
   formData.append('file', file);
 
-  const response = await api.post('/api/credito/documentos/upload', formData, {
+  const response = await api.post('/api/credit/documentos/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
@@ -67,23 +77,23 @@ export const uploadDocumento = async (
 };
 
 export const listarDocumentos = async (solicitacaoId: string): Promise<DocumentoCredito[]> => {
-  const response = await api.get(`/api/credito/documentos/${solicitacaoId}`);
+  const response = await api.get(`/api/credit/documentos/${solicitacaoId}`);
   return response.data;
 };
 
 export const downloadDocumento = async (id: string): Promise<Blob> => {
-  const response = await api.get(`/api/credito/documentos/${id}/download`, {
+  const response = await api.get(`/api/credit/documentos/${id}/download`, {
     responseType: 'blob',
   });
   return response.data;
 };
 
 export const excluirDocumento = async (id: string): Promise<void> => {
-  await api.delete(`/api/credito/documentos/${id}`);
+  await api.delete(`/api/credit/documentos/${id}`);
 };
 
 export const visualizarDocumento = async (id: string): Promise<string> => {
-  const response = await api.get(`/api/credito/documentos/${id}/view`);
+  const response = await api.get(`/api/credit/documentos/${id}/view`);
   return response.data.url;
 };
 
@@ -92,17 +102,17 @@ export const visualizarDocumento = async (id: string): Promise<string> => {
 // ============================================
 
 export const listarMinhasPropostas = async (): Promise<PropostaCredito[]> => {
-  const response = await api.get('/api/credito/propostas');
+  const response = await api.get('/api/credit/propostas');
   return response.data;
 };
 
 export const buscarProposta = async (id: string): Promise<PropostaCredito> => {
-  const response = await api.get(`/api/credito/proposta/${id}`);
+  const response = await api.get(`/api/credit/proposta/${id}`);
   return response.data;
 };
 
 export const aceitarProposta = async (id: string, senha: string): Promise<PropostaCredito> => {
-  const response = await api.post(`/api/credito/proposta/${id}/aceitar`, { senha });
+  const response = await api.post(`/api/credit/proposta/${id}/aceitar`, { senha });
   return response.data;
 };
 
@@ -111,7 +121,7 @@ export const recusarProposta = async (
   motivo: string,
   comentario?: string
 ): Promise<PropostaCredito> => {
-  const response = await api.post(`/api/credito/proposta/${id}/recusar`, { motivo, comentario });
+  const response = await api.post(`/api/credit/proposta/${id}/recusar`, { motivo, comentario });
   return response.data;
 };
 
@@ -120,17 +130,17 @@ export const recusarProposta = async (
 // ============================================
 
 export const buscarMeuCapitalGiro = async (): Promise<CapitalGiro> => {
-  const response = await api.get('/api/credito/capital-giro');
+  const response = await api.get('/api/credit/capital-giro');
   return response.data;
 };
 
 export const utilizarCapital = async (data: FormUtilizarCapital): Promise<MovimentacaoCapitalGiro> => {
-  const response = await api.post('/api/credito/capital-giro/utilizar', data);
+  const response = await api.post('/api/credit/capital-giro/utilizar', data);
   return response.data;
 };
 
 export const buscarExtrato = async (): Promise<MovimentacaoCapitalGiro[]> => {
-  const response = await api.get('/api/credito/capital-giro/extrato');
+  const response = await api.get('/api/credit/capital-giro/extrato');
   return response.data;
 };
 
@@ -139,22 +149,22 @@ export const buscarExtrato = async (): Promise<MovimentacaoCapitalGiro[]> => {
 // ============================================
 
 export const listarRecebiveis = async (): Promise<any[]> => {
-  const response = await api.get('/api/credito/antecipacao/recebiveis');
+  const response = await api.get('/api/credit/antecipacao/recebiveis');
   return response.data;
 };
 
 export const simularAntecipacao = async (titulosIds: string[]): Promise<any> => {
-  const response = await api.post('/api/credito/antecipacao/simular', { titulosIds });
+  const response = await api.post('/api/credit/antecipacao/simular', { titulosIds });
   return response.data;
 };
 
 export const solicitarAntecipacao = async (data: FormSolicitarAntecipacao): Promise<AntecipacaoRecebiveis> => {
-  const response = await api.post('/api/credito/antecipacao/solicitar', data);
+  const response = await api.post('/api/credit/antecipacao/solicitar', data);
   return response.data;
 };
 
 export const buscarHistoricoAntecipacao = async (): Promise<AntecipacaoRecebiveis[]> => {
-  const response = await api.get('/api/credito/antecipacao/historico');
+  const response = await api.get('/api/credit/antecipacao/historico');
   return response.data;
 };
 
@@ -163,27 +173,27 @@ export const buscarHistoricoAntecipacao = async (): Promise<AntecipacaoRecebivei
 // ============================================
 
 export const buscarDashboardAdmin = async (): Promise<DashboardMetrics> => {
-  const response = await api.get('/api/credito/admin/dashboard');
+  const response = await api.get('/api/credit/admin/dashboard');
   return response.data;
 };
 
 export const listarTodasSolicitacoes = async (filtros?: any): Promise<SolicitacaoCredito[]> => {
-  const response = await api.get('/api/credito/admin/solicitacoes', { params: filtros });
+  const response = await api.get('/api/credit/admin/solicitacoes', { params: filtros });
   return response.data;
 };
 
 export const buscarSolicitacaoAdmin = async (id: string): Promise<SolicitacaoCredito> => {
-  const response = await api.get(`/api/credito/admin/solicitacoes/${id}`);
+  const response = await api.get(`/api/credit/admin/solicitacoes/${id}`);
   return response.data;
 };
 
 export const aprovarSolicitacao = async (id: string, data: any): Promise<SolicitacaoCredito> => {
-  const response = await api.post(`/api/credito/admin/solicitacoes/${id}/aprovar`, data);
+  const response = await api.post(`/api/credit/admin/solicitacoes/${id}/aprovar`, data);
   return response.data;
 };
 
 export const reprovarSolicitacao = async (id: string, motivo: string): Promise<SolicitacaoCredito> => {
-  const response = await api.post(`/api/credito/admin/solicitacoes/${id}/reprovar`, { motivoReprovacao: motivo });
+  const response = await api.post(`/api/credit/admin/solicitacoes/${id}/reprovar`, { motivoReprovacao: motivo });
   return response.data;
 };
 
@@ -192,17 +202,17 @@ export const reprovarSolicitacao = async (id: string, motivo: string): Promise<S
 // ============================================
 
 export const listarTodasPropostas = async (filtros?: any): Promise<PropostaCredito[]> => {
-  const response = await api.get('/api/credito/admin/propostas', { params: filtros });
+  const response = await api.get('/api/credit/admin/propostas', { params: filtros });
   return response.data;
 };
 
 export const criarProposta = async (data: FormEnviarProposta): Promise<PropostaCredito> => {
-  const response = await api.post('/api/credito/admin/proposta/criar', data);
+  const response = await api.post('/api/credit/admin/proposta/criar', data);
   return response.data;
 };
 
 export const ativarCapitalGiro = async (propostaId: string): Promise<CapitalGiro> => {
-  const response = await api.post(`/api/credito/admin/proposta/${propostaId}/ativar-credito`);
+  const response = await api.post(`/api/credit/admin/proposta/${propostaId}/ativar-credito`);
   return response.data;
 };
 
@@ -215,7 +225,7 @@ export const validarDocumento = async (
   status: string,
   observacoes?: string
 ): Promise<DocumentoCredito> => {
-  const response = await api.patch(`/api/credito/admin/documento/${id}/validar`, { status, observacoes });
+  const response = await api.patch(`/api/credit/admin/documento/${id}/validar`, { status, observacoes });
   return response.data;
 };
 

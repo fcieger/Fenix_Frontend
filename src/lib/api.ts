@@ -1,5 +1,6 @@
 import { API_CONFIG } from '@/config/api'
 import { api } from '@/config/api'
+import type { Product, CreateProductDto, UpdateProductDto } from '@/types/sdk'
 
 const BASE_URL = API_CONFIG.BASE_URL
 
@@ -171,80 +172,8 @@ export interface CadastroData {
   companyId?: string
 }
 
-export interface ProdutoData {
-  id?: string
-  nome: string
-  apelido?: string
-  sku?: string
-  descricao?: string
-  ativo?: boolean
-  tipoProduto?: string
-  unidadeMedida?: string
-  marca?: string
-  referencia?: string
-  codigoBarras?: string
-  ncm?: string
-  cest?: string
-  tipoProdutoSped?: string
-  origemProdutoSped?: string
-  categoria?: string
-  categoriaProduto?: string
-  custo?: number
-  preco?: number
-  precoCusto?: number
-  precoVenda?: number
-  produtoInativo?: boolean
-  usarApelidoComoNomePrincipal?: boolean
-  integracaoMarketplace?: boolean
-  
-  // Dimensões e Peso
-  peso?: number
-  altura?: number
-  largura?: number
-  comprimento?: number
-  profundidade?: number
-  pesoLiquido?: number
-  pesoBruto?: number
-  
-  // Embalagem
-  alturaEmbalagem?: number
-  larguraEmbalagem?: number
-  profundidadeEmbalagem?: number
-  pesoEmbalagem?: number
-  quantidadePorEmbalagem?: number
-  tipoEmbalagem?: string
-  
-  // Características Físicas
-  cor?: string
-  tamanho?: string
-  material?: string
-  modelo?: string
-  voltagem?: string
-  potencia?: string
-  capacidade?: string
-  textura?: string
-  
-  // Classificação Tributária
-  origem?: string
-  
-  // Garantia e Certificações
-  garantia?: string
-  garantiaMeses?: number
-  certificacoes?: string
-  normasTecnicas?: string
-  
-  // Informações Adicionais
-  fabricante?: string
-  fornecedorPrincipal?: string
-  paisOrigem?: string
-  linkFichaTecnica?: string
-  observacoes?: string
-  observacoesTecnicas?: string
-  
-  companyId?: string
-  createdAt?: string
-  updatedAt?: string
-}
+// ProdutoData removed - use Product from @fenix/api-sdk instead
+// Import: import type { Product, CreateProductDto, UpdateProductDto } from '@/types/sdk';
 
 export interface PrazoPagamentoData {
   id?: string
@@ -256,12 +185,12 @@ export interface PrazoPagamentoData {
     dias?: number
     percentualEntrada?: number
     percentualRestante?: number
-    
+
     // Para tipo 'parcelas'
     numeroParcelas?: number
     intervaloDias?: number
     percentualParcelas?: number
-    
+
     // Para tipo 'personalizado'
     parcelas?: Array<{
       numero: number
@@ -305,7 +234,7 @@ class ApiService {
     // Para outras requisições, fazer chamada real para o backend
     const url = `${BASE_URL}${endpoint}`
     const token = this.getToken();
-    
+
     const config: RequestInit = {
       ...options,
       headers: {
@@ -379,7 +308,7 @@ class ApiService {
         // Tentar obter o texto da resposta primeiro
         const responseText = await response.text();
         let errorData = {};
-        
+
         try {
           if (responseText && responseText.trim()) {
             errorData = JSON.parse(responseText);
@@ -387,24 +316,24 @@ class ApiService {
             errorData = { message: `Erro ${response.status}: ${response.statusText}` };
           }
         } catch (parseError) {
-          errorData = { 
+          errorData = {
             message: responseText || `Erro ${response.status}: ${response.statusText}`,
             rawResponse: responseText
           };
         }
-        
+
         console.error('❌ Erro no login:', {
           status: response.status,
           statusText: response.statusText,
           errorData
         });
-        
+
         throw new Error(errorData.message || `Erro ${response.status}`)
       }
 
       // Verificar se há conteúdo na resposta antes de fazer parse JSON
       const responseText = await response.text();
-      
+
       if (!responseText || !responseText.trim()) {
         console.error('❌ Resposta vazia do servidor');
         throw new Error('Resposta vazia do servidor');
@@ -422,12 +351,12 @@ class ApiService {
       return result;
     } catch (error) {
       console.error('❌ Erro no login:', error);
-      
+
       // Se o erro já é uma string, propagar
       if (error instanceof Error) {
         throw error;
       }
-      
+
       // Caso contrário, criar um novo erro
       throw new Error('Erro desconhecido ao fazer login');
     }
@@ -468,8 +397,8 @@ class ApiService {
     console.log('=== API SERVICE - CREATE CADASTRO ===');
     console.log('Data being sent:', JSON.stringify(data, null, 2));
     console.log('Token being used:', token?.substring(0, 20) + '...');
-    
-    return this.request<any>('/api/cadastros', {
+
+    return this.request<any>('/api/partners', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -481,7 +410,7 @@ class ApiService {
 
   async getCadastros(companyId?: string): Promise<any[]> {
     const queryParam = companyId ? `?company_id=${companyId}` : '';
-    const response = await this.request<any>(`/api/cadastros${queryParam}`, {
+    const response = await this.request<any>(`/api/partners${queryParam}`, {
       method: 'GET',
     });
     // Se a resposta tem estrutura { success, data }, retornar apenas data
@@ -490,7 +419,7 @@ class ApiService {
   }
 
   async getCadastro(id: string, token: string): Promise<any> {
-    const result = await this.request<any>(`/api/cadastros/${id}`, {
+    const result = await this.request<any>(`/api/partners/${id}`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -513,7 +442,7 @@ class ApiService {
   async deleteCadastro(id: string, token: string): Promise<void> {
     console.log('🔍 API deleteCadastro chamada:', { id, token: token.substring(0, 20) + '...' });
     try {
-      const result = await this.request<void>(`/api/cadastros/${id}`, {
+      const result = await this.request<void>(`/api/partners/${id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -528,10 +457,11 @@ class ApiService {
   }
 
   // ===== PRODUTOS =====
-  async createProduto(produtoData: ProdutoData, token: string): Promise<ProdutoData> {
+  // NOTE: These methods are legacy. Use products-service.ts with SDK instead.
+  async createProduto(produtoData: CreateProductDto, token: string): Promise<Product> {
     try {
       console.log('🔄 API createProduto iniciado:', { produtoData, token: token ? 'presente' : 'ausente' });
-      const result = await this.request<ProdutoData>('/api/produtos', {
+      const result = await this.request<Product>('/api/products', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -547,14 +477,14 @@ class ApiService {
     }
   }
 
-  async getProdutos(companyId?: string): Promise<ProdutoData[]> {
+  async getProdutos(companyId?: string): Promise<Product[]> {
     try {
       console.log('🔄 API getProdutos iniciado', { companyId });
       const token = this.getToken();
       console.log('🔑 Token para produtos:', token ? 'presente' : 'ausente');
-      
+
       const queryParam = companyId ? `?company_id=${companyId}` : '';
-      const result = await this.request<ProdutoData[]>(`/api/produtos${queryParam}`, {
+      const result = await this.request<Product[]>(`/api/products${queryParam}`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -568,10 +498,10 @@ class ApiService {
     }
   }
 
-  async getProduto(id: string, token: string): Promise<ProdutoData> {
+  async getProduto(id: string, token: string): Promise<Product> {
     try {
       console.log('🔄 API getProduto iniciado:', { id, token: token ? 'presente' : 'ausente' });
-      const result = await this.request<ProdutoData>(`/api/produtos/${id}`, {
+      const result = await this.request<Product>(`/api/products/${id}`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -585,10 +515,10 @@ class ApiService {
     }
   }
 
-  async updateProduto(id: string, produtoData: Partial<ProdutoData>, token: string): Promise<ProdutoData> {
+  async updateProduto(id: string, produtoData: UpdateProductDto, token: string): Promise<Product> {
     try {
       console.log('🔄 API updateProduto iniciado:', { id, produtoData, token: token ? 'presente' : 'ausente' });
-      const result = await this.request<ProdutoData>(`/api/produtos/${id}`, {
+      const result = await this.request<Product>(`/api/products/${id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -607,7 +537,7 @@ class ApiService {
   async deleteProduto(id: string, token: string): Promise<{ message: string }> {
     try {
       console.log('🔄 API deleteProduto iniciado:', { id, token: token ? 'presente' : 'ausente' });
-      const result = await this.request<{ message: string }>(`/api/produtos/${id}`, {
+      const result = await this.request<{ message: string }>(`/api/products/${id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -752,17 +682,17 @@ class ApiService {
       console.log('🔑 Token:', token);
       console.log('📦 Dados sendo enviados:', JSON.stringify(configuracoes, null, 2));
       console.log('🌐 Base URL:', this.baseURL);
-      
+
       // Verificar se o token está válido
       if (!token) {
         throw new Error('Token de autenticação não fornecido');
       }
-      
+
       // Verificar se há configurações para salvar
       if (!configuracoes || configuracoes.length === 0) {
         throw new Error('Nenhuma configuração fornecida para salvar');
       }
-      
+
       // Testar conectividade com o backend primeiro
       try {
         const healthCheck = await fetch(`${this.baseURL}/health`, { method: 'GET' });
@@ -770,7 +700,7 @@ class ApiService {
       } catch (healthError) {
         console.log('⚠️ Health check falhou, mas continuando...', healthError);
       }
-      
+
       const response = await fetch(`${this.baseURL}/api/natureza-operacao/${naturezaId}/configuracao-estados`, {
         method: 'POST',
         headers: {
@@ -789,7 +719,7 @@ class ApiService {
         const responseText = await response.text();
         console.log('📡 Response text (raw):', responseText);
         console.log('📡 Response text length:', responseText.length);
-        
+
         let errorData = {};
         try {
           if (responseText && responseText.trim()) {
@@ -802,12 +732,12 @@ class ApiService {
         } catch (parseError) {
           console.log('📡 Erro ao fazer parse do JSON:', parseError);
           console.log('📡 Tentando parse como texto simples');
-          errorData = { 
+          errorData = {
             message: responseText || `Erro ${response.status}: ${response.statusText}`,
             rawResponse: responseText
           };
         }
-        
+
         console.error('❌ Erro na resposta:', {
           status: response.status,
           statusText: response.statusText,
@@ -815,7 +745,7 @@ class ApiService {
           body: errorData,
           url: `${this.baseURL}/api/natureza-operacao/${naturezaId}/configuracao-estados`
         });
-        
+
         throw new Error((errorData as any).message || `Erro ${response.status}: ${response.statusText}`);
       }
 
@@ -829,7 +759,7 @@ class ApiService {
           return;
         }
       }
-      
+
       console.log('✅ API saveConfiguracaoEstados sucesso');
     } catch (error) {
       console.error('❌ API saveConfiguracaoEstados erro:', error);
@@ -904,7 +834,7 @@ class ApiService {
   // ===== IMPOSTOS =====
   async calcularImpostos(payload: any, token: string): Promise<any> {
     try {
-      return await this.request<any>(`/api/impostos/calcular`, {
+      return await this.request<any>(`/api/taxes/calcular`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

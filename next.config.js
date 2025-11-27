@@ -1,7 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['localhost'],
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+      },
+    ],
   },
   // Configurações para resolver problemas de hidratação
   reactStrictMode: true,
@@ -17,14 +22,10 @@ const nextConfig = {
     // Otimizações para produção
     optimizeCss: true,
   },
-  // Desabilitar ESLint durante build
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   // Desabilitar TypeScript durante build
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+  // typescript: {
+  //   ignoreBuildErrors: true,
+  // },
 }
 
 module.exports = nextConfig

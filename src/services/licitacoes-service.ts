@@ -1,15 +1,24 @@
 import axios from 'axios';
 
+/**
+ * Licitacoes Service
+ * Uses Next.js API routes via axios
+ *
+ * NOTE: This service uses direct API routes because there's no TendersApiClient in the SDK.
+ *
+ * TODO: Consider adding TendersApiClient to the SDK in the future.
+ */
+
 // Usar a URL do próprio Next.js para as rotas da API
-const API_URL = typeof window !== 'undefined' 
-  ? window.location.origin 
+const API_URL = typeof window !== 'undefined'
+  ? window.location.origin
   : 'http://localhost:3004';
 
 // Helper para obter token e companyId
 function getAuthHeaders() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('fenix_token') : null;
   const companyId = typeof window !== 'undefined' ? localStorage.getItem('activeCompanyId') : null;
-  
+
   return {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     companyId,
@@ -73,12 +82,12 @@ export interface AlertaLicitacao {
 export const licitacoesService = {
   async listar(filtros: FiltrosLicitacao = {}) {
     const { headers, companyId } = getAuthHeaders();
-    
+
     if (!companyId) {
       throw new Error('CompanyId não encontrado. Faça login novamente.');
     }
 
-    const response = await axios.get(`${API_URL}/api/licitacoes`, {
+    const response = await axios.get(`${API_URL}/api/tenders`, {
       params: { ...filtros, companyId },
       headers,
     });
@@ -87,8 +96,8 @@ export const licitacoesService = {
 
   async buscarPorId(id: string) {
     const { headers, companyId } = getAuthHeaders();
-    
-    const response = await axios.get(`${API_URL}/api/licitacoes/${id}`, {
+
+    const response = await axios.get(`${API_URL}/api/tenders/${id}`, {
       params: { companyId },
       headers,
     });
@@ -97,8 +106,8 @@ export const licitacoesService = {
 
   async buscar(filtros: FiltrosLicitacao) {
     const { headers, companyId } = getAuthHeaders();
-    
-    const response = await axios.post(`${API_URL}/api/licitacoes/buscar`, 
+
+    const response = await axios.post(`${API_URL}/api/tenders/buscar`,
       { ...filtros, companyId },
       { headers }
     );
@@ -107,12 +116,12 @@ export const licitacoesService = {
 
   async estatisticas() {
     const { headers, companyId } = getAuthHeaders();
-    
+
     if (!companyId) {
       throw new Error('CompanyId não encontrado. Faça login novamente.');
     }
 
-    const response = await axios.get(`${API_URL}/api/licitacoes/estatisticas`, {
+    const response = await axios.get(`${API_URL}/api/tenders/estatisticas`, {
       params: { companyId },
       headers,
     });
@@ -121,8 +130,8 @@ export const licitacoesService = {
 
   async buscarMatches(companyId: string) {
     const { headers } = getAuthHeaders();
-    
-    const response = await axios.get(`${API_URL}/api/licitacoes/matches`, {
+
+    const response = await axios.get(`${API_URL}/api/tenders/matches`, {
       params: { companyId },
       headers,
     });
@@ -131,12 +140,12 @@ export const licitacoesService = {
 
   async sincronizar(fonte: 'pncp' | 'compras-gov' | 'todas' = 'todas', uf?: string) {
     const { headers, companyId } = getAuthHeaders();
-    
+
     if (!companyId) {
       throw new Error('CompanyId não encontrado. Faça login novamente.');
     }
 
-    const response = await axios.post(`${API_URL}/api/licitacoes/sincronizar`, 
+    const response = await axios.post(`${API_URL}/api/tenders/sincronizar`,
       { fonte, companyId, uf },
       { headers }
     );
@@ -145,8 +154,8 @@ export const licitacoesService = {
 
   async criarAlerta(alerta: AlertaLicitacao, userId: string) {
     const { headers, companyId } = getAuthHeaders();
-    
-    const response = await axios.post(`${API_URL}/api/licitacoes/alertas`, 
+
+    const response = await axios.post(`${API_URL}/api/tenders/alertas`,
       alerta,
       {
         params: { userId, companyId },
@@ -158,8 +167,8 @@ export const licitacoesService = {
 
   async listarAlertas(userId: string) {
     const { headers, companyId } = getAuthHeaders();
-    
-    const response = await axios.get(`${API_URL}/api/licitacoes/alertas`, {
+
+    const response = await axios.get(`${API_URL}/api/tenders/alertas`, {
       params: { userId, companyId },
       headers,
     });
@@ -168,8 +177,8 @@ export const licitacoesService = {
 
   async atualizarAlerta(id: string, alerta: Partial<AlertaLicitacao>) {
     const { headers } = getAuthHeaders();
-    
-    const response = await axios.put(`${API_URL}/api/licitacoes/alertas/${id}`, 
+
+    const response = await axios.put(`${API_URL}/api/tenders/alertas/${id}`,
       alerta,
       { headers }
     );
@@ -178,8 +187,8 @@ export const licitacoesService = {
 
   async deletarAlerta(id: string) {
     const { headers } = getAuthHeaders();
-    
-    const response = await axios.delete(`${API_URL}/api/licitacoes/alertas/${id}`, {
+
+    const response = await axios.delete(`${API_URL}/api/tenders/alertas/${id}`, {
       headers,
     });
     return response.data;

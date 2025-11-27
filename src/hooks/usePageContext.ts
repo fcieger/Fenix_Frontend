@@ -15,9 +15,9 @@ export function usePageContext(): PageContext {
   const [context, setContext] = useState<PageContext>({ tipo: 'geral' });
 
   useEffect(() => {
-    if (pathname.includes('/produtos')) {
+    if (pathname.includes('/products')) {
       setContext({ tipo: 'produto' });
-    } else if (pathname.includes('/cadastros')) {
+    } else if (pathname.includes('/partners')) {
       setContext({ tipo: 'cadastro' });
     } else {
       setContext({ tipo: 'geral' });
