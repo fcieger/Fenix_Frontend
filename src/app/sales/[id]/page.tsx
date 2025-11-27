@@ -55,7 +55,10 @@ import {
 } from 'lucide-react';
 import { obterPedidoVenda, criarPedidoVenda, atualizarPedidoVenda, recalcularImpostos, entregarPedidoVenda } from '@/services/sales-orders-service';
 import { obterOrcamento } from '@/services/quotes-service';
+import { mapSdkSalesOrderToFormData, mapFormDataToUpdateSalesOrderDto } from '@/lib/sdk/field-mappers';
 import { SalesOrder } from '@/types/sales-order';
+import { createSalesOrderSchema, updateSalesOrderSchema } from '@/types/sdk';
+import { validateAndNotify } from '@/lib/utils/validation';
 import { Quote } from '@/types/quote';
 import type { PedidoVenda } from '@/types/pedido-venda';
 import type { Orcamento } from '@/types/orcamento';
@@ -64,6 +67,7 @@ import { apiService } from '@/lib/api';
 import { exportPedidoVendaPDF } from '@/lib/pdf/exportPedidoVendaPDF';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { handleValidationError } from '@/lib/utils/error-handler';
 
 const novoPedidoVenda = (): PedidoVenda => ({
   companyId: '',
@@ -980,6 +984,7 @@ function PedidoVendaFormPage() {
       let savedId = id;
 
       if (isNovo) {
+        // TODO: Migrar para usar mapFormDataToCreateSalesOrderDto e validar com createSalesOrderSchema
         const saved = await criarPedidoVenda(modelToSave);
         savedId = saved.id;
         openSuccess({
@@ -990,7 +995,16 @@ function PedidoVendaFormPage() {
           }
         });
       } else {
-        await atualizarPedidoVenda(id, modelToSave);
+        // Usar função helper para mapear formData e itens para UpdateSalesOrderDto do SDK
+        const updateDto = mapFormDataToUpdateSalesOrderDto(formData, itensNormalizados);
+
+        // Validar usando schema do SDK
+        const validation = validateAndNotify(updateSalesOrderSchema, updateDto);
+        if (!validation.isValid) {
+          return;
+        }
+
+        await atualizarPedidoVenda(id, updateDto);
         openSuccess({
           title: 'Pedido de Venda Salvo',
           message: 'Pedido de Venda atualizado com sucesso!'
@@ -1005,6 +1019,7 @@ function PedidoVendaFormPage() {
     } catch (e: any) {
       console.error('[Vendas Page] Erro completo:', e);
       console.error('[Vendas Page] Erro response:', e?.response?.data);
+      handleValidationError(e);
       const errorMessage = e?.response?.data?.message || e?.message || 'Erro ao salvar pedido de venda';
       error('Erro', errorMessage);
     } finally {
