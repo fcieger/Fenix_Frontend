@@ -9,8 +9,22 @@ import type {
   Quote,
   SalesOrder,
   PurchaseOrder,
+  CreatePartnerDto,
+  UpdatePartnerDto,
+  UpdateQuoteDto,
+  UpdateSalesOrderDto,
+  UpdatePurchaseOrderDto,
+  AddressDto,
+  ContactDto,
+  QuoteItemDto,
+  SalesOrderItemDto,
+  CreatePurchaseOrderItemDto,
+} from '@/types/sdk';
+import {
   RegistrationType,
   PersonType,
+  QuoteStatus,
+  OrderStatus,
 } from '@/types/sdk';
 
 /**
@@ -256,7 +270,7 @@ function isoToDateString(isoDate: string | null | undefined): string {
 export function mapSdkPartnerToFormData(partner: Partner): PartnerFormData {
   // Determine person type
   const tipoPessoa: 'Pessoa Física' | 'Pessoa Jurídica' =
-    partner.personType === 'INDIVIDUAL' ? 'Pessoa Física' : 'Pessoa Jurídica';
+    partner.personType === PersonType.INDIVIDUAL ? 'Pessoa Física' : 'Pessoa Jurídica';
 
   // Split taxId into cpf/cnpj based on personType
   const taxId = partner.taxId || '';
@@ -265,9 +279,9 @@ export function mapSdkPartnerToFormData(partner: Partner): PartnerFormData {
 
   // Map registration type to tiposCliente object
   const tiposCliente = {
-    cliente: partner.type === 'CUSTOMER' || partner.type === 'BOTH',
+    cliente: partner.type === RegistrationType.CUSTOMER || partner.type === RegistrationType.BOTH,
     vendedor: false, // Not in SDK
-    fornecedor: partner.type === 'SUPPLIER' || partner.type === 'BOTH',
+    fornecedor: partner.type === RegistrationType.SUPPLIER || partner.type === RegistrationType.BOTH,
     funcionario: false, // Not in SDK
     transportadora: false, // Not in SDK
     prestadorServico: false, // Not in SDK
@@ -385,10 +399,10 @@ export function mapSdkQuoteToFormData(quote: Quote): QuoteFormData {
     dataPrevisao: '', // Not in SDK
     dataEmissao: isoToDateString(quote.date),
     dataValidade: isoToDateString(quote.validityDate),
-    status: quote.status === 'OPEN' ? 'pendente' :
-            quote.status === 'APPROVED' ? 'aprovado' :
-            quote.status === 'REJECTED' ? 'rejeitado' :
-            quote.status === 'EXPIRED' ? 'expirado' : 'pendente',
+    status: quote.status === QuoteStatus.OPEN ? 'pendente' :
+            quote.status === QuoteStatus.APPROVED ? 'aprovado' :
+            quote.status === QuoteStatus.REJECTED ? 'rejeitado' :
+            quote.status === QuoteStatus.EXPIRED ? 'expirado' : 'pendente',
     motivoPerda: '', // Not in SDK
     frete: quote.freightValue ? '1' : '0',
     valorFrete: quote.freightValue || 0,
@@ -449,10 +463,10 @@ export function mapSdkSalesOrderToFormData(order: SalesOrder, companyId?: string
     dataPrevisao: '', // Not in SDK (expectedDeliveryDate doesn't exist)
     dataEmissao: isoToDateString(order.date),
     dataEntrega: '', // Not in SDK (deliveryDate doesn't exist)
-    status: order.status === 'DRAFT' ? 'rascunho' :
-            order.status === 'IN_PROGRESS' ? 'em_andamento' :
-            order.status === 'COMPLETED' ? 'finalizado' :
-            order.status === 'CANCELLED' ? 'cancelado' : 'rascunho',
+    status: order.status === OrderStatus.DRAFT ? 'rascunho' :
+            order.status === OrderStatus.IN_PROGRESS ? 'em_andamento' :
+            order.status === OrderStatus.COMPLETED ? 'finalizado' :
+            order.status === OrderStatus.CANCELLED ? 'cancelado' : 'rascunho',
     frete: order.freightValue ? '1' : '0',
     valorFrete: order.freightValue || 0,
     despesas: order.expensesValue || 0,
@@ -510,10 +524,10 @@ export function mapSdkPurchaseOrderToFormData(order: PurchaseOrder): PurchaseOrd
     dataPrevisao: '', // Not in SDK (expectedDeliveryDate doesn't exist)
     dataEmissao: isoToDateString(order.date),
     dataEntrega: '', // Not in SDK (deliveryDate doesn't exist)
-    status: order.status === 'DRAFT' ? 'rascunho' :
-            order.status === 'IN_PROGRESS' ? 'em_andamento' :
-            order.status === 'COMPLETED' ? 'finalizado' :
-            order.status === 'CANCELLED' ? 'cancelado' : 'rascunho',
+    status: order.status === OrderStatus.DRAFT ? 'rascunho' :
+            order.status === OrderStatus.IN_PROGRESS ? 'em_andamento' :
+            order.status === OrderStatus.COMPLETED ? 'finalizado' :
+            order.status === OrderStatus.CANCELLED ? 'cancelado' : 'rascunho',
     frete: order.freightValue ? '1' : '0',
     valorFrete: order.freightValue || 0,
     despesas: order.expensesValue || 0,
@@ -522,5 +536,254 @@ export function mapSdkPurchaseOrderToFormData(order: PurchaseOrder): PurchaseOrd
     prazoPagamento: order.paymentTermId || '',
     observacoes: '', // Not in SDK
   };
+}
+
+/**
+ * Convert date string (YYYY-MM-DD) to ISO date-time
+ */
+function dateStringToIso(dateStr: string): string {
+  if (!dateStr) return '';
+  try {
+    // If already ISO format, return as is
+    if (dateStr.includes('T')) return dateStr;
+    // Convert YYYY-MM-DD to ISO
+    return new Date(dateStr + 'T00:00:00Z').toISOString();
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Map Partner Form Data to CreatePartnerDto or UpdatePartnerDto
+ * Helper function to build addresses and contacts
+ */
+function buildPartnerAddressesAndContacts(formData: PartnerFormData) {
+  // Map addresses - AddressDto needs isPrimary field as boolean
+  const addresses: any[] = formData.enderecos.map((addr, index) => {
+    const address: any = {
+      street: addr.logradouro || '',
+      number: addr.numero || '',
+      complement: '', // Not in formData structure
+      neighborhood: addr.bairro || '',
+      city: addr.cidade || '',
+      state: addr.estado || '',
+      zipCode: addr.cep.replace(/\D/g, '') || '',
+      isPrimary: Boolean(addr.principal), // Ensure boolean, never undefined
+    };
+    return address;
+  });
+
+  // Ensure at least one address is marked as primary
+  if (addresses.length > 0 && !addresses.some(a => a.isPrimary === true)) {
+    addresses[0].isPrimary = true;
+  }
+
+  // Map contacts
+  const contacts: ContactDto[] = formData.contatos.map(contact => ({
+    name: contact.pessoaContato || '',
+    position: contact.cargo || undefined,
+    phone: contact.telefoneComercial || contact.celular || undefined,
+    email: contact.email || undefined,
+    isPrimary: Boolean(contact.principal), // Ensure boolean, never undefined
+  }));
+
+  // Ensure at least one contact is marked as primary
+  if (contacts.length > 0 && !contacts.some(c => c.isPrimary)) {
+    contacts[0].isPrimary = true;
+  }
+
+  return { addresses, contacts };
+}
+
+/**
+ * Map Partner Form Data to CreatePartnerDto
+ */
+export function mapFormDataToCreatePartnerDto(formData: PartnerFormData): CreatePartnerDto {
+  // Determine registration type from tiposCliente
+  let type: RegistrationType = RegistrationType.CUSTOMER;
+  if (formData.tiposCliente.cliente && formData.tiposCliente.fornecedor) {
+    type = RegistrationType.BOTH;
+  } else if (formData.tiposCliente.fornecedor) {
+    type = RegistrationType.SUPPLIER;
+  }
+
+  // Determine person type
+  const personType: PersonType = formData.tipoPessoa === 'Pessoa Física' ? PersonType.INDIVIDUAL : PersonType.LEGAL_ENTITY;
+
+  // Combine cpf/cnpj into taxId
+  const taxId = formData.tipoPessoa === 'Pessoa Física'
+    ? formData.cpf.replace(/\D/g, '')
+    : formData.cnpj.replace(/\D/g, '');
+
+  const { addresses, contacts } = buildPartnerAddressesAndContacts(formData);
+
+  const dto: CreatePartnerDto = {
+    type,
+    legalName: formData.nomeRazaoSocial.trim(),
+    tradeName: formData.nomeFantasia?.trim() || undefined,
+    personType,
+    taxId,
+    stateRegistration: formData.ie?.replace(/\D/g, '') || undefined,
+    municipalRegistration: formData.im?.replace(/\D/g, '') || undefined,
+    addresses,
+    contacts,
+    simplifiedTaxSystem: formData.optanteSimples || undefined,
+    notes: formData.observacoes?.trim() || undefined,
+  };
+
+  // Remove undefined values
+  Object.keys(dto).forEach(key => {
+    if (dto[key as keyof CreatePartnerDto] === undefined) {
+      delete dto[key as keyof CreatePartnerDto];
+    }
+  });
+
+  return dto;
+}
+
+/**
+ * Map Partner Form Data to UpdatePartnerDto
+ */
+export function mapFormDataToUpdatePartnerDto(formData: PartnerFormData): UpdatePartnerDto {
+  // Determine registration type from tiposCliente
+  let type: RegistrationType = RegistrationType.CUSTOMER;
+  if (formData.tiposCliente.cliente && formData.tiposCliente.fornecedor) {
+    type = RegistrationType.BOTH;
+  } else if (formData.tiposCliente.fornecedor) {
+    type = RegistrationType.SUPPLIER;
+  }
+
+  // Determine person type
+  const personType: PersonType = formData.tipoPessoa === 'Pessoa Física' ? PersonType.INDIVIDUAL : PersonType.LEGAL_ENTITY;
+
+  // Combine cpf/cnpj into taxId
+  const taxId = formData.tipoPessoa === 'Pessoa Física'
+    ? formData.cpf.replace(/\D/g, '')
+    : formData.cnpj.replace(/\D/g, '');
+
+  const { addresses, contacts } = buildPartnerAddressesAndContacts(formData);
+
+  const dto: UpdatePartnerDto = {
+    type,
+    legalName: formData.nomeRazaoSocial.trim(),
+    tradeName: formData.nomeFantasia?.trim() || undefined,
+    personType,
+    taxId,
+    stateRegistration: formData.ie?.replace(/\D/g, '') || undefined,
+    municipalRegistration: formData.im?.replace(/\D/g, '') || undefined,
+    addresses,
+    contacts,
+    simplifiedTaxSystem: formData.optanteSimples || undefined,
+    notes: formData.observacoes?.trim() || undefined,
+  };
+
+  // Remove undefined values
+  Object.keys(dto).forEach(key => {
+    if (dto[key as keyof UpdatePartnerDto] === undefined) {
+      delete dto[key as keyof UpdatePartnerDto];
+    }
+  });
+
+  return dto;
+}
+
+/**
+ * Map Quote Form Data to UpdateQuoteDto
+ */
+export function mapFormDataToUpdateQuoteDto(formData: QuoteFormData, items: any[]): UpdateQuoteDto {
+  // Map items to QuoteItemDto format
+  const quoteItems: QuoteItemDto[] = items.map((item, index) => ({
+    productId: item.produtoId || '',
+    quantity: Number(item.quantidade) || 0,
+    unitValue: Number(item.precoUnitario) || 0,
+    discount: Number(item.descontoValor) || 0,
+    operationNatureId: item.naturezaOperacaoId || formData.naturezaOperacao || undefined,
+  }));
+
+  const dto: UpdateQuoteDto = {
+    partnerId: formData.cliente || '',
+    date: dateStringToIso(formData.dataEmissao) || new Date().toISOString(),
+    validityDate: formData.dataValidade ? dateStringToIso(formData.dataValidade) : undefined,
+    operationNatureId: formData.naturezaOperacao || undefined,
+    paymentTermId: formData.prazoPagamento || undefined,
+    freightValue: formData.valorFrete || 0,
+    expensesValue: formData.despesas || 0,
+    items: quoteItems,
+  };
+
+  // Remove undefined values
+  Object.keys(dto).forEach(key => {
+    if (dto[key as keyof UpdateQuoteDto] === undefined) {
+      delete dto[key as keyof UpdateQuoteDto];
+    }
+  });
+
+  return dto;
+}
+
+/**
+ * Map Sales Order Form Data to UpdateSalesOrderDto
+ */
+export function mapFormDataToUpdateSalesOrderDto(formData: SalesOrderFormData, items: any[]): UpdateSalesOrderDto {
+  // Map items to SalesOrderItemDto format
+  const salesItems: SalesOrderItemDto[] = items.map((item, index) => ({
+    productId: item.produtoId || '',
+    quantity: Number(item.quantidade) || 0,
+    unitValue: Number(item.precoUnitario) || 0,
+    discount: Number(item.descontoValor) || 0,
+    operationNatureId: item.naturezaOperacaoId || formData.naturezaOperacao || undefined,
+  }));
+
+  const dto: UpdateSalesOrderDto = {
+    partnerId: formData.cliente || '',
+    date: dateStringToIso(formData.dataEmissao) || new Date().toISOString(),
+    operationNatureId: formData.naturezaOperacao || undefined,
+    paymentTermId: formData.prazoPagamento || undefined,
+    freightValue: formData.valorFrete || 0,
+    expensesValue: formData.despesas || 0,
+    items: salesItems,
+  };
+
+  // Remove undefined values
+  Object.keys(dto).forEach(key => {
+    if (dto[key as keyof UpdateSalesOrderDto] === undefined) {
+      delete dto[key as keyof UpdateSalesOrderDto];
+    }
+  });
+
+  return dto;
+}
+
+/**
+ * Map Purchase Order Form Data to UpdatePurchaseOrderDto
+ */
+export function mapFormDataToUpdatePurchaseOrderDto(formData: PurchaseOrderFormData, items: any[]): UpdatePurchaseOrderDto {
+  // Map items to CreatePurchaseOrderItemDto format
+  const purchaseItems: CreatePurchaseOrderItemDto[] = items.map((item, index) => ({
+    productId: item.produtoId || '',
+    quantity: Number(item.quantidade) || 0,
+    unitValue: Number(item.precoUnitario) || 0,
+    discount: Number(item.descontoValor) || 0,
+    operationNatureId: item.naturezaOperacaoId || formData.naturezaOperacao || undefined,
+  }));
+
+  const dto: UpdatePurchaseOrderDto = {
+    partnerId: formData.fornecedor || '',
+    date: dateStringToIso(formData.dataEmissao) || new Date().toISOString(),
+    operationNatureId: formData.naturezaOperacao || '', // Required for PurchaseOrder
+    paymentTermId: formData.prazoPagamento || undefined,
+    freightValue: formData.valorFrete || 0,
+    expensesValue: formData.despesas || 0,
+    items: purchaseItems,
+  };
+
+  // Remove undefined values (but keep operationNatureId as it's required)
+  Object.keys(dto).forEach(key => {
+    if (key !== 'operationNatureId' && dto[key as keyof UpdatePurchaseOrderDto] === undefined) {
+      delete dto[key as keyof UpdatePurchaseOrderDto];
+    }
+  });
+
+  return dto;
 }
 
