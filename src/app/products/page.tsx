@@ -105,7 +105,7 @@ export default function ProdutosPage() {
         } else if (response && typeof response === 'object' && 'data' in response) {
           // Wrapped in { data: [...] }
           data = Array.isArray(response.data) ? response.data : [];
-        }
+            }
 
         console.log('✅ Produtos carregados:', data.length);
         if (data.length > 0) {
