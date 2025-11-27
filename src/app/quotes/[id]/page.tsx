@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast, ToastContainer } from "@/components/ui/toast";
 import { useFeedback } from "@/contexts/feedback-context";
+import { toast } from 'sonner';
+import { handleValidationError } from '@/lib/utils/error-handler';
 import HeaderVenda from "@/components/sales/header-venda";
 import ConfiguracaoVenda from "@/components/sales/configuracao-venda";
 import ListaProdutos from "@/components/sales/lista-produtos";
@@ -62,8 +64,10 @@ import {
   atualizarOrcamento,
   recalcularImpostos,
 } from "@/services/quotes-service";
-import { mapSdkQuoteToFormData } from "@/lib/sdk/field-mappers";
+import { mapSdkQuoteToFormData, mapFormDataToUpdateQuoteDto } from "@/lib/sdk/field-mappers";
 import type { Quote } from "@/types/sdk";
+import { createQuoteSchema, updateQuoteSchema } from "@/types/sdk";
+import { validateAndNotify } from "@/lib/utils/validation";
 import {
   criarPedidoVendaFromOrcamento,
   listarPedidosVenda,
@@ -1065,6 +1069,7 @@ function OrcamentoFormPage() {
       });
 
       if (isNovo) {
+        // TODO: Migrar para usar mapFormDataToCreateQuoteDto e validar com createQuoteSchema
         const saved = await criarOrcamento(modelToSave);
         openSuccess({
           title: "Orçamento Salvo",
@@ -1074,13 +1079,23 @@ function OrcamentoFormPage() {
           },
         });
       } else {
-        await atualizarOrcamento(id, modelToSave);
+        // Usar função helper para mapear formData e itens para UpdateQuoteDto do SDK
+        const updateDto = mapFormDataToUpdateQuoteDto(formData, itensNormalizados);
+
+        // Validar usando schema do SDK
+        const validation = validateAndNotify(updateQuoteSchema, updateDto);
+        if (!validation.isValid) {
+          return;
+        }
+
+        await atualizarOrcamento(id, updateDto);
         openSuccess({
           title: "Orçamento Salvo",
           message: "Orçamento atualizado com sucesso!",
         });
       }
     } catch (e: any) {
+      handleValidationError(e);
       error("Erro", e?.message || "Erro ao salvar orçamento");
     } finally {
       setIsSalvando(false);
