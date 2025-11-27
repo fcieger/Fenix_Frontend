@@ -41,6 +41,10 @@ export type {
   CreateProductDto,
   UpdateProductDto,
 } from '@fenix/api-sdk';
+export {
+  createProductSchema,
+  updateProductSchema,
+} from '@fenix/api-sdk';
 
 // Partner types
 export type {
@@ -55,6 +59,10 @@ export {
   RegistrationType,
   PersonType,
   AddressType,
+  createPartnerSchema,
+  updatePartnerSchema,
+  addressSchema as partnerAddressSchema,
+  contactSchema,
 } from '@fenix/api-sdk';
 
 // Quote types
@@ -69,7 +77,14 @@ export type {
   UpdateQuoteInput,
   ChangeStatusInput as QuoteChangeStatusInput,
 } from '@fenix/api-sdk';
-export { QuoteStatus } from '@fenix/api-sdk';
+export {
+  createQuoteSchema,
+  updateQuoteSchema,
+  quoteItemSchema,
+  changeStatusSchema as quoteChangeStatusSchema,
+} from '@fenix/api-sdk';
+// QuoteStatus is exported as type from main index, but we also export it directly from the module
+export { QuoteStatus } from '@fenix/api-sdk/dist/clients/quotes/types';
 
 // Sales Order types
 export type {
@@ -84,7 +99,15 @@ export type {
   UpdateSalesOrderInput,
   ChangeStatusInput as SalesOrderChangeStatusInput,
 } from '@fenix/api-sdk';
-export { OrderStatus as SalesOrderStatus, OrderStatus } from '@fenix/api-sdk';
+export {
+  SalesOrderStatus,
+  createSalesOrderSchema,
+  updateSalesOrderSchema,
+  salesOrderItemSchema,
+  changeStatusSchema as salesOrderChangeStatusSchema,
+} from '@fenix/api-sdk';
+// OrderStatus is exported as SalesOrderStatus from main index, but we also export it directly from the module
+export { OrderStatus } from '@fenix/api-sdk/dist/clients/sales-orders/types';
 
 // Purchase Order types
 export type {
@@ -99,7 +122,13 @@ export type {
   UpdatePurchaseOrderInput,
   ChangeStatusInput as PurchaseOrderChangeStatusInput,
 } from '@fenix/api-sdk';
-export { OrderStatus as PurchaseOrderStatus } from '@fenix/api-sdk';
+export {
+  PurchaseOrderStatus,
+  createPurchaseOrderSchema,
+  updatePurchaseOrderSchema,
+  purchaseOrderItemSchema,
+  changeStatusSchema as purchaseOrderChangeStatusSchema,
+} from '@fenix/api-sdk';
 
 // Payment Terms types
 export type {
