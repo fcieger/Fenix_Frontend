@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@fenix/api-sdk':
         specifier: git+https://github.com/imLeonam/fenix-api-sdk.git
-        version: '@fenix/fnx-api-sdk@git+https://github.com/imLeonam/fenix-api-sdk.git#5cfd5f971870a5aab00a12426847b17a21a8b774(axios@1.13.2)(zod@4.1.13)'
+        version: '@fenix/fnx-api-sdk@git+https://git@github.com:imLeonam/fenix-api-sdk.git#eef1daec68de425e76fdb6bc489dacd5090cb483(axios@1.13.2)(zod@4.1.13)'
       '@google/generative-ai':
         specifier: ^0.24.1
         version: 0.24.1
@@ -424,8 +424,8 @@ packages:
     resolution: {integrity: sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@fenix/fnx-api-sdk@git+https://github.com/imLeonam/fenix-api-sdk.git#5cfd5f971870a5aab00a12426847b17a21a8b774':
-    resolution: {commit: 5cfd5f971870a5aab00a12426847b17a21a8b774, repo: https://github.com/imLeonam/fenix-api-sdk.git, type: git}
+  '@fenix/fnx-api-sdk@git+https://git@github.com:imLeonam/fenix-api-sdk.git#eef1daec68de425e76fdb6bc489dacd5090cb483':
+    resolution: {commit: eef1daec68de425e76fdb6bc489dacd5090cb483, repo: git@github.com:imLeonam/fenix-api-sdk.git, type: git}
     version: 1.0.0
     peerDependencies:
       axios: ^1.12.2
@@ -3916,7 +3916,7 @@ snapshots:
       '@eslint/core': 0.17.0
       levn: 0.4.1
 
-  '@fenix/fnx-api-sdk@git+https://github.com/imLeonam/fenix-api-sdk.git#5cfd5f971870a5aab00a12426847b17a21a8b774(axios@1.13.2)(zod@4.1.13)':
+  '@fenix/fnx-api-sdk@git+https://git@github.com:imLeonam/fenix-api-sdk.git#eef1daec68de425e76fdb6bc489dacd5090cb483(axios@1.13.2)(zod@4.1.13)':
     dependencies:
       axios: 1.13.2
       zod: 4.1.13
