@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast, ToastContainer } from '@/components/ui/toast';
 import { useFeedback } from '@/contexts/feedback-context';
+import { toast } from 'sonner';
+import { handleValidationError } from '@/lib/utils/error-handler';
 import HeaderCompra from '@/components/purchases/header-compra';
 import ConfiguracaoCompra from '@/components/purchases/configuracao-compra';
 import ListaProdutos from '@/components/purchases/lista-produtos';
@@ -57,6 +59,9 @@ import { PurchaseOrder } from '@/types/purchase-order';
 import type { PedidoCompra } from '@/types/pedido-compra';
 import { buscarCadastros, listarNaturezasOperacao, listarPrazosPagamento, buscarProdutos } from '@/services/lookups';
 import { apiService } from '@/lib/api';
+import { mapSdkPurchaseOrderToFormData, mapFormDataToUpdatePurchaseOrderDto } from '@/lib/sdk/field-mappers';
+import { createPurchaseOrderSchema, updatePurchaseOrderSchema } from '@/types/sdk';
+import { validateAndNotify } from '@/lib/utils/validation';
 
 const novoPedidoCompra = (): PedidoCompra => ({
   companyId: '',
@@ -885,7 +890,16 @@ function PedidoCompraFormPage() {
           }
         });
       } else {
-        const updated = await atualizarPedidoCompra(id, modelToSave);
+        // Usar função helper para mapear formData e itens para UpdatePurchaseOrderDto do SDK
+        const updateDto = mapFormDataToUpdatePurchaseOrderDto(formData, itensNormalizados);
+
+        // Validar usando schema do SDK
+        const validation = validateAndNotify(updatePurchaseOrderSchema, updateDto);
+        if (!validation.isValid) {
+          return;
+        }
+
+        const updated = await atualizarPedidoCompra(id, updateDto);
         openSuccess({
           title: 'Pedido de Compra Salvo',
           message: 'Pedido de Compra atualizado com sucesso!'
@@ -991,6 +1005,7 @@ function PedidoCompraFormPage() {
     } catch (e: any) {
       console.error('[Compras Page] Erro completo:', e);
       console.error('[Compras Page] Erro response:', e?.response?.data);
+      handleValidationError(e);
       const errorMessage = e?.response?.data?.message || e?.message || 'Erro ao salvar pedido de compra';
       error('Erro', errorMessage);
     } finally {
