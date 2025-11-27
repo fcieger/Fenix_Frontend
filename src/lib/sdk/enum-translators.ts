@@ -3,7 +3,7 @@
  * Functions to translate SDK enums to Portuguese for UI display
  */
 
-import { QuoteStatus, OrderStatus, RegistrationType } from '@/types/sdk';
+import { QuoteStatus, OrderStatus, RegistrationType, PersonType, AddressType } from '@/types/sdk';
 
 /**
  * Translate QuoteStatus enum to Portuguese
@@ -38,6 +38,10 @@ export function translateRegistrationType(type: RegistrationType): string {
   const translations: Record<RegistrationType, string> = {
     [RegistrationType.CUSTOMER]: 'Cliente',
     [RegistrationType.SUPPLIER]: 'Fornecedor',
+    [RegistrationType.SELLER]: 'Vendedor',
+    [RegistrationType.EMPLOYEE]: 'Funcionário',
+    [RegistrationType.CARRIER]: 'Transportadora',
+    [RegistrationType.SERVICE_PROVIDER]: 'Prestador de Serviço',
     [RegistrationType.BOTH]: 'Cliente e Fornecedor',
   };
   return translations[type] || type;
@@ -77,5 +81,28 @@ export function getStatusBadgeColor(status: QuoteStatus | OrderStatus): string {
     return getQuoteStatusBadgeColor(status as QuoteStatus);
   }
   return getOrderStatusBadgeColor(status as OrderStatus);
+}
+
+/**
+ * Translate PersonType enum to Portuguese
+ */
+export function translatePersonType(type: PersonType): string {
+  const translations: Record<PersonType, string> = {
+    [PersonType.INDIVIDUAL]: 'Pessoa Física',
+    [PersonType.LEGAL_ENTITY]: 'Pessoa Jurídica',
+  };
+  return translations[type] || type;
+}
+
+/**
+ * Translate AddressType enum to Portuguese
+ */
+export function translateAddressType(type: AddressType): string {
+  const translations: Record<AddressType, string> = {
+    [AddressType.COMMERCIAL]: 'Comercial',
+    [AddressType.BILLING]: 'Cobrança',
+    [AddressType.DELIVERY]: 'Entrega',
+  };
+  return translations[type] || type;
 }
 
