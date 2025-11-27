@@ -7,8 +7,10 @@ import { createPartner, updatePartner, getPartner } from '@/services/partners-se
 import { makeCnpjRequest, extractCompanyData, CnpjResponse } from '@/lib/cnpj-api';
 import type { CadastroData } from '@/lib/api';
 import { consultarCep, formatCep, ViaCepResponse } from '@/lib/viacep-api';
-import { mapSdkPartnerToFormData } from '@/lib/sdk/field-mappers';
+import { mapSdkPartnerToFormData, mapFormDataToUpdatePartnerDto, mapFormDataToCreatePartnerDto } from '@/lib/sdk/field-mappers';
 import type { Partner } from '@/types/sdk';
+import { updatePartnerSchema, createPartnerSchema } from '@/types/sdk';
+import { validateAndNotify } from '@/lib/utils/validation';
 import {
   X,
   User,
@@ -29,6 +31,8 @@ import {
 } from 'lucide-react';
 import CadastrosAIAssistant from '@/components/CadastrosAIAssistant';
 import { useFeedback } from '@/contexts/feedback-context';
+import { toast } from 'sonner';
+import { handleValidationError } from '@/lib/utils/error-handler';
 
 // Componente que usa useSearchParams
 function NovoClienteForm() {
@@ -438,27 +442,40 @@ function NovoClienteForm() {
       setIsLoading(true);
       setError(null);
 
-      const updateData = {
-        nomeRazaoSocial: formData.nomeRazaoSocial.trim(),
-        nomeFantasia: formData.nomeFantasia?.trim() || undefined,
-        tipoPessoa: (formData.tipoPessoa === 'Pessoa Física' ? 'Pessoa Física' : 'Pessoa Jurídica') as "Pessoa Física" | "Pessoa Jurídica",
-        cpf: formData.tipoPessoa === 'Pessoa Física' ? formData.cpf.replace(/\D/g, '') : undefined,
-        cnpj: formData.tipoPessoa === 'Pessoa Jurídica' ? formData.cnpj.replace(/\D/g, '') : undefined,
-        tiposCliente: formData.tiposCliente,
-        email: formData.email?.trim() || undefined,
-        pessoaContato: formData.contatos[0]?.pessoaContato?.trim() || undefined,
-        telefoneComercial: formData.contatos[0]?.telefoneComercial?.replace(/\D/g, '') || undefined,
-        celular: formData.contatos[0]?.celular?.replace(/\D/g, '') || undefined,
-        cargo: formData.contatos[0]?.cargo?.trim() || undefined,
-        celularContato: formData.contatos[0]?.celularContato?.replace(/\D/g, '') || undefined,
-        optanteSimples: formData.optanteSimples,
-        orgaoPublico: formData.orgaoPublico,
-        ie: formData.ie?.replace(/\D/g, '') || undefined,
-        im: formData.im?.replace(/\D/g, '') || undefined,
-        suframa: formData.suframa?.trim() || undefined,
-        enderecos: formData.enderecos,
-        observacoes: formData.observacoes?.trim() || undefined,
-      };
+      // Validações básicas
+      if (!formData.nomeRazaoSocial.trim()) {
+        toast.error('Validação', 'Nome/Razão Social é obrigatório');
+        return;
+      }
+
+      if (formData.tipoPessoa === 'Pessoa Física' && !formData.cpf.replace(/\D/g, '')) {
+        toast.error('Validação', 'CPF é obrigatório para Pessoa Física');
+        return;
+      }
+
+      if (formData.tipoPessoa === 'Pessoa Jurídica' && !formData.cnpj.replace(/\D/g, '')) {
+        toast.error('Validação', 'CNPJ é obrigatório para Pessoa Jurídica');
+        return;
+      }
+
+      if (!formData.enderecos || formData.enderecos.length === 0) {
+        toast.error('Validação', 'Pelo menos um endereço é obrigatório');
+        return;
+      }
+
+      if (!formData.contatos || formData.contatos.length === 0) {
+        toast.error('Validação', 'Pelo menos um contato é obrigatório');
+        return;
+      }
+
+      // Usar função helper para mapear formData para UpdatePartnerDto do SDK
+      const updateData = mapFormDataToUpdatePartnerDto(formData);
+
+      // Validar usando schema do SDK
+      const validation = validateAndNotify(updatePartnerSchema, updateData, setFieldErrors);
+      if (!validation.isValid) {
+        return;
+      }
 
       await updatePartner(editId, updateData);
       // Verificar se foi aberto em nova janela (tem returnUrl)
@@ -475,7 +492,7 @@ function NovoClienteForm() {
         openSuccess({ title: 'Atualizado com sucesso', message: 'Cadastro atualizado.', onClose: () => router.push('/partners') });
       }
     } catch (error: any) {
-      console.error('Erro ao atualizar cadastro:', error);
+      const fieldErrors = handleValidationError(error, setFieldErrors);
       setError(error.message || 'Erro ao atualizar cadastro');
     } finally {
       setIsLoading(false);
@@ -572,76 +589,45 @@ function NovoClienteForm() {
     setError(null);
 
     try {
-      // Preparar dados para envio
-      const cadastroData: CadastroData = {
-        nomeRazaoSocial: formData.nomeRazaoSocial.trim(),
-        nomeFantasia: formData.nomeFantasia?.trim() || undefined,
-        tipoPessoa: formData.tipoPessoa === 'Pessoa Física' ? 'Pessoa Física' : 'Pessoa Jurídica',
-        cpf: formData.tipoPessoa === 'Pessoa Física' ? formData.cpf.replace(/\D/g, '') : undefined,
-        cnpj: formData.tipoPessoa === 'Pessoa Jurídica' ? formData.cnpj.replace(/\D/g, '') : undefined,
-        tiposCliente: formData.tiposCliente,
-        // Manter campos individuais para compatibilidade (primeiro contato)
-        email: formData.contatos[0]?.email?.trim() || formData.email?.trim() || undefined,
-        pessoaContato: formData.contatos[0]?.pessoaContato?.trim() || undefined,
-        telefoneComercial: formData.contatos[0]?.telefoneComercial?.replace(/\D/g, '') || undefined,
-        celular: formData.contatos[0]?.celular?.replace(/\D/g, '') || undefined,
-        cargo: formData.contatos[0]?.cargo?.trim() || undefined,
-        celularContato: formData.contatos[0]?.celularContato?.replace(/\D/g, '') || undefined,
-        // Enviar contatos múltiplos
-        contatos: formData.contatos.map(contato => ({
-          email: contato.email?.trim() || undefined,
-          pessoaContato: contato.pessoaContato?.trim() || undefined,
-          telefoneComercial: contato.telefoneComercial?.replace(/\D/g, '') || undefined,
-          celular: contato.celular?.replace(/\D/g, '') || undefined,
-          cargo: contato.cargo?.trim() || undefined,
-          celularContato: contato.celularContato?.replace(/\D/g, '') || undefined,
-          principal: contato.principal || false
-        })),
-        optanteSimples: formData.optanteSimples,
-        orgaoPublico: formData.orgaoPublico,
-        ie: formData.ie?.replace(/\D/g, '') || undefined,
-        im: formData.im?.replace(/\D/g, '') || undefined,
-        suframa: formData.suframa?.trim() || undefined,
-        enderecos: formData.enderecos,
-        observacoes: formData.observacoes?.trim() || undefined,
-        userId: user!.id,
-        companyId: activeCompanyId,
-      };
-
-      // Validação adicional antes de enviar
-      if (!cadastroData.nomeRazaoSocial) {
-        throw new Error('Nome/Razão Social é obrigatório');
+      // Validações básicas antes de enviar
+      if (!formData.nomeRazaoSocial.trim()) {
+        toast.error('Validação', 'Nome/Razão Social é obrigatório');
+        return;
       }
 
-      if (cadastroData.tipoPessoa === 'Pessoa Física' && !cadastroData.cpf) {
-        throw new Error('CPF é obrigatório para Pessoa Física');
+      if (formData.tipoPessoa === 'Pessoa Física' && !formData.cpf.replace(/\D/g, '')) {
+        toast.error('Validação', 'CPF é obrigatório para Pessoa Física');
+        return;
       }
 
-      if (cadastroData.tipoPessoa === 'Pessoa Jurídica' && !cadastroData.cnpj) {
-        throw new Error('CNPJ é obrigatório para Pessoa Jurídica');
+      if (formData.tipoPessoa === 'Pessoa Jurídica' && !formData.cnpj.replace(/\D/g, '')) {
+        toast.error('Validação', 'CNPJ é obrigatório para Pessoa Jurídica');
+        return;
       }
 
-      if (!cadastroData.tiposCliente || !Object.values(cadastroData.tiposCliente).some(v => v === true)) {
-        throw new Error('Selecione pelo menos um tipo de cliente');
+      const hasSelectedType = Object.values(formData.tiposCliente).some(value => value === true);
+      if (!hasSelectedType) {
+        toast.error('Validação', 'Selecione pelo menos um tipo de cliente (Cliente, Fornecedor, etc.)');
+        return;
       }
 
-      console.log('=== DADOS PARA BACKEND ===');
-      console.log('Dados sendo enviados:', JSON.stringify(cadastroData, null, 2));
-      console.log('Token sendo usado:', token);
-      console.log('User ID:', user!.id);
-      console.log('Active Company ID:', activeCompanyId);
-      console.log('Tipo de nomeRazaoSocial:', typeof cadastroData.nomeRazaoSocial);
-      console.log('Tipo de tipoPessoa:', typeof cadastroData.tipoPessoa);
-      console.log('Valor de nomeRazaoSocial:', cadastroData.nomeRazaoSocial);
-      console.log('Valor de tipoPessoa:', cadastroData.tipoPessoa);
-      console.log('=== ENDEREÇOS ===');
-      console.log('Quantidade de endereços:', cadastroData.enderecos?.length || 0);
-      console.log('Endereços:', JSON.stringify(cadastroData.enderecos, null, 2));
+      if (!formData.enderecos || formData.enderecos.length === 0) {
+        toast.error('Validação', 'Pelo menos um endereço é obrigatório');
+        return;
+      }
 
-      await createPartner(cadastroData);
+      if (!formData.contatos || formData.contatos.length === 0) {
+        toast.error('Validação', 'Pelo menos um contato é obrigatório');
+        return;
+      }
+
+      // Usar função helper para mapear formData para CreatePartnerDto do SDK
+      const createData = mapFormDataToCreatePartnerDto(formData);
+
+      await createPartner(createData);
       openSuccess({ title: 'Salvo com sucesso', message: 'Cadastro criado.', onClose: () => router.push('/partners') });
-    } catch (error) {
-      console.error('Erro ao salvar cadastro:', error);
+    } catch (error: any) {
+      const fieldErrors = handleValidationError(error, setFieldErrors);
       setError(error instanceof Error ? error.message : 'Erro ao salvar cadastro');
     } finally {
       setIsLoading(false);
@@ -877,8 +863,10 @@ function NovoClienteForm() {
             </div>
 
             {/* Lista de Contatos */}
-            {formData.contatos.map((contato, index) => (
-              <div key={index} className="mb-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
+            {formData.contatos.map((contato, index) => {
+              const hasError = fieldErrors.contatos || fieldErrors[`contatos.${index}.principal`] || fieldErrors[`contatos.${index}`];
+              return (
+              <div key={index} className={`mb-8 p-6 rounded-xl border-2 ${hasError ? 'bg-red-50 border-red-500' : 'bg-gray-50 border-gray-200'}`}>
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
@@ -989,8 +977,45 @@ function NovoClienteForm() {
                 />
               </div>
             </div>
+
+            {/* Checkbox Principal para Contato */}
+            <div className="mt-4">
+              <label className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={contato.principal || false}
+                  onChange={(e) => {
+                    updateContato(index, 'principal', e.target.checked);
+                    // Limpar erro quando marcar como principal
+                    if (fieldErrors[`contatos.${index}.principal`] || fieldErrors.contatos) {
+                      setFieldErrors(prev => {
+                        const newErrors = { ...prev };
+                        delete newErrors[`contatos.${index}.principal`];
+                        if (Object.keys(newErrors).filter(k => k.startsWith('contatos')).length === 0) {
+                          delete newErrors.contatos;
+                        }
+                        return newErrors;
+                      });
+                    }
+                  }}
+                  className={`w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500 focus:ring-2 ${
+                    fieldErrors[`contatos.${index}.principal`] || fieldErrors.contatos ? 'border-red-500' : ''
+                  }`}
+                />
+                <span className={`text-sm font-medium ${fieldErrors[`contatos.${index}.principal`] || fieldErrors.contatos ? 'text-red-600' : 'text-gray-700'}`}>
+                  Marcar como Contato Principal
+                </span>
+              </label>
+              {(fieldErrors[`contatos.${index}.principal`] || fieldErrors.contatos) && (
+                <p className="text-red-500 text-sm mt-2 ml-8 flex items-center">
+                  <span className="mr-1">⚠️</span>
+                  Pelo menos um contato deve ser marcado como principal
+                </p>
+              )}
+            </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Informações Tributárias */}
@@ -1163,8 +1188,10 @@ function NovoClienteForm() {
 
             {formData.enderecos && formData.enderecos.length > 0 ? (
               <div className="space-y-6">
-                {formData.enderecos.map((endereco, index) => (
-                  <div key={index} className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                {formData.enderecos.map((endereco, index) => {
+                  const hasError = fieldErrors.enderecos || fieldErrors[`enderecos.${index}.principal`] || fieldErrors[`enderecos.${index}`];
+                  return (
+                  <div key={index} className={`bg-gray-50 rounded-lg p-6 border-2 ${hasError ? 'border-red-500 bg-red-50' : 'border-gray-200'}`}>
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center space-x-3">
                         <h4 className="font-semibold text-gray-900">Endereço {index + 1}</h4>
@@ -1336,8 +1363,45 @@ function NovoClienteForm() {
                         </select>
                       </div>
                     </div>
+
+                    {/* Checkbox Principal */}
+                    <div className="mt-4">
+                      <label className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={endereco.principal || false}
+                          onChange={(e) => {
+                            updateEndereco(index, 'principal', e.target.checked);
+                            // Limpar erro quando marcar como principal
+                            if (fieldErrors[`enderecos.${index}.principal`] || fieldErrors.enderecos) {
+                              setFieldErrors(prev => {
+                                const newErrors = { ...prev };
+                                delete newErrors[`enderecos.${index}.principal`];
+                                if (Object.keys(newErrors).filter(k => k.startsWith('enderecos')).length === 0) {
+                                  delete newErrors.enderecos;
+                                }
+                                return newErrors;
+                              });
+                            }
+                          }}
+                          className={`w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500 focus:ring-2 ${
+                            fieldErrors[`enderecos.${index}.principal`] || fieldErrors.enderecos ? 'border-red-500' : ''
+                          }`}
+                        />
+                        <span className={`text-sm font-medium ${fieldErrors[`enderecos.${index}.principal`] || fieldErrors.enderecos ? 'text-red-600' : 'text-gray-700'}`}>
+                          Marcar como Endereço Principal
+                        </span>
+                      </label>
+                      {(fieldErrors[`enderecos.${index}.principal`] || fieldErrors.enderecos) && (
+                        <p className="text-red-500 text-sm mt-2 ml-8 flex items-center">
+                          <span className="mr-1">⚠️</span>
+                          Pelo menos um endereço deve ser marcado como principal
+                        </p>
+                      )}
+                    </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-16">
