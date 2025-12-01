@@ -348,3 +348,4 @@ Se precisar de ajuda:
 **OpenAI SDK:** 4.x
 
 
+

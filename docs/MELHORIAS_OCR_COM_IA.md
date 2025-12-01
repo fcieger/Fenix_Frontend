@@ -625,3 +625,4 @@ Vai transformar o OCR de "OK" para "EXCELENTE"! 🚀
 
 
 
+

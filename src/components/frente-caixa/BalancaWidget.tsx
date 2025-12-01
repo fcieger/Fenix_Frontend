@@ -188,3 +188,4 @@ export function BalancaWidget({ onPesoEstavel, modelo = 'generico' }: BalancaWid
 
 
 
+
