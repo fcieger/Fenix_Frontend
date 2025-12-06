@@ -152,6 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (userData: any, companyData: any) => {
     try {
       setIsLoading(true);
+      console.log("🔄 Starting registration for:", userData.email);
 
       const authClient = SdkClientFactory.getAuthClient();
       const response = await authClient.register({
@@ -159,17 +160,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         company: companyData,
       });
 
+      console.log("✅ Registration response:", response);
+
       setUser(response.user);
       setToken(response.access_token);
       localStorage.setItem("fenix_token", response.access_token);
+      console.log("🔑 Token saved to localStorage");
 
       // Set first company as active if exists
       if (response.user.companies && response.user.companies.length > 0) {
         const companyId = response.user.companies[0].id;
         setActiveCompanyId(companyId);
         localStorage.setItem("activeCompanyId", companyId);
+        console.log("🏢 Active company set:", companyId);
       }
     } catch (error) {
+      console.error("❌ Registration error:", error);
       const errorInfo = SdkErrorHandler.handleError(error);
       throw new Error(errorInfo.message);
     } finally {
