@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import Layout from '@/components/Layout';
 import { motion } from 'framer-motion';
-import { 
+import {
   DollarSign,
   ShoppingCart,
   TrendingUp,
@@ -37,56 +37,21 @@ import {
   Area,
   AreaChart
 } from 'recharts';
+import { SdkClientFactory } from '@/lib/sdk/client-factory';
+import type {
+  SalesDashboardMetrics,
+  PurchasesDashboardMetrics,
+  FinancialDashboardMetrics,
+  SalesChartData,
+  PurchasesChartData,
+  CashFlowChartData,
+} from '@fenix/api-sdk';
+import { OrderStatus } from '@fenix/api-sdk';
 
 interface DashboardMetrics {
-  vendas: {
-    totalVendasPeriodo: number;
-    valorTotalVendasPeriodo: number;
-    totalOrcamentosPeriodo: number;
-    mediaVendasDiaria: number;
-    taxaConversao: number;
-    variacaoVendas: number;
-    variacaoValor: number;
-  };
-  compras: {
-    totalComprasPeriodo: number;
-    valorTotalComprasPeriodo: number;
-    comprasPendentes: number;
-    comprasEntregues: number;
-    comprasFaturadas: number;
-    mediaComprasDiaria: number;
-    taxaEntrega: number;
-    variacaoCompras: number;
-    variacaoValor: number;
-  };
-  financeiro: {
-    saldoAtual: number;
-    fluxoCaixa: number;
-    contasVencidas: number;
-    proximosVencimentos: number;
-    faturamentoMes: number;
-    despesasMes: number;
-    lucroBruto: number;
-    margemLucro: number;
-  };
-}
-
-interface GraficoVendas {
-  data: string;
-  quantidade: number;
-  valor: number;
-}
-
-interface GraficoCompras {
-  data: string;
-  quantidade: number;
-  valor: number;
-}
-
-interface GraficoFluxo {
-  data: string;
-  receitas: number;
-  despesas: number;
+  vendas: SalesDashboardMetrics;
+  compras: PurchasesDashboardMetrics;
+  financeiro: FinancialDashboardMetrics;
 }
 
 export default function DashboardPage() {
@@ -95,9 +60,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [graficoVendas, setGraficoVendas] = useState<GraficoVendas[]>([]);
-  const [graficoCompras, setGraficoCompras] = useState<GraficoCompras[]>([]);
-  const [graficoFluxo, setGraficoFluxo] = useState<GraficoFluxo[]>([]);
+  const [graficoVendas, setGraficoVendas] = useState<SalesChartData[]>([]);
+  const [graficoCompras, setGraficoCompras] = useState<PurchasesChartData[]>([]);
+  const [graficoFluxo, setGraficoFluxo] = useState<CashFlowChartData[]>([]);
   const [filtroStatus, setFiltroStatus] = useState<'todos' | 'entregue' | 'rascunho'>('todos');
 
   useEffect(() => {
@@ -121,129 +86,54 @@ export default function DashboardPage() {
 
         const hoje = new Date();
         const dataInicio = new Date(hoje.getTime() - 30 * 24 * 60 * 60 * 1000);
-        const dataInicioStr = dataInicio.toISOString().split('T')[0];
-        const dataFimStr = hoje.toISOString().split('T')[0];
-        
-        console.log('🔵 [Dashboard] Período:', dataInicioStr, 'até', dataFimStr);
-        console.log('🔵 [Dashboard] Company ID:', activeCompanyId);
+        const startDate = dataInicio.toISOString().split('T')[0];
+        const endDate = hoje.toISOString().split('T')[0];
 
-        // Buscar dados das três APIs em paralelo
-        const [vendasRes, comprasRes, financeiroRes] = await Promise.all([
-          fetch(`/api/sales/dashboard?company_id=${activeCompanyId}&dataInicio=${dataInicioStr}&dataFim=${dataFimStr}&filtroStatus=${filtroStatus}`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
+        console.log('🔵 [Dashboard] Período:', startDate, 'até', endDate);
+
+        // Mapear filtroStatus para OrderStatus
+        const status = filtroStatus === 'todos'
+          ? undefined
+          : filtroStatus === 'entregue'
+          ? OrderStatus.DELIVERED
+          : OrderStatus.DRAFT;
+
+        // Buscar dados das três APIs em paralelo usando SDK
+        const dashboardsClient = SdkClientFactory.getDashboardsClient();
+        const [vendasResponse, comprasResponse, financeiroResponse] = await Promise.all([
+          dashboardsClient.getSalesDashboard({
+            startDate,
+            endDate,
+            status,
           }),
-          fetch(`/api/purchases/dashboard?company_id=${activeCompanyId}&dataInicio=${dataInicioStr}&dataFim=${dataFimStr}&filtroStatus=${filtroStatus}`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
+          dashboardsClient.getPurchasesDashboard({
+            startDate,
+            endDate,
+            status,
           }),
-          fetch(`/api/financial/dashboard?company_id=${activeCompanyId}`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          })
+          dashboardsClient.getFinancialDashboard({
+            startDate,
+            endDate,
+          }),
         ]);
 
-        // Parsear respostas com tratamento de erro
-        let vendasData: any = {};
-        let comprasData: any = {};
-        let financeiroData: any = {};
-
-        try {
-          const vendasText = await vendasRes.text();
-          vendasData = vendasText ? JSON.parse(vendasText) : {};
-        } catch (e) {
-          console.error('❌ Erro ao parsear resposta de vendas:', e);
-          vendasData = { success: false, error: 'Erro ao processar resposta da API' };
+        if (!vendasResponse.success || !comprasResponse.success || !financeiroResponse.success) {
+          throw new Error('Erro ao buscar dados do dashboard');
         }
 
-        try {
-          const comprasText = await comprasRes.text();
-          comprasData = comprasText ? JSON.parse(comprasText) : {};
-        } catch (e) {
-          console.error('❌ Erro ao parsear resposta de compras:', e);
-          comprasData = { success: false, error: 'Erro ao processar resposta da API' };
-        }
-
-        try {
-          const financeiroText = await financeiroRes.text();
-          financeiroData = financeiroText ? JSON.parse(financeiroText) : {};
-        } catch (e) {
-          console.error('❌ Erro ao parsear resposta financeiro:', e);
-          financeiroData = { success: false, error: 'Erro ao processar resposta da API' };
-        }
-
-        // Verificar status de cada resposta
-        if (!vendasRes.ok) {
-          console.error('❌ Erro HTTP na API de vendas:', vendasRes.status, vendasRes.statusText);
-          console.error('❌ Resposta da API de vendas:', vendasData);
-          throw new Error(`Erro ao buscar dados de vendas (${vendasRes.status}): ${vendasData.error || vendasRes.statusText || 'Erro desconhecido'}`);
-        }
-
-        if (!comprasRes.ok) {
-          console.error('❌ Erro HTTP na API de compras:', comprasRes.status, comprasRes.statusText);
-          console.error('❌ Resposta da API de compras:', comprasData);
-          throw new Error(`Erro ao buscar dados de compras (${comprasRes.status}): ${comprasData.error || comprasRes.statusText || 'Erro desconhecido'}`);
-        }
-
-        if (!financeiroRes.ok) {
-          console.error('❌ Erro HTTP na API financeiro:', financeiroRes.status, financeiroRes.statusText);
-          console.error('❌ Resposta da API financeiro:', financeiroData);
-          throw new Error(`Erro ao buscar dados financeiro (${financeiroRes.status}): ${financeiroData.error || financeiroRes.statusText || 'Erro desconhecido'}`);
-        }
-
-        // Verificar se retornaram success
-        if (!vendasData.success) {
-          console.error('❌ API de vendas não retornou success:', vendasData);
-          throw new Error(`Erro ao buscar dados de vendas: ${vendasData.error || 'Erro desconhecido'}`);
-        }
-
-        if (!comprasData.success) {
-          console.error('❌ API de compras não retornou success:', comprasData);
-          throw new Error(`Erro ao buscar dados de compras: ${comprasData.error || 'Erro desconhecido'}`);
-        }
-
-        if (!financeiroData.success) {
-          console.error('❌ API financeiro não retornou success:', financeiroData);
-          throw new Error(`Erro ao buscar dados financeiro: ${financeiroData.error || 'Erro desconhecido'}`);
-        }
-
-        console.log('✅ [Dashboard] Dados de vendas recebidos:', vendasData.data);
-        console.log('✅ [Dashboard] Dados de compras recebidos:', comprasData.data);
-        console.log('✅ [Dashboard] Gráfico de vendas RAW:', vendasData.data.graficoVendas);
-        console.log('✅ [Dashboard] Gráfico de compras RAW:', comprasData.data.graficoCompras);
+        console.log('✅ [Dashboard] Dados de vendas recebidos:', vendasResponse.data);
+        console.log('✅ [Dashboard] Dados de compras recebidos:', comprasResponse.data);
 
         setMetrics({
-          vendas: vendasData.data.metrics,
-          compras: comprasData.data.metrics,
-          financeiro: financeiroData.data.metrics
+          vendas: vendasResponse.data.metrics,
+          compras: comprasResponse.data.metrics,
+          financeiro: financeiroResponse.data.metrics,
         });
 
-        // Mapear dados dos gráficos para o formato esperado
-        const vendasMapeadas = (vendasData.data.graficoVendas || []).map((item: any) => ({
-          data: item.data,
-          quantidade: item.quantidade || 0,
-          valor: item.valorTotal || item.valor || 0
-        }));
-        console.log('✅ [Dashboard] Vendas mapeadas para o gráfico:', vendasMapeadas);
-        console.log('✅ [Dashboard] Total de pontos no gráfico de vendas:', vendasMapeadas.length);
-        setGraficoVendas(vendasMapeadas);
-        
-        const comprasMapeadas = (comprasData.data.graficoCompras || []).map((item: any) => ({
-          data: item.data,
-          quantidade: item.quantidade || 0,
-          valor: item.valorTotal || item.valor || 0
-        }));
-        console.log('✅ [Dashboard] Compras mapeadas para o gráfico:', comprasMapeadas);
-        console.log('✅ [Dashboard] Total de pontos no gráfico de compras:', comprasMapeadas.length);
-        setGraficoCompras(comprasMapeadas);
-        
-        setGraficoFluxo(financeiroData.data.graficoFluxo || []);
+        // Usar dados do SDK diretamente, sem map
+        setGraficoVendas(vendasResponse.data.salesChart || []);
+        setGraficoCompras(comprasResponse.data.purchasesChart || []);
+        setGraficoFluxo(financeiroResponse.data.cashFlowChart || []);
       } catch (error: any) {
         console.error('Erro ao carregar dashboard:', error);
         setError(error.message || 'Erro ao carregar dados do dashboard');
@@ -279,8 +169,30 @@ export default function DashboardPage() {
     );
   }
 
-  if (!isAuthenticated || !token || !activeCompanyId) {
+  if (!isAuthenticated || !token) {
     return null;
+  }
+
+  // Se não há empresa ativa, mostrar mensagem
+  if (!activeCompanyId) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="bg-yellow-50 border-l-4 border-yellow-500 p-6 rounded-lg max-w-md">
+            <div className="flex items-center mb-4">
+              <AlertTriangle className="w-6 h-6 text-yellow-500 mr-3" />
+              <h3 className="text-yellow-800 font-semibold">Nenhuma empresa selecionada</h3>
+            </div>
+            <p className="text-yellow-700 text-sm mb-4">
+              Você precisa ter pelo menos uma empresa associada à sua conta para acessar o dashboard.
+            </p>
+            <p className="text-yellow-600 text-xs">
+              Entre em contato com o suporte ou crie uma empresa através do cadastro.
+            </p>
+          </div>
+        </div>
+      </Layout>
+    );
   }
 
   if (error) {
@@ -301,67 +213,67 @@ export default function DashboardPage() {
   const metricsCards = metrics ? [
     {
       title: 'Total de Vendas',
-      value: formatCurrency(metrics.vendas.valorTotalVendasPeriodo),
+      value: formatCurrency(metrics.vendas.totalSalesValueInPeriod),
       icon: DollarSign,
       color: 'bg-green-500',
-      trend: metrics.vendas.variacaoValor >= 0 ? `+${metrics.vendas.variacaoValor.toFixed(1)}%` : `${metrics.vendas.variacaoValor.toFixed(1)}%`,
-      trendUp: metrics.vendas.variacaoValor >= 0,
-      subtitle: `${formatNumber(metrics.vendas.totalVendasPeriodo)} vendas`
+      trend: metrics.vendas.valueVariation >= 0 ? `+${metrics.vendas.valueVariation.toFixed(1)}%` : `${metrics.vendas.valueVariation.toFixed(1)}%`,
+      trendUp: metrics.vendas.valueVariation >= 0,
+      subtitle: `${formatNumber(metrics.vendas.totalSalesInPeriod)} vendas`
     },
     {
       title: 'Total de Compras',
-      value: formatCurrency(metrics.compras.valorTotalComprasPeriodo),
+      value: formatCurrency(metrics.compras.totalPurchasesValueInPeriod),
       icon: ShoppingCart,
       color: 'bg-blue-500',
-      trend: metrics.compras.variacaoValor >= 0 ? `+${metrics.compras.variacaoValor.toFixed(1)}%` : `${metrics.compras.variacaoValor.toFixed(1)}%`,
-      trendUp: metrics.compras.variacaoValor >= 0,
-      subtitle: `${formatNumber(metrics.compras.totalComprasPeriodo)} compras`
+      trend: metrics.compras.valueVariation >= 0 ? `+${metrics.compras.valueVariation.toFixed(1)}%` : `${metrics.compras.valueVariation.toFixed(1)}%`,
+      trendUp: metrics.compras.valueVariation >= 0,
+      subtitle: `${formatNumber(metrics.compras.totalPurchasesInPeriod)} compras`
     },
     {
       title: 'Saldo Atual',
-      value: formatCurrency(metrics.financeiro.saldoAtual),
+      value: formatCurrency(metrics.financeiro.currentBalance),
       icon: Wallet,
       color: 'bg-purple-500',
-      trend: formatCurrency(metrics.financeiro.fluxoCaixa),
-      trendUp: metrics.financeiro.fluxoCaixa >= 0,
+      trend: formatCurrency(metrics.financeiro.cashFlow),
+      trendUp: metrics.financeiro.cashFlow >= 0,
       subtitle: 'Fluxo de caixa (30 dias)'
     },
     {
       title: 'Lucro Bruto',
-      value: formatCurrency(metrics.financeiro.lucroBruto),
+      value: formatCurrency(metrics.financeiro.grossProfit),
       icon: TrendingUp,
       color: 'bg-orange-500',
-      trend: `${metrics.financeiro.margemLucro.toFixed(1)}% margem`,
-      trendUp: metrics.financeiro.lucroBruto >= 0,
-      subtitle: `Faturamento: ${formatCurrency(metrics.financeiro.faturamentoMes)}`
+      trend: `${metrics.financeiro.profitMargin.toFixed(1)}% margem`,
+      trendUp: metrics.financeiro.grossProfit >= 0,
+      subtitle: `Faturamento: ${formatCurrency(metrics.financeiro.monthlyRevenue)}`
     }
   ] : [];
 
   const alertCards = metrics ? [
     {
       title: 'Contas Vencidas',
-      value: formatCurrency(metrics.financeiro.contasVencidas),
+      value: formatCurrency(metrics.financeiro.overdueAccounts),
       icon: AlertTriangle,
       color: 'bg-red-500',
       href: '/financial/contas-pagar'
     },
     {
       title: 'Próximos Vencimentos',
-      value: formatCurrency(metrics.financeiro.proximosVencimentos),
+      value: formatCurrency(metrics.financeiro.upcomingDueDates),
       icon: Calendar,
       color: 'bg-yellow-500',
       href: '/financial/contas-pagar'
     },
     {
       title: 'Compras Pendentes',
-      value: formatNumber(metrics.compras.comprasPendentes),
+      value: formatNumber(metrics.compras.pendingPurchases),
       icon: Package,
       color: 'bg-indigo-500',
       href: '/purchases'
     },
     {
       title: 'Orçamentos',
-      value: formatNumber(metrics.vendas.totalOrcamentosPeriodo),
+      value: formatNumber(metrics.vendas.totalQuotesInPeriod),
       icon: FileText,
       color: 'bg-cyan-500',
       href: '/quotes'
@@ -372,7 +284,7 @@ export default function DashboardPage() {
     <Layout>
           <div className="space-y-6">
             {/* Header */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               className="bg-gradient-to-r from-purple-600 to-violet-600 rounded-2xl p-6 lg:p-8 text-white shadow-xl"
@@ -401,7 +313,7 @@ export default function DashboardPage() {
                       <option value="rascunho" className="text-gray-900">Apenas rascunhos</option>
                     </select>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                     <span className="text-white/80 text-sm font-medium">Sistema ativo</span>
@@ -508,7 +420,7 @@ export default function DashboardPage() {
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Gráfico de Vendas */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.4 }}
@@ -530,12 +442,12 @@ export default function DashboardPage() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis 
-                    dataKey="data" 
+                  <XAxis
+                    dataKey="date"
                     stroke="#6b7280"
                     style={{ fontSize: '11px' }}
                   />
-                  <YAxis 
+                  <YAxis
                     stroke="#6b7280"
                     style={{ fontSize: '11px' }}
                     tickFormatter={(value) => {
@@ -552,11 +464,11 @@ export default function DashboardPage() {
                       borderRadius: '8px'
                     }}
                   />
-                  <Area 
-                    type="monotone" 
-                    dataKey="valor" 
-                    stroke="#10b981" 
-                    fillOpacity={1} 
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#10b981"
+                    fillOpacity={1}
                     fill="url(#colorValor)"
                     name="Valor"
                   />
@@ -573,7 +485,7 @@ export default function DashboardPage() {
           </motion.div>
 
           {/* Gráfico de Compras */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.5 }}
@@ -595,12 +507,12 @@ export default function DashboardPage() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis 
-                    dataKey="data" 
+                  <XAxis
+                    dataKey="date"
                     stroke="#6b7280"
                     style={{ fontSize: '11px' }}
                   />
-                  <YAxis 
+                  <YAxis
                     stroke="#6b7280"
                     style={{ fontSize: '11px' }}
                     tickFormatter={(value) => {
@@ -617,11 +529,11 @@ export default function DashboardPage() {
                       borderRadius: '8px'
                     }}
                   />
-                  <Area 
-                    type="monotone" 
-                    dataKey="valor" 
-                    stroke="#3b82f6" 
-                    fillOpacity={1} 
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#3b82f6"
+                    fillOpacity={1}
                     fill="url(#colorCompras)"
                     name="Valor"
                   />
@@ -640,7 +552,7 @@ export default function DashboardPage() {
 
         {/* Fluxo de Caixa */}
         {metrics && graficoFluxo.length > 0 && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.6 }}
@@ -655,12 +567,12 @@ export default function DashboardPage() {
             <ResponsiveContainer width="100%" height={350}>
               <ComposedChart data={graficoFluxo}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis 
-                  dataKey="data" 
+                <XAxis
+                  dataKey="date"
                   stroke="#6b7280"
                   style={{ fontSize: '11px' }}
                 />
-                <YAxis 
+                <YAxis
                   stroke="#6b7280"
                   style={{ fontSize: '11px' }}
                   tickFormatter={(value) => {
@@ -678,15 +590,15 @@ export default function DashboardPage() {
                   }}
                 />
                 <Legend />
-                <Bar 
-                  dataKey="receitas" 
-                  fill="#10b981" 
+                <Bar
+                  dataKey="revenues"
+                  fill="#10b981"
                   name="Receitas"
                   radius={[4, 4, 0, 0]}
                 />
-                <Bar 
-                  dataKey="despesas" 
-                  fill="#ef4444" 
+                <Bar
+                  dataKey="expenses"
+                  fill="#ef4444"
                   name="Despesas"
                   radius={[4, 4, 0, 0]}
                 />
@@ -698,7 +610,7 @@ export default function DashboardPage() {
         {/* Quick Stats */}
         {metrics && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.7 }}
@@ -711,20 +623,20 @@ export default function DashboardPage() {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Média diária:</span>
-                  <span className="font-semibold text-gray-900">{formatNumber(metrics.vendas.mediaVendasDiaria)}</span>
+                  <span className="font-semibold text-gray-900">{formatNumber(metrics.vendas.averageDailySales)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Taxa de conversão:</span>
-                  <span className="font-semibold text-gray-900">{metrics.vendas.taxaConversao.toFixed(1)}%</span>
+                  <span className="font-semibold text-gray-900">{metrics.vendas.conversionRate.toFixed(1)}%</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Orçamentos:</span>
-                  <span className="font-semibold text-gray-900">{formatNumber(metrics.vendas.totalOrcamentosPeriodo)}</span>
+                  <span className="font-semibold text-gray-900">{formatNumber(metrics.vendas.totalQuotesInPeriod)}</span>
                 </div>
                 </div>
               </motion.div>
 
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.8 }}
@@ -737,20 +649,20 @@ export default function DashboardPage() {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Média diária:</span>
-                  <span className="font-semibold text-gray-900">{formatNumber(metrics.compras.mediaComprasDiaria)}</span>
+                  <span className="font-semibold text-gray-900">{formatNumber(metrics.compras.averageDailyPurchases)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Taxa de entrega:</span>
-                  <span className="font-semibold text-gray-900">{metrics.compras.taxaEntrega.toFixed(1)}%</span>
+                  <span className="font-semibold text-gray-900">{metrics.compras.deliveryRate.toFixed(1)}%</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Entregues:</span>
-                  <span className="font-semibold text-gray-900">{formatNumber(metrics.compras.comprasEntregues)}</span>
+                  <span className="font-semibold text-gray-900">{formatNumber(metrics.compras.deliveredPurchases)}</span>
                 </div>
               </div>
             </motion.div>
 
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.9 }}
@@ -763,15 +675,15 @@ export default function DashboardPage() {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Faturamento:</span>
-                  <span className="font-semibold text-gray-900">{formatCurrency(metrics.financeiro.faturamentoMes)}</span>
+                  <span className="font-semibold text-gray-900">{formatCurrency(metrics.financeiro.monthlyRevenue)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Despesas:</span>
-                  <span className="font-semibold text-gray-900">{formatCurrency(metrics.financeiro.despesasMes)}</span>
+                  <span className="font-semibold text-gray-900">{formatCurrency(metrics.financeiro.monthlyExpenses)}</span>
                   </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Margem:</span>
-                  <span className="font-semibold text-gray-900">{metrics.financeiro.margemLucro.toFixed(1)}%</span>
+                  <span className="font-semibold text-gray-900">{metrics.financeiro.profitMargin.toFixed(1)}%</span>
                 </div>
               </div>
             </motion.div>
