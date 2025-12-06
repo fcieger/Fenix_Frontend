@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import Layout from '@/components/Layout';
-import { 
+import {
   TrendingUp,
   TrendingDown,
   ShoppingCart,
@@ -32,57 +32,15 @@ import {
   ResponsiveContainer,
   ComposedChart
 } from 'recharts';
-
-interface DashboardMetrics {
-  totalComprasPeriodo: number;
-  valorTotalComprasPeriodo: number;
-  comprasPendentes: number;
-  comprasEntregues: number;
-  comprasFaturadas: number;
-  valorEntregues: number;
-  valorFaturadas: number;
-  mediaComprasDiaria: number;
-  taxaEntrega: number;
-  variacaoCompras: number;
-  variacaoValor: number;
-}
-
-interface GraficoCompraPorStatus {
-  data: string;
-  quantidade: number;
-  quantidadePendentes: number;
-  quantidadeEntregues: number;
-  quantidadeFaturadas: number;
-  valorTotal: number;
-}
-
-interface GraficoCompra {
-  data: string;
-  quantidade: number;
-  valorTotal: number;
-}
-
-interface TopFornecedor {
-  id: string;
-  nome: string;
-  totalCompras: number;
-  valorTotal: number;
-}
-
-interface TopProduto {
-  id: string;
-  codigo: string;
-  nome: string;
-  quantidadeTotal: number;
-  valorTotal: number;
-}
-
-interface CompraPorComprador {
-  id: string;
-  nome: string;
-  totalCompras: number;
-  valorTotal: number;
-}
+import { SdkClientFactory } from '@/lib/sdk/client-factory';
+import type {
+  PurchasesDashboardMetrics,
+  PurchasesChartData,
+  PurchasesByStatusChartData,
+  TopSupplier,
+  TopProduct,
+  PurchasesByBuyer,
+} from '@fenix/api-sdk';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
 
@@ -93,24 +51,24 @@ export default function DashboardComprasPage() {
   const [filtroPeriodo, setFiltroPeriodo] = useState<'hoje' | '5dias' | '30dias' | '90dias' | 'personalizado'>('30dias');
   const [dataInicioCustom, setDataInicioCustom] = useState<string>('');
   const [dataFimCustom, setDataFimCustom] = useState<string>('');
-  const [metrics, setMetrics] = useState<DashboardMetrics>({
-    totalComprasPeriodo: 0,
-    valorTotalComprasPeriodo: 0,
-    comprasPendentes: 0,
-    comprasEntregues: 0,
-    comprasFaturadas: 0,
-    valorEntregues: 0,
-    valorFaturadas: 0,
-    mediaComprasDiaria: 0,
-    taxaEntrega: 0,
-    variacaoCompras: 0,
-    variacaoValor: 0
+  const [metrics, setMetrics] = useState<PurchasesDashboardMetrics>({
+    totalPurchasesInPeriod: 0,
+    totalPurchasesValueInPeriod: 0,
+    pendingPurchases: 0,
+    deliveredPurchases: 0,
+    invoicedPurchases: 0,
+    deliveredValue: 0,
+    invoicedValue: 0,
+    averageDailyPurchases: 0,
+    deliveryRate: 0,
+    purchasesVariation: 0,
+    valueVariation: 0
   });
-  const [graficoComprasPorStatus, setGraficoComprasPorStatus] = useState<GraficoCompraPorStatus[]>([]);
-  const [graficoCompras, setGraficoCompras] = useState<GraficoCompra[]>([]);
-  const [topFornecedores, setTopFornecedores] = useState<TopFornecedor[]>([]);
-  const [topProdutos, setTopProdutos] = useState<TopProduto[]>([]);
-  const [comprasPorComprador, setComprasPorComprador] = useState<CompraPorComprador[]>([]);
+  const [graficoComprasPorStatus, setGraficoComprasPorStatus] = useState<PurchasesByStatusChartData[]>([]);
+  const [graficoCompras, setGraficoCompras] = useState<PurchasesChartData[]>([]);
+  const [topFornecedores, setTopFornecedores] = useState<TopSupplier[]>([]);
+  const [topProdutos, setTopProdutos] = useState<TopProduct[]>([]);
+  const [comprasPorComprador, setComprasPorComprador] = useState<PurchasesByBuyer[]>([]);
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -123,17 +81,19 @@ export default function DashboardComprasPage() {
         setLoading(true);
         setError(null);
 
-        let url = `/api/purchases/dashboard?company_id=${activeCompanyId}`;
-        
-        // Adicionar parâmetros de data baseado no filtro selecionado
+        // Calcular datas baseado no filtro selecionado
+        let startDate: string | undefined;
+        let endDate: string | undefined;
+
         if (filtroPeriodo === 'personalizado' && dataInicioCustom && dataFimCustom) {
-          url += `&dataInicio=${dataInicioCustom}&dataFim=${dataFimCustom}`;
+          startDate = dataInicioCustom;
+          endDate = dataFimCustom;
         } else if (filtroPeriodo !== '30dias') {
-          // Só enviar datas se não for o padrão de 30 dias, deixar API usar seu padrão (90 dias ou desde primeira compra)
+          // Só enviar datas se não for o padrão de 30 dias
           const hoje = new Date();
           let dataInicio: Date;
           let dataFim: Date = hoje;
-          
+
           switch (filtroPeriodo) {
             case 'hoje':
               dataInicio = new Date(hoje);
@@ -154,60 +114,32 @@ export default function DashboardComprasPage() {
               dataFim.setHours(23, 59, 59, 999);
               break;
             default:
-              // Não enviar datas para filtro padrão (30dias)
               break;
           }
-          
+
           if (filtroPeriodo !== '30dias') {
-            url += `&dataInicio=${dataInicio.toISOString().split('T')[0]}&dataFim=${dataFim.toISOString().split('T')[0]}`;
+            startDate = dataInicio.toISOString().split('T')[0];
+            endDate = dataFim.toISOString().split('T')[0];
           }
         }
-        // Se filtroPeriodo === '30dias', não enviar parâmetros de data para a API usar seu padrão (90 dias ou desde primeira compra)
+        // Se filtroPeriodo === '30dias', não enviar parâmetros de data (undefined) para a API usar seu padrão
 
-        const response = await fetch(url, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+        const dashboardsClient = SdkClientFactory.getDashboardsClient();
+        const response = await dashboardsClient.getPurchasesDashboard({
+          startDate,
+          endDate,
         });
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ 
-            error: `Erro HTTP ${response.status}: ${response.statusText}` 
-          }));
-          throw new Error(errorData.error || errorData.message || 'Erro ao buscar dados do dashboard');
-        }
-
-        const data = await response.json();
-        
-        console.log('[Dashboard Frontend] Resposta da API:', {
-          success: data.success,
-          hasData: !!data.data,
-          metrics: data.data?.metrics,
-          totalComprasPeriodo: data.data?.metrics?.totalComprasPeriodo,
-          comprasPendentes: data.data?.metrics?.comprasPendentes
-        });
-        
-        if (!data.success || !data.data) {
-          console.error('[Dashboard Frontend] ❌ Resposta inválida:', data);
+        if (!response.success || !response.data) {
           throw new Error('Resposta inválida do servidor');
         }
 
-        const { metrics: metricsData, graficoComprasPorStatus: graficoComprasPorStatusData, graficoCompras: graficoComprasData, topFornecedores: topFornecedoresData, topProdutos: topProdutosData, comprasPorComprador: comprasPorCompradorData } = data.data;
-        
-        console.log('[Dashboard Frontend] Dados extraídos:', {
-          totalComprasPeriodo: metricsData?.totalComprasPeriodo,
-          comprasPendentes: metricsData?.comprasPendentes,
-          graficoCompras: graficoComprasData?.length || 0,
-          topFornecedores: topFornecedoresData?.length || 0
-        });
-
-        setMetrics(metricsData);
-        setGraficoComprasPorStatus(graficoComprasPorStatusData || []);
-        setGraficoCompras(graficoComprasData || []);
-        setTopFornecedores(topFornecedoresData || []);
-        setTopProdutos(topProdutosData || []);
-        setComprasPorComprador(comprasPorCompradorData || []);
+        setMetrics(response.data.metrics);
+        setGraficoComprasPorStatus(response.data.purchasesByStatusChart || []);
+        setGraficoCompras(response.data.purchasesChart || []);
+        setTopFornecedores(response.data.topSuppliers || []);
+        setTopProdutos(response.data.topProducts || []);
+        setComprasPorComprador(response.data.purchasesByBuyer || []);
       } catch (error: any) {
         console.error('Erro ao carregar dashboard de compras:', error);
         setError(error.message || 'Erro ao carregar dados do dashboard de compras');
@@ -368,17 +300,17 @@ export default function DashboardComprasPage() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Compras no Período</p>
-                  <p className="text-2xl font-bold text-gray-900">{metrics.totalComprasPeriodo}</p>
-                  {metrics.variacaoCompras !== 0 && (
+                  <p className="text-2xl font-bold text-gray-900">{metrics.totalPurchasesInPeriod}</p>
+                  {metrics.purchasesVariation !== 0 && (
                     <div className={`flex items-center text-xs mt-1 ${
-                      metrics.variacaoCompras >= 0 ? 'text-green-600' : 'text-red-600'
+                      metrics.purchasesVariation >= 0 ? 'text-green-600' : 'text-red-600'
                     }`}>
-                      {metrics.variacaoCompras >= 0 ? (
+                      {metrics.purchasesVariation >= 0 ? (
                         <TrendingUp className="h-3 w-3 mr-1" />
                       ) : (
                         <TrendingDown className="h-3 w-3 mr-1" />
                       )}
-                      {Math.abs(metrics.variacaoCompras).toFixed(1)}%
+                      {Math.abs(metrics.purchasesVariation).toFixed(1)}%
                     </div>
                   )}
                 </div>
@@ -394,18 +326,18 @@ export default function DashboardComprasPage() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Valor Total</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {formatCurrency(metrics.valorTotalComprasPeriodo)}
+                    {formatCurrency(metrics.totalPurchasesValueInPeriod)}
                   </p>
-                  {metrics.variacaoValor !== 0 && (
+                  {metrics.valueVariation !== 0 && (
                     <div className={`flex items-center text-xs mt-1 ${
-                      metrics.variacaoValor >= 0 ? 'text-green-600' : 'text-red-600'
+                      metrics.valueVariation >= 0 ? 'text-green-600' : 'text-red-600'
                     }`}>
-                      {metrics.variacaoValor >= 0 ? (
+                      {metrics.valueVariation >= 0 ? (
                         <TrendingUp className="h-3 w-3 mr-1" />
                       ) : (
                         <TrendingDown className="h-3 w-3 mr-1" />
                       )}
-                      {Math.abs(metrics.variacaoValor).toFixed(1)}%
+                      {Math.abs(metrics.valueVariation).toFixed(1)}%
                     </div>
                   )}
                 </div>
@@ -421,10 +353,10 @@ export default function DashboardComprasPage() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Entregues</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {metrics.comprasEntregues}
+                    {metrics.deliveredPurchases}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
-                    {formatCurrency(metrics.valorEntregues)}
+                    {formatCurrency(metrics.deliveredValue || 0)}
                   </p>
                 </div>
               </div>
@@ -439,10 +371,10 @@ export default function DashboardComprasPage() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Média Diária</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {metrics.mediaComprasDiaria.toFixed(1)}
+                    {metrics.averageDailyPurchases.toFixed(1)}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
-                    Taxa Entrega: {metrics.taxaEntrega.toFixed(1)}%
+                    Taxa Entrega: {metrics.deliveryRate.toFixed(1)}%
                   </p>
                 </div>
               </div>
@@ -458,7 +390,7 @@ export default function DashboardComprasPage() {
                 {filtroPeriodo === '5dias' && 'Compras - Últimos 5 Dias'}
                 {filtroPeriodo === '30dias' && 'Compras - Últimos 30 Dias'}
                 {filtroPeriodo === '90dias' && 'Compras - Últimos 90 Dias'}
-                {filtroPeriodo === 'personalizado' && dataInicioCustom && dataFimCustom 
+                {filtroPeriodo === 'personalizado' && dataInicioCustom && dataFimCustom
                   ? `Compras - ${new Date(dataInicioCustom).toLocaleDateString('pt-BR')} a ${new Date(dataFimCustom).toLocaleDateString('pt-BR')}`
                   : filtroPeriodo !== 'hoje' && filtroPeriodo !== '5dias' && filtroPeriodo !== '30dias' && filtroPeriodo !== '90dias' && 'Compras - Período Selecionado'}
               </h3>
@@ -466,12 +398,12 @@ export default function DashboardComprasPage() {
                 <ResponsiveContainer width="100%" height={300}>
                   <ComposedChart data={graficoCompras}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis 
-                      dataKey="data" 
+                    <XAxis
+                      dataKey="date"
                       stroke="#6b7280"
                       style={{ fontSize: '12px' }}
                     />
-                    <YAxis 
+                    <YAxis
                       stroke="#6b7280"
                       style={{ fontSize: '12px' }}
                       yAxisId="left"
@@ -481,7 +413,7 @@ export default function DashboardComprasPage() {
                         return value.toString();
                       }}
                     />
-                    <YAxis 
+                    <YAxis
                       stroke="#6b7280"
                       style={{ fontSize: '12px' }}
                       yAxisId="right"
@@ -501,18 +433,18 @@ export default function DashboardComprasPage() {
                       }}
                     />
                     <Legend />
-                    <Bar 
+                    <Bar
                       yAxisId="left"
-                      dataKey="quantidade" 
-                      fill="#3b82f6" 
+                      dataKey="quantity"
+                      fill="#3b82f6"
                       name="Quantidade"
                       radius={[4, 4, 0, 0]}
                     />
-                    <Line 
+                    <Line
                       yAxisId="right"
-                      type="monotone" 
-                      dataKey="valorTotal" 
-                      stroke="#10b981" 
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#10b981"
                       strokeWidth={2}
                       dot={{ fill: '#10b981', r: 3 }}
                       name="Valor Total"
@@ -533,7 +465,7 @@ export default function DashboardComprasPage() {
                 {filtroPeriodo === '5dias' && 'Compras por Status - Últimos 5 Dias'}
                 {filtroPeriodo === '30dias' && 'Compras por Status - Últimos 30 Dias'}
                 {filtroPeriodo === '90dias' && 'Compras por Status - Últimos 90 Dias'}
-                {filtroPeriodo === 'personalizado' && dataInicioCustom && dataFimCustom 
+                {filtroPeriodo === 'personalizado' && dataInicioCustom && dataFimCustom
                   ? `Compras por Status - ${new Date(dataInicioCustom).toLocaleDateString('pt-BR')} a ${new Date(dataFimCustom).toLocaleDateString('pt-BR')}`
                   : filtroPeriodo !== 'hoje' && filtroPeriodo !== '5dias' && filtroPeriodo !== '30dias' && filtroPeriodo !== '90dias' && 'Compras por Status - Período Selecionado'}
               </h3>
@@ -541,14 +473,14 @@ export default function DashboardComprasPage() {
                 <ResponsiveContainer width="100%" height={300}>
                   <ComposedChart data={graficoComprasPorStatus}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis 
-                      dataKey="data" 
+                    <XAxis
+                      dataKey="date"
                       stroke="#6b7280"
                       fontSize={12}
                       tickLine={false}
                       axisLine={false}
                     />
-                    <YAxis 
+                    <YAxis
                       yAxisId="left"
                       stroke="#6b7280"
                       fontSize={12}
@@ -556,7 +488,7 @@ export default function DashboardComprasPage() {
                       axisLine={false}
                       label={{ value: 'Quantidade', angle: -90, position: 'insideLeft' }}
                     />
-                    <YAxis 
+                    <YAxis
                       yAxisId="right"
                       orientation="right"
                       stroke="#6b7280"
@@ -577,38 +509,38 @@ export default function DashboardComprasPage() {
                         boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
                       }}
                       formatter={(value: number, name: string) => {
-                        if (name === 'valorTotal') return formatCurrency(value);
+                        if (name === 'value' || name === 'totalValue') return formatCurrency(value);
                         return value;
                       }}
                       labelFormatter={(label) => `Data: ${label}`}
                     />
                     <Legend />
-                    <Bar 
+                    <Bar
                       yAxisId="left"
-                      dataKey="quantidadePendentes" 
-                      fill="#f59e0b" 
+                      dataKey="pendingQuantity"
+                      fill="#f59e0b"
                       name="Pendentes"
                       radius={[4, 4, 0, 0]}
                     />
-                    <Bar 
+                    <Bar
                       yAxisId="left"
-                      dataKey="quantidadeEntregues" 
-                      fill="#10b981" 
+                      dataKey="deliveredQuantity"
+                      fill="#10b981"
                       name="Entregues"
                       radius={[4, 4, 0, 0]}
                     />
-                    <Bar 
+                    <Bar
                       yAxisId="left"
-                      dataKey="quantidadeFaturadas" 
-                      fill="#3b82f6" 
+                      dataKey="invoicedQuantity"
+                      fill="#3b82f6"
                       name="Faturadas"
                       radius={[4, 4, 0, 0]}
                     />
-                    <Line 
+                    <Line
                       yAxisId="right"
-                      type="monotone" 
-                      dataKey="valorTotal" 
-                      stroke="#ef4444" 
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#ef4444"
                       strokeWidth={2}
                       dot={{ fill: '#ef4444', r: 3 }}
                       name="Valor Total"
@@ -637,19 +569,19 @@ export default function DashboardComprasPage() {
                 {topFornecedores.length > 0 ? (
                   <div className="space-y-4">
                     {topFornecedores.map((fornecedor, index) => (
-                      <div key={`fornecedor-${index}-${fornecedor.id || 'sem-id'}-${fornecedor.nome || 'sem-nome'}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div key={`fornecedor-${index}-${fornecedor.id || 'sem-id'}-${fornecedor.name || 'sem-nome'}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div className="flex items-center">
                           <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center mr-3">
                             <span className="text-xs font-bold text-purple-600">#{index + 1}</span>
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">{fornecedor.nome}</p>
-                            <p className="text-xs text-gray-500">{fornecedor.totalCompras} compras</p>
+                            <p className="font-medium text-gray-900">{fornecedor.name}</p>
+                            <p className="text-xs text-gray-500">{fornecedor.totalPurchases} compras</p>
                           </div>
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-gray-900">
-                            {formatCurrency(fornecedor.valorTotal)}
+                            {formatCurrency(fornecedor.totalValue)}
                           </p>
                         </div>
                       </div>
@@ -676,19 +608,19 @@ export default function DashboardComprasPage() {
                 {topProdutos.length > 0 ? (
                   <div className="space-y-4">
                     {topProdutos.map((produto, index) => (
-                      <div key={`produto-${index}-${produto.id || produto.codigo || 'sem-id'}-${produto.nome || 'sem-nome'}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div key={`produto-${index}-${produto.id || produto.code || 'sem-id'}-${produto.name || 'sem-nome'}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div className="flex items-center">
                           <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-3">
                             <span className="text-xs font-bold text-blue-600">#{index + 1}</span>
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">{produto.nome}</p>
-                            <p className="text-xs text-gray-500">{produto.quantidadeTotal.toFixed(2)} un.</p>
+                            <p className="font-medium text-gray-900">{produto.name}</p>
+                            <p className="text-xs text-gray-500">{produto.totalQuantity.toFixed(2)} un.</p>
                           </div>
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-gray-900">
-                            {formatCurrency(produto.valorTotal)}
+                            {formatCurrency(produto.totalValue)}
                           </p>
                         </div>
                       </div>
@@ -715,19 +647,19 @@ export default function DashboardComprasPage() {
                 {comprasPorComprador.length > 0 ? (
                   <div className="space-y-4">
                     {comprasPorComprador.map((comprador, index) => (
-                      <div key={`comprador-${index}-${comprador.id || 'sem-id'}-${comprador.nome || 'sem-nome'}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div key={`comprador-${index}-${comprador.id || 'sem-id'}-${comprador.name || 'sem-nome'}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div className="flex items-center">
                           <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mr-3">
                             <span className="text-xs font-bold text-green-600">#{index + 1}</span>
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">{comprador.nome}</p>
-                            <p className="text-xs text-gray-500">{comprador.totalCompras} compras</p>
+                            <p className="font-medium text-gray-900">{comprador.name}</p>
+                            <p className="text-xs text-gray-500">{comprador.totalPurchases} compras</p>
                           </div>
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-gray-900">
-                            {formatCurrency(comprador.valorTotal)}
+                            {formatCurrency(comprador.totalValue)}
                           </p>
                         </div>
                       </div>
@@ -747,3 +679,4 @@ export default function DashboardComprasPage() {
     </Layout>
   );
 }
+
