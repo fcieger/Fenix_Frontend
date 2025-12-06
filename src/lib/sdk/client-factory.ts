@@ -269,6 +269,14 @@ export class SdkClientFactory {
   }
 
   /**
+   * Get Dashboards API client
+   */
+  static getDashboardsClient(): any {
+    const SdkModule = this.getSdkModule();
+    return this.getClient("dashboards", SdkModule.DashboardsApiClient);
+  }
+
+  /**
    * Clear all client instances (useful for testing or token refresh)
    */
   static clearClients(): void {
