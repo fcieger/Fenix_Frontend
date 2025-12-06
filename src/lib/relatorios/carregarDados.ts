@@ -2,18 +2,20 @@
  * Funções auxiliares para carregar dados dos relatórios
  */
 
+import { SdkClientFactory } from '@/lib/sdk/client-factory';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 function construirQueryParams(baseParams: any, filtrosEspecificos?: any): string {
   const params = new URLSearchParams();
-  
+
   // Adicionar parâmetros base
   Object.keys(baseParams).forEach(key => {
     if (baseParams[key] !== undefined && baseParams[key] !== null) {
       params.append(key, baseParams[key]);
     }
   });
-  
+
   // Adicionar filtros específicos
   if (filtrosEspecificos) {
     Object.keys(filtrosEspecificos).forEach(key => {
@@ -30,7 +32,7 @@ function construirQueryParams(baseParams: any, filtrosEspecificos?: any): string
       }
     });
   }
-  
+
   return params.toString();
 }
 
@@ -51,15 +53,19 @@ export async function carregarDadosRelatorio(
     switch (relatorioId) {
       // ============ VENDAS ============
       case 'vendas-periodo':
-        const vendasParams = construirQueryParams(
-          { company_id: activeCompanyId, dataInicio, dataFim },
-          filtrosEspecificos
-        );
-        const vendasRes = await fetch(
-          `/api/sales/dashboard?${vendasParams}`,
-          { headers }
-        );
-        return vendasRes.ok ? await vendasRes.json() : null;
+        try {
+          const dashboardsClient = SdkClientFactory.getDashboardsClient();
+          const response = await dashboardsClient.getSalesDashboard({
+            startDate: dataInicio,
+            endDate: dataFim,
+            // status pode vir de filtrosEspecificos se necessário
+            status: filtrosEspecificos?.status,
+          });
+          return response.success ? response : null;
+        } catch (error) {
+          console.error('Erro ao buscar dashboard de vendas:', error);
+          return null;
+        }
 
       case 'vendas-produtos':
         // Buscar vendas e agrupar por produto
@@ -74,7 +80,7 @@ export async function carregarDadosRelatorio(
         if (vendasProdRes.ok) {
           const pedidos = await vendasProdRes.json();
           const produtosMap = new Map();
-          
+
           pedidos.forEach((pedido: any) => {
             pedido.itens?.forEach((item: any) => {
               const produtoId = item.produto_id || item.produtoId;
@@ -91,7 +97,7 @@ export async function carregarDadosRelatorio(
               produto.valor_total += (item.quantidade || 0) * (item.preco_unitario || 0);
             });
           });
-          
+
           return { produtos: Array.from(produtosMap.values()) };
         }
         return null;
@@ -109,7 +115,7 @@ export async function carregarDadosRelatorio(
         if (vendasCliRes.ok) {
           const pedidos = await vendasCliRes.json();
           const clientesMap = new Map();
-          
+
           pedidos.forEach((pedido: any) => {
             const clienteId = pedido.cliente_id || pedido.clienteId;
             if (!clientesMap.has(clienteId)) {
@@ -124,7 +130,7 @@ export async function carregarDadosRelatorio(
             cliente.quantidade_vendas += 1;
             cliente.valor_total += parseFloat(pedido.totalGeral || pedido.valor_total || 0);
           });
-          
+
           return { clientes: Array.from(clientesMap.values()) };
         }
         return null;
@@ -142,7 +148,7 @@ export async function carregarDadosRelatorio(
         if (vendasVendRes.ok) {
           const pedidos = await vendasVendRes.json();
           const vendedoresMap = new Map();
-          
+
           pedidos.forEach((pedido: any) => {
             const vendedorId = pedido.vendedor_id || pedido.vendedorId || 'sem-vendedor';
             if (!vendedoresMap.has(vendedorId)) {
@@ -157,7 +163,7 @@ export async function carregarDadosRelatorio(
             vendedor.quantidade_vendas += 1;
             vendedor.valor_total += parseFloat(pedido.totalGeral || pedido.valor_total || 0);
           });
-          
+
           return { vendedores: Array.from(vendedoresMap.values()) };
         }
         return null;
@@ -175,15 +181,19 @@ export async function carregarDadosRelatorio(
 
       // ============ COMPRAS ============
       case 'compras-periodo':
-        const comprasParams = construirQueryParams(
-          { company_id: activeCompanyId, dataInicio, dataFim },
-          filtrosEspecificos
-        );
-        const comprasRes = await fetch(
-          `/api/purchases/dashboard?${comprasParams}`,
-          { headers }
-        );
-        return comprasRes.ok ? await comprasRes.json() : null;
+        try {
+          const dashboardsClient = SdkClientFactory.getDashboardsClient();
+          const response = await dashboardsClient.getPurchasesDashboard({
+            startDate: dataInicio,
+            endDate: dataFim,
+            // status pode vir de filtrosEspecificos se necessário
+            status: filtrosEspecificos?.status,
+          });
+          return response.success ? response : null;
+        } catch (error) {
+          console.error('Erro ao buscar dashboard de compras:', error);
+          return null;
+        }
 
       case 'compras-fornecedores':
         const comprasFornParams = construirQueryParams(
@@ -197,7 +207,7 @@ export async function carregarDadosRelatorio(
         if (comprasFornRes.ok) {
           const pedidos = await comprasFornRes.json();
           const fornecedoresMap = new Map();
-          
+
           pedidos.forEach((pedido: any) => {
             const fornecedorId = pedido.fornecedor_id || pedido.fornecedorId;
             if (!fornecedoresMap.has(fornecedorId)) {
@@ -212,7 +222,7 @@ export async function carregarDadosRelatorio(
             fornecedor.quantidade_compras += 1;
             fornecedor.valor_total += parseFloat(pedido.totalGeral || pedido.valor_total || 0);
           });
-          
+
           return { fornecedores: Array.from(fornecedoresMap.values()) };
         }
         return null;
@@ -225,7 +235,7 @@ export async function carregarDadosRelatorio(
         if (comprasProdRes.ok) {
           const pedidos = await comprasProdRes.json();
           const produtosMap = new Map();
-          
+
           pedidos.forEach((pedido: any) => {
             pedido.itens?.forEach((item: any) => {
               const produtoId = item.produto_id || item.produtoId;
@@ -242,7 +252,7 @@ export async function carregarDadosRelatorio(
               produto.valor_total += (item.quantidade || 0) * (item.preco_unitario || 0);
             });
           });
-          
+
           return { produtos: Array.from(produtosMap.values()) };
         }
         return null;
@@ -282,10 +292,10 @@ export async function carregarDadosRelatorio(
           fetch(`/api/contas-pagar?${contasParams}`, { headers }),
           fetch(`/api/contas-receber?${contasParams}`, { headers })
         ]);
-        
+
         const contasPagar = contasPagarRes.ok ? await contasPagarRes.json() : { data: [] };
         const contasReceber = contasReceberRes.ok ? await contasReceberRes.json() : { data: [] };
-        
+
         return {
           contasPagar: contasPagar.data || [],
           contasReceber: contasReceber.data || []
@@ -455,18 +465,37 @@ export async function carregarDadosRelatorio(
         return produtosRes.ok ? { produtos: await produtosRes.json() } : null;
 
       case 'dashboard-consolidado':
-        // Buscar dados de múltiplas fontes
-        const [dashVendas, dashCompras, dashFinanceiro] = await Promise.all([
-          fetch(`/api/sales/dashboard?company_id=${activeCompanyId}&dataInicio=${dataInicio}&dataFim=${dataFim}`, { headers }),
-          fetch(`/api/purchases/dashboard?company_id=${activeCompanyId}&dataInicio=${dataInicio}&dataFim=${dataFim}`, { headers }),
-          fetch(`/api/financial/dashboard?company_id=${activeCompanyId}`, { headers })
-        ]);
-        
-        return {
-          vendas: dashVendas.ok ? await dashVendas.json() : null,
-          compras: dashCompras.ok ? await dashCompras.json() : null,
-          financeiro: dashFinanceiro.ok ? await dashFinanceiro.json() : null
-        };
+        // Buscar dados de múltiplas fontes usando SDK
+        try {
+          const dashboardsClient = SdkClientFactory.getDashboardsClient();
+          const [dashVendas, dashCompras, dashFinanceiro] = await Promise.all([
+            dashboardsClient.getSalesDashboard({
+              startDate: dataInicio,
+              endDate: dataFim,
+            }),
+            dashboardsClient.getPurchasesDashboard({
+              startDate: dataInicio,
+              endDate: dataFim,
+            }),
+            dashboardsClient.getFinancialDashboard({
+              startDate: dataInicio,
+              endDate: dataFim,
+            }),
+          ]);
+
+          return {
+            vendas: dashVendas.success ? dashVendas : null,
+            compras: dashCompras.success ? dashCompras : null,
+            financeiro: dashFinanceiro.success ? dashFinanceiro : null,
+          };
+        } catch (error) {
+          console.error('Erro ao buscar dashboard consolidado:', error);
+          return {
+            vendas: null,
+            compras: null,
+            financeiro: null,
+          };
+        }
 
       default:
         return null;
