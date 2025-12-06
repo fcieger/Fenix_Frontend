@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/auth-context';
-import Layout from '@/components/Layout';
-import { 
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/auth-context";
+import Layout from "@/components/Layout";
+import {
   TrendingUp,
   TrendingDown,
   ShoppingCart,
@@ -14,8 +14,8 @@ import {
   Loader2,
   CheckCircle,
   Clock,
-  FileText
-} from 'lucide-react';
+  FileText,
+} from "lucide-react";
 import {
   LineChart,
   Line,
@@ -30,80 +30,55 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  ComposedChart
-} from 'recharts';
+  ComposedChart,
+} from "recharts";
+import { SdkClientFactory } from "@/lib/sdk/client-factory";
+import type {
+  SalesDashboardMetrics,
+  SalesChartData,
+  QuoteChartData,
+  TopCustomer,
+  TopProduct,
+  SalesBySeller,
+} from "@fenix/api-sdk";
 
-interface DashboardMetrics {
-  totalVendasPeriodo: number;
-  valorTotalVendasPeriodo: number;
-  totalOrcamentosPeriodo: number;
-  valorTotalOrcamentosPeriodo: number;
-  mediaVendasDiaria: number;
-  taxaConversao: number;
-  variacaoVendas: number;
-  variacaoValor: number;
-}
-
-interface GraficoOrcamento {
-  data: string;
-  quantidade: number;
-  valorTotal: number;
-  quantidadeConcluidos: number;
-  quantidadePendentes: number;
-}
-
-interface GraficoVenda {
-  data: string;
-  quantidade: number;
-  valorTotal: number;
-}
-
-interface TopCliente {
-  id: string;
-  nome: string;
-  totalVendas: number;
-  valorTotal: number;
-}
-
-interface TopProduto {
-  id: string;
-  codigo: string;
-  nome: string;
-  quantidadeTotal: number;
-  valorTotal: number;
-}
-
-interface VendaPorVendedor {
-  id: string;
-  nome: string;
-  totalVendas: number;
-  valorTotal: number;
-}
-
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
+const COLORS = [
+  "#3b82f6",
+  "#10b981",
+  "#f59e0b",
+  "#ef4444",
+  "#8b5cf6",
+  "#ec4899",
+  "#06b6d4",
+];
 
 export default function DashboardVendasPage() {
   const { token, activeCompanyId, isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filtroPeriodo, setFiltroPeriodo] = useState<'hoje' | '5dias' | '30dias' | '90dias' | 'personalizado'>('30dias');
-  const [dataInicioCustom, setDataInicioCustom] = useState<string>('');
-  const [dataFimCustom, setDataFimCustom] = useState<string>('');
-  const [metrics, setMetrics] = useState<DashboardMetrics>({
-    totalVendasPeriodo: 0,
-    valorTotalVendasPeriodo: 0,
-    totalOrcamentosPeriodo: 0,
-    valorTotalOrcamentosPeriodo: 0,
-    mediaVendasDiaria: 0,
-    taxaConversao: 0,
-    variacaoVendas: 0,
-    variacaoValor: 0
+  const [filtroPeriodo, setFiltroPeriodo] = useState<
+    "hoje" | "5dias" | "30dias" | "90dias" | "personalizado"
+  >("30dias");
+  const [dataInicioCustom, setDataInicioCustom] = useState<string>("");
+  const [dataFimCustom, setDataFimCustom] = useState<string>("");
+  const [metrics, setMetrics] = useState<SalesDashboardMetrics>({
+    totalSalesInPeriod: 0,
+    totalSalesValueInPeriod: 0,
+    totalQuotesInPeriod: 0,
+    averageDailySales: 0,
+    conversionRate: 0,
+    salesVariation: 0,
+    valueVariation: 0,
   });
-  const [graficoOrcamentos, setGraficoOrcamentos] = useState<GraficoOrcamento[]>([]);
-  const [graficoVendas, setGraficoVendas] = useState<GraficoVenda[]>([]);
-  const [topClientes, setTopClientes] = useState<TopCliente[]>([]);
-  const [topProdutos, setTopProdutos] = useState<TopProduto[]>([]);
-  const [vendasPorVendedor, setVendasPorVendedor] = useState<VendaPorVendedor[]>([]);
+  const [graficoOrcamentos, setGraficoOrcamentos] = useState<QuoteChartData[]>(
+    []
+  );
+  const [graficoVendas, setGraficoVendas] = useState<SalesChartData[]>([]);
+  const [topClientes, setTopClientes] = useState<TopCustomer[]>([]);
+  const [topProdutos, setTopProdutos] = useState<TopProduct[]>([]);
+  const [vendasPorVendedor, setVendasPorVendedor] = useState<SalesBySeller[]>(
+    []
+  );
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -116,91 +91,94 @@ export default function DashboardVendasPage() {
         setLoading(true);
         setError(null);
 
-        let url = `/api/sales/dashboard?company_id=${activeCompanyId}`;
-        
-        // Adicionar parâmetros de data baseado no filtro selecionado
-        if (filtroPeriodo === 'personalizado' && dataInicioCustom && dataFimCustom) {
-          url += `&dataInicio=${dataInicioCustom}&dataFim=${dataFimCustom}`;
+        // Calcular datas baseado no filtro selecionado
+        let startDate: string | undefined;
+        let endDate: string | undefined;
+
+        if (
+          filtroPeriodo === "personalizado" &&
+          dataInicioCustom &&
+          dataFimCustom
+        ) {
+          startDate = dataInicioCustom;
+          endDate = dataFimCustom;
         } else {
           const hoje = new Date();
-          const hojeString = hoje.toISOString().split('T')[0];
           let dataInicio: Date;
           let dataFim: Date = hoje;
-          
+
           switch (filtroPeriodo) {
-            case 'hoje':
+            case "hoje":
               dataInicio = hoje;
               dataFim = hoje;
               break;
-            case '5dias':
+            case "5dias":
               dataInicio = new Date(hoje.getTime() - 5 * 24 * 60 * 60 * 1000);
               break;
-            case '90dias':
+            case "90dias":
               dataInicio = new Date(hoje.getTime() - 90 * 24 * 60 * 60 * 1000);
               break;
             default: // 30 dias
               dataInicio = new Date(hoje.getTime() - 30 * 24 * 60 * 60 * 1000);
           }
-          
-          url += `&dataInicio=${dataInicio.toISOString().split('T')[0]}&dataFim=${dataFim.toISOString().split('T')[0]}`;
+
+          startDate = dataInicio.toISOString().split("T")[0];
+          endDate = dataFim.toISOString().split("T")[0];
         }
 
-        const response = await fetch(url, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+        const dashboardsClient = SdkClientFactory.getDashboardsClient();
+        const response = await dashboardsClient.getSalesDashboard({
+          startDate,
+          endDate,
         });
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ 
-            error: `Erro HTTP ${response.status}: ${response.statusText}` 
-          }));
-          throw new Error(errorData.error || errorData.message || 'Erro ao buscar dados do dashboard');
+        if (!response.success || !response.data) {
+          throw new Error("Resposta inválida do servidor");
         }
 
-        const data = await response.json();
-        
-        if (!data.success || !data.data) {
-          throw new Error('Resposta inválida do servidor');
-        }
-
-        const { metrics: metricsData, graficoOrcamentos: graficoOrcamentosData, graficoVendas: graficoVendasData, topClientes: topClientesData, topProdutos: topProdutosData, vendasPorVendedor: vendasPorVendedorData } = data.data;
-
-        setMetrics(metricsData);
-        setGraficoOrcamentos(graficoOrcamentosData || []);
-        setGraficoVendas(graficoVendasData || []);
-        setTopClientes(topClientesData || []);
-        setTopProdutos(topProdutosData || []);
-        setVendasPorVendedor(vendasPorVendedorData || []);
+        setMetrics(response.data.metrics);
+        setGraficoOrcamentos(response.data.quotesChart || []);
+        setGraficoVendas(response.data.salesChart || []);
+        setTopClientes(response.data.topCustomers || []);
+        setTopProdutos(response.data.topProducts || []);
+        setVendasPorVendedor(response.data.salesBySeller || []);
       } catch (error: any) {
-        console.error('Erro ao carregar dashboard de vendas:', error);
-        setError(error.message || 'Erro ao carregar dados do dashboard de vendas');
+        console.error("Erro ao carregar dashboard de vendas:", error);
+        setError(
+          error.message || "Erro ao carregar dados do dashboard de vendas"
+        );
       } finally {
         setLoading(false);
       }
     };
 
     loadDashboardData();
-  }, [token, activeCompanyId, authLoading, filtroPeriodo, dataInicioCustom, dataFimCustom]);
+  }, [
+    token,
+    activeCompanyId,
+    authLoading,
+    filtroPeriodo,
+    dataInicioCustom,
+    dataFimCustom,
+  ]);
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
     }).format(value);
   };
 
   const getStatusLabel = (status: string) => {
     const statusMap: { [key: string]: string } = {
-      'rascunho': 'Rascunho',
-      'pendente': 'Pendente',
-      'concluido': 'Concluído',
-      'em_preparacao': 'Em Preparação',
-      'enviado': 'Enviado',
-      'entregue': 'Entregue',
-      'finalizado': 'Finalizado',
-      'cancelado': 'Cancelado'
+      rascunho: "Rascunho",
+      pendente: "Pendente",
+      concluido: "Concluído",
+      em_preparacao: "Em Preparação",
+      enviado: "Enviado",
+      entregue: "Entregue",
+      finalizado: "Finalizado",
+      cancelado: "Cancelado",
     };
     return statusMap[status] || status;
   };
@@ -253,57 +231,57 @@ export default function DashboardVendasPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-2 flex-wrap">
                 <button
-                  onClick={() => setFiltroPeriodo('hoje')}
+                  onClick={() => setFiltroPeriodo("hoje")}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    filtroPeriodo === 'hoje'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    filtroPeriodo === "hoje"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
                   Hoje
                 </button>
                 <button
-                  onClick={() => setFiltroPeriodo('5dias')}
+                  onClick={() => setFiltroPeriodo("5dias")}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    filtroPeriodo === '5dias'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    filtroPeriodo === "5dias"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
                   Últimos 5 dias
                 </button>
                 <button
-                  onClick={() => setFiltroPeriodo('30dias')}
+                  onClick={() => setFiltroPeriodo("30dias")}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    filtroPeriodo === '30dias'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    filtroPeriodo === "30dias"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
                   Últimos 30 dias
                 </button>
                 <button
-                  onClick={() => setFiltroPeriodo('90dias')}
+                  onClick={() => setFiltroPeriodo("90dias")}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    filtroPeriodo === '90dias'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    filtroPeriodo === "90dias"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
                   Últimos 90 dias
                 </button>
                 <button
-                  onClick={() => setFiltroPeriodo('personalizado')}
+                  onClick={() => setFiltroPeriodo("personalizado")}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    filtroPeriodo === 'personalizado'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    filtroPeriodo === "personalizado"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
                   Personalizado
                 </button>
               </div>
-              {filtroPeriodo === 'personalizado' && (
+              {filtroPeriodo === "personalizado" && (
                 <div className="flex items-center gap-2">
                   <input
                     type="date"
@@ -332,18 +310,26 @@ export default function DashboardVendasPage() {
                   <ShoppingCart className="h-6 w-6 text-blue-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Vendas no Período</p>
-                  <p className="text-2xl font-bold text-gray-900">{metrics.totalVendasPeriodo}</p>
-                  {metrics.variacaoVendas !== 0 && (
-                    <div className={`flex items-center text-xs mt-1 ${
-                      metrics.variacaoVendas >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {metrics.variacaoVendas >= 0 ? (
+                  <p className="text-sm font-medium text-gray-600">
+                    Vendas no Período
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {metrics.totalSalesInPeriod}
+                  </p>
+                  {metrics.salesVariation !== 0 && (
+                    <div
+                      className={`flex items-center text-xs mt-1 ${
+                        metrics.salesVariation >= 0
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {metrics.salesVariation >= 0 ? (
                         <TrendingUp className="h-3 w-3 mr-1" />
                       ) : (
                         <TrendingDown className="h-3 w-3 mr-1" />
                       )}
-                      {Math.abs(metrics.variacaoVendas).toFixed(1)}%
+                      {Math.abs(metrics.salesVariation).toFixed(1)}%
                     </div>
                   )}
                 </div>
@@ -357,20 +343,26 @@ export default function DashboardVendasPage() {
                   <DollarSign className="h-6 w-6 text-green-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Valor Total</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {formatCurrency(metrics.valorTotalVendasPeriodo)}
+                  <p className="text-sm font-medium text-gray-600">
+                    Valor Total
                   </p>
-                  {metrics.variacaoValor !== 0 && (
-                    <div className={`flex items-center text-xs mt-1 ${
-                      metrics.variacaoValor >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {metrics.variacaoValor >= 0 ? (
+                  <p className="text-2xl font-bold text-gray-900">
+                    {formatCurrency(metrics.totalSalesValueInPeriod)}
+                  </p>
+                  {metrics.valueVariation !== 0 && (
+                    <div
+                      className={`flex items-center text-xs mt-1 ${
+                        metrics.valueVariation >= 0
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {metrics.valueVariation >= 0 ? (
                         <TrendingUp className="h-3 w-3 mr-1" />
                       ) : (
                         <TrendingDown className="h-3 w-3 mr-1" />
                       )}
-                      {Math.abs(metrics.variacaoValor).toFixed(1)}%
+                      {Math.abs(metrics.valueVariation).toFixed(1)}%
                     </div>
                   )}
                 </div>
@@ -384,12 +376,14 @@ export default function DashboardVendasPage() {
                   <FileText className="h-6 w-6 text-purple-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Orçamentos</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Orçamentos
+                  </p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {metrics.totalOrcamentosPeriodo}
+                    {metrics.totalQuotesInPeriod}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
-                    {formatCurrency(metrics.valorTotalOrcamentosPeriodo)}
+                    Taxa de conversão: {metrics.conversionRate.toFixed(1)}%
                   </p>
                 </div>
               </div>
@@ -402,13 +396,13 @@ export default function DashboardVendasPage() {
                   <BarChart3 className="h-6 w-6 text-yellow-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Média Diária</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Média Diária
+                  </p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {metrics.mediaVendasDiaria.toFixed(1)}
+                    {metrics.averageDailySales.toFixed(1)}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Taxa Conversão: {metrics.taxaConversao.toFixed(1)}%
-                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Vendas por dia</p>
                 </div>
               </div>
             </div>
@@ -419,67 +413,77 @@ export default function DashboardVendasPage() {
             {/* Gráfico de Vendas por Período */}
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-6">
-                {filtroPeriodo === 'hoje' && 'Vendas - Hoje'}
-                {filtroPeriodo === '5dias' && 'Vendas - Últimos 5 Dias'}
-                {filtroPeriodo === '30dias' && 'Vendas - Últimos 30 Dias'}
-                {filtroPeriodo === '90dias' && 'Vendas - Últimos 90 Dias'}
-                {filtroPeriodo === 'personalizado' && dataInicioCustom && dataFimCustom 
-                  ? `Vendas - ${new Date(dataInicioCustom).toLocaleDateString('pt-BR')} a ${new Date(dataFimCustom).toLocaleDateString('pt-BR')}`
-                  : filtroPeriodo !== 'hoje' && filtroPeriodo !== '5dias' && filtroPeriodo !== '30dias' && filtroPeriodo !== '90dias' && 'Vendas - Período Selecionado'}
+                {filtroPeriodo === "hoje" && "Vendas - Hoje"}
+                {filtroPeriodo === "5dias" && "Vendas - Últimos 5 Dias"}
+                {filtroPeriodo === "30dias" && "Vendas - Últimos 30 Dias"}
+                {filtroPeriodo === "90dias" && "Vendas - Últimos 90 Dias"}
+                {filtroPeriodo === "personalizado" &&
+                dataInicioCustom &&
+                dataFimCustom
+                  ? `Vendas - ${new Date(dataInicioCustom).toLocaleDateString(
+                      "pt-BR"
+                    )} a ${new Date(dataFimCustom).toLocaleDateString("pt-BR")}`
+                  : filtroPeriodo !== "hoje" &&
+                    filtroPeriodo !== "5dias" &&
+                    filtroPeriodo !== "30dias" &&
+                    filtroPeriodo !== "90dias" &&
+                    "Vendas - Período Selecionado"}
               </h3>
               {graficoVendas.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <ComposedChart data={graficoVendas}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis 
-                      dataKey="data" 
+                    <XAxis
+                      dataKey="date"
                       stroke="#6b7280"
-                      style={{ fontSize: '12px' }}
+                      style={{ fontSize: "12px" }}
                     />
-                    <YAxis 
+                    <YAxis
                       stroke="#6b7280"
-                      style={{ fontSize: '12px' }}
+                      style={{ fontSize: "12px" }}
                       yAxisId="left"
                       tickFormatter={(value) => {
-                        if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-                        if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+                        if (value >= 1000000)
+                          return `${(value / 1000000).toFixed(1)}M`;
+                        if (value >= 1000)
+                          return `${(value / 1000).toFixed(0)}k`;
                         return value.toString();
                       }}
                     />
-                    <YAxis 
+                    <YAxis
                       stroke="#6b7280"
-                      style={{ fontSize: '12px' }}
+                      style={{ fontSize: "12px" }}
                       yAxisId="right"
                       orientation="right"
                     />
                     <Tooltip
                       formatter={(value: number, name: string) => {
-                        if (name === 'Valor Total') {
+                        if (name === "Valor Total") {
                           return [formatCurrency(value), name];
                         }
                         return [value, name];
                       }}
                       contentStyle={{
-                        backgroundColor: 'white',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px'
+                        backgroundColor: "white",
+                        border: "1px solid #e5e7eb",
+                        borderRadius: "8px",
                       }}
                     />
                     <Legend />
-                    <Bar 
+                    <Bar
                       yAxisId="left"
-                      dataKey="quantidade" 
-                      fill="#3b82f6" 
+                      dataKey="quantity"
+                      fill="#3b82f6"
                       name="Quantidade"
                       radius={[4, 4, 0, 0]}
                     />
-                    <Line 
+                    <Line
                       yAxisId="right"
-                      type="monotone" 
-                      dataKey="valorTotal" 
-                      stroke="#10b981" 
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#10b981"
                       strokeWidth={2}
-                      dot={{ fill: '#10b981', r: 3 }}
+                      dot={{ fill: "#10b981", r: 3 }}
                       name="Valor Total"
                     />
                   </ComposedChart>
@@ -494,88 +498,108 @@ export default function DashboardVendasPage() {
             {/* Gráfico de Orçamentos */}
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-6">
-                {filtroPeriodo === 'hoje' && 'Orçamentos - Hoje'}
-                {filtroPeriodo === '5dias' && 'Orçamentos - Últimos 5 Dias'}
-                {filtroPeriodo === '30dias' && 'Orçamentos - Últimos 30 Dias'}
-                {filtroPeriodo === '90dias' && 'Orçamentos - Últimos 90 Dias'}
-                {filtroPeriodo === 'personalizado' && dataInicioCustom && dataFimCustom 
-                  ? `Orçamentos - ${new Date(dataInicioCustom).toLocaleDateString('pt-BR')} a ${new Date(dataFimCustom).toLocaleDateString('pt-BR')}`
-                  : filtroPeriodo !== 'hoje' && filtroPeriodo !== '5dias' && filtroPeriodo !== '30dias' && filtroPeriodo !== '90dias' && 'Orçamentos - Período Selecionado'}
+                {filtroPeriodo === "hoje" && "Orçamentos - Hoje"}
+                {filtroPeriodo === "5dias" && "Orçamentos - Últimos 5 Dias"}
+                {filtroPeriodo === "30dias" && "Orçamentos - Últimos 30 Dias"}
+                {filtroPeriodo === "90dias" && "Orçamentos - Últimos 90 Dias"}
+                {filtroPeriodo === "personalizado" &&
+                dataInicioCustom &&
+                dataFimCustom
+                  ? `Orçamentos - ${new Date(
+                      dataInicioCustom
+                    ).toLocaleDateString("pt-BR")} a ${new Date(
+                      dataFimCustom
+                    ).toLocaleDateString("pt-BR")}`
+                  : filtroPeriodo !== "hoje" &&
+                    filtroPeriodo !== "5dias" &&
+                    filtroPeriodo !== "30dias" &&
+                    filtroPeriodo !== "90dias" &&
+                    "Orçamentos - Período Selecionado"}
               </h3>
               {graficoOrcamentos.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <ComposedChart data={graficoOrcamentos}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis 
-                      dataKey="data" 
+                    <XAxis
+                      dataKey="date"
                       stroke="#6b7280"
                       fontSize={12}
                       tickLine={false}
                       axisLine={false}
                     />
-                    <YAxis 
+                    <YAxis
                       yAxisId="left"
                       stroke="#6b7280"
                       fontSize={12}
                       tickLine={false}
                       axisLine={false}
-                      label={{ value: 'Quantidade', angle: -90, position: 'insideLeft' }}
+                      label={{
+                        value: "Quantidade",
+                        angle: -90,
+                        position: "insideLeft",
+                      }}
                     />
-                    <YAxis 
+                    <YAxis
                       yAxisId="right"
                       orientation="right"
                       stroke="#6b7280"
                       fontSize={12}
                       tickLine={false}
                       axisLine={false}
-                      label={{ value: 'Valor (R$)', angle: 90, position: 'insideRight' }}
+                      label={{
+                        value: "Valor (R$)",
+                        angle: 90,
+                        position: "insideRight",
+                      }}
                       tickFormatter={(value) => {
-                        if (value >= 1000) return `R$ ${(value / 1000).toFixed(0)}k`;
+                        if (value >= 1000)
+                          return `R$ ${(value / 1000).toFixed(0)}k`;
                         return `R$ ${value}`;
                       }}
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: 'white',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                        backgroundColor: "white",
+                        border: "1px solid #e5e7eb",
+                        borderRadius: "8px",
+                        boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
                       }}
                       formatter={(value: number, name: string) => {
-                        if (name === 'valorTotal') return formatCurrency(value);
+                        if (name === "value" || name === "totalValue")
+                          return formatCurrency(value);
                         return value;
                       }}
                       labelFormatter={(label) => `Data: ${label}`}
                     />
                     <Legend />
-                    <Bar 
+                    <Bar
                       yAxisId="left"
-                      dataKey="quantidade" 
-                      fill="#8b5cf6" 
+                      dataKey="quantity"
+                      fill="#8b5cf6"
                       name="Quantidade Total"
                       radius={[4, 4, 0, 0]}
                     />
-                    <Bar 
+                    <Bar
                       yAxisId="left"
-                      dataKey="quantidadeConcluidos" 
-                      fill="#10b981" 
+                      dataKey="approvedQuantity"
+                      fill="#10b981"
                       name="Concluídos"
                       radius={[4, 4, 0, 0]}
                     />
-                    <Bar 
+                    <Bar
                       yAxisId="left"
-                      dataKey="quantidadePendentes" 
-                      fill="#f59e0b" 
+                      dataKey="pendingQuantity"
+                      fill="#f59e0b"
                       name="Pendentes"
                       radius={[4, 4, 0, 0]}
                     />
-                    <Line 
+                    <Line
                       yAxisId="right"
-                      type="monotone" 
-                      dataKey="valorTotal" 
-                      stroke="#ef4444" 
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#ef4444"
                       strokeWidth={2}
-                      dot={{ fill: '#ef4444', r: 3 }}
+                      dot={{ fill: "#ef4444", r: 3 }}
                       name="Valor Total"
                     />
                   </ComposedChart>
@@ -602,19 +626,30 @@ export default function DashboardVendasPage() {
                 {topClientes.length > 0 ? (
                   <div className="space-y-4">
                     {topClientes.map((cliente, index) => (
-                      <div key={`cliente-${index}-${cliente.id || 'sem-id'}-${cliente.nome || 'sem-nome'}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div
+                        key={`cliente-${index}-${cliente.id || "sem-id"}-${
+                          cliente.name || "sem-nome"
+                        }`}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                      >
                         <div className="flex items-center">
                           <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center mr-3">
-                            <span className="text-xs font-bold text-purple-600">#{index + 1}</span>
+                            <span className="text-xs font-bold text-purple-600">
+                              #{index + 1}
+                            </span>
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">{cliente.nome}</p>
-                            <p className="text-xs text-gray-500">{cliente.totalVendas} vendas</p>
+                            <p className="font-medium text-gray-900">
+                              {cliente.name}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {cliente.totalSales} vendas
+                            </p>
                           </div>
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-gray-900">
-                            {formatCurrency(cliente.valorTotal)}
+                            {formatCurrency(cliente.totalValue)}
                           </p>
                         </div>
                       </div>
@@ -641,19 +676,30 @@ export default function DashboardVendasPage() {
                 {topProdutos.length > 0 ? (
                   <div className="space-y-4">
                     {topProdutos.map((produto, index) => (
-                      <div key={`produto-${index}-${produto.id || produto.codigo || 'sem-id'}-${produto.nome || 'sem-nome'}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div
+                        key={`produto-${index}-${
+                          produto.id || produto.code || "sem-id"
+                        }-${produto.name || "sem-nome"}`}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                      >
                         <div className="flex items-center">
                           <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-3">
-                            <span className="text-xs font-bold text-blue-600">#{index + 1}</span>
+                            <span className="text-xs font-bold text-blue-600">
+                              #{index + 1}
+                            </span>
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">{produto.nome}</p>
-                            <p className="text-xs text-gray-500">{produto.quantidadeTotal.toFixed(2)} un.</p>
+                            <p className="font-medium text-gray-900">
+                              {produto.name}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {produto.totalQuantity.toFixed(2)} un.
+                            </p>
                           </div>
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-gray-900">
-                            {formatCurrency(produto.valorTotal)}
+                            {formatCurrency(produto.totalValue)}
                           </p>
                         </div>
                       </div>
@@ -680,19 +726,30 @@ export default function DashboardVendasPage() {
                 {vendasPorVendedor.length > 0 ? (
                   <div className="space-y-4">
                     {vendasPorVendedor.map((vendedor, index) => (
-                      <div key={`vendedor-${index}-${vendedor.id || 'sem-id'}-${vendedor.nome || 'sem-nome'}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div
+                        key={`vendedor-${index}-${vendedor.id || "sem-id"}-${
+                          vendedor.name || "sem-nome"
+                        }`}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                      >
                         <div className="flex items-center">
                           <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mr-3">
-                            <span className="text-xs font-bold text-green-600">#{index + 1}</span>
+                            <span className="text-xs font-bold text-green-600">
+                              #{index + 1}
+                            </span>
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">{vendedor.nome}</p>
-                            <p className="text-xs text-gray-500">{vendedor.totalVendas} vendas</p>
+                            <p className="font-medium text-gray-900">
+                              {vendedor.name}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {vendedor.totalSales} vendas
+                            </p>
                           </div>
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-gray-900">
-                            {formatCurrency(vendedor.valorTotal)}
+                            {formatCurrency(vendedor.totalValue)}
                           </p>
                         </div>
                       </div>
