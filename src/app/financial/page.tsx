@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import Layout from '@/components/Layout';
-import { 
-  DollarSign, 
-  TrendingUp, 
-  TrendingDown, 
-  AlertTriangle, 
+import {
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
   Calendar,
   Banknote,
   CreditCard,
@@ -29,59 +29,32 @@ import {
   ResponsiveContainer,
   ComposedChart
 } from 'recharts';
-
-// Tipos para os dados do dashboard
-interface DashboardMetrics {
-  saldoAtual: number;
-  fluxoCaixa: number;
-  contasVencidas: number;
-  proximosVencimentos: number;
-  faturamentoMes: number;
-  despesasMes: number;
-  lucroBruto: number;
-  margemLucro: number;
-}
-
-interface ContaVencida {
-  id: string;
-  descricao: string;
-  valor: number;
-  vencimento: string;
-  tipo: 'pagar' | 'receber';
-}
-
-interface ProximoVencimento {
-  id: string;
-  descricao: string;
-  valor: number;
-  vencimento: string;
-  dias: number;
-}
-
-interface GraficoFluxo {
-  data: string;
-  receitas: number;
-  despesas: number;
-}
+import { SdkClientFactory } from '@/lib/sdk/client-factory';
+import type {
+  FinancialDashboardMetrics,
+  CashFlowChartData,
+  OverdueAccount,
+  UpcomingDueDate,
+} from '@fenix/api-sdk';
 
 export default function DashboardFinanceiro() {
   const { token, activeCompanyId, isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [metrics, setMetrics] = useState<DashboardMetrics>({
-    saldoAtual: 0,
-    fluxoCaixa: 0,
-    contasVencidas: 0,
-    proximosVencimentos: 0,
-    faturamentoMes: 0,
-    despesasMes: 0,
-    lucroBruto: 0,
-    margemLucro: 0
+  const [metrics, setMetrics] = useState<FinancialDashboardMetrics>({
+    currentBalance: 0,
+    cashFlow: 0,
+    overdueAccounts: 0,
+    upcomingDueDates: 0,
+    monthlyRevenue: 0,
+    monthlyExpenses: 0,
+    grossProfit: 0,
+    profitMargin: 0
   });
 
-  const [contasVencidas, setContasVencidas] = useState<ContaVencida[]>([]);
-  const [proximosVencimentos, setProximosVencimentos] = useState<ProximoVencimento[]>([]);
-  const [graficoFluxo, setGraficoFluxo] = useState<GraficoFluxo[]>([]);
+  const [contasVencidas, setContasVencidas] = useState<OverdueAccount[]>([]);
+  const [proximosVencimentos, setProximosVencimentos] = useState<UpcomingDueDate[]>([]);
+  const [graficoFluxo, setGraficoFluxo] = useState<CashFlowChartData[]>([]);
 
   // Carregar dados reais da API
   useEffect(() => {
@@ -95,32 +68,17 @@ export default function DashboardFinanceiro() {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(`/api/financial/dashboard?company_id=${activeCompanyId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        const dashboardsClient = SdkClientFactory.getDashboardsClient();
+        const response = await dashboardsClient.getFinancialDashboard();
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ 
-            error: `Erro HTTP ${response.status}: ${response.statusText}` 
-          }));
-          throw new Error(errorData.error || errorData.message || 'Erro ao buscar dados do dashboard');
-        }
-
-        const data = await response.json();
-        
-        if (!data.success || !data.data) {
+        if (!response.success || !response.data) {
           throw new Error('Resposta inválida do servidor');
         }
 
-        const { metrics: metricsData, contasVencidas: contasVencidasData, proximosVencimentos: proximosVencimentosData, graficoFluxo: graficoFluxoData } = data.data;
-
-        setMetrics(metricsData);
-        setContasVencidas(contasVencidasData || []);
-        setProximosVencimentos(proximosVencimentosData || []);
-        setGraficoFluxo(graficoFluxoData || []);
+        setMetrics(response.data.metrics);
+        setContasVencidas(response.data.overdueAccounts || []);
+        setProximosVencimentos(response.data.upcomingDueDates || []);
+        setGraficoFluxo(response.data.cashFlowChart || []);
       } catch (error: any) {
         console.error('Erro ao carregar dashboard financeiro:', error);
         setError(error.message || 'Erro ao carregar dados do dashboard financeiro');
@@ -188,7 +146,7 @@ export default function DashboardFinanceiro() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Saldo Atual</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {formatCurrency(metrics.saldoAtual)}
+                  {formatCurrency(metrics.currentBalance)}
                 </p>
               </div>
             </div>
@@ -203,7 +161,7 @@ export default function DashboardFinanceiro() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Fluxo de Caixa (30 dias)</p>
                 <p className="text-2xl font-bold text-green-600">
-                  +{formatCurrency(metrics.fluxoCaixa)}
+                  +{formatCurrency(metrics.cashFlow)}
                 </p>
               </div>
             </div>
@@ -218,7 +176,7 @@ export default function DashboardFinanceiro() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Contas Vencidas</p>
                 <p className="text-2xl font-bold text-red-600">
-                  {formatCurrency(metrics.contasVencidas)}
+                  {formatCurrency(metrics.overdueAccounts)}
                 </p>
               </div>
             </div>
@@ -233,7 +191,7 @@ export default function DashboardFinanceiro() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Próximos Vencimentos</p>
                 <p className="text-2xl font-bold text-yellow-600">
-                  {formatCurrency(metrics.proximosVencimentos)}
+                  {formatCurrency(metrics.upcomingDueDates)}
                 </p>
               </div>
             </div>
@@ -264,12 +222,12 @@ export default function DashboardFinanceiro() {
             <ResponsiveContainer width="100%" height={300}>
               <ComposedChart data={graficoFluxo}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis 
-                  dataKey="data" 
+                <XAxis
+                  dataKey="date"
                   stroke="#6b7280"
                   style={{ fontSize: '12px' }}
                 />
-                <YAxis 
+                <YAxis
                   stroke="#6b7280"
                   style={{ fontSize: '12px' }}
                   tickFormatter={(value) => {
@@ -287,15 +245,15 @@ export default function DashboardFinanceiro() {
                   }}
                 />
                 <Legend />
-                <Bar 
-                  dataKey="receitas" 
-                  fill="#3b82f6" 
+                <Bar
+                  dataKey="revenues"
+                  fill="#3b82f6"
                   name="Receitas"
                   radius={[4, 4, 0, 0]}
                 />
-                <Bar 
-                  dataKey="despesas" 
-                  fill="#ef4444" 
+                <Bar
+                  dataKey="expenses"
+                  fill="#ef4444"
                   name="Despesas"
                   radius={[4, 4, 0, 0]}
                 />
@@ -327,21 +285,21 @@ export default function DashboardFinanceiro() {
                   {contasVencidas.map((conta) => (
                     <div key={conta.id} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
                       <div>
-                        <p className="font-medium text-gray-900">{conta.descricao}</p>
+                        <p className="font-medium text-gray-900">{conta.description}</p>
                         <p className="text-sm text-gray-600">
-                          Vencimento: {formatDate(conta.vencimento)}
+                          Vencimento: {formatDate(conta.dueDate)}
                         </p>
                       </div>
                       <div className="text-right">
                         <p className="font-semibold text-red-600">
-                          {formatCurrency(conta.valor)}
+                          {formatCurrency(conta.value)}
                         </p>
                         <span className={`text-xs px-2 py-1 rounded-full ${
-                          conta.tipo === 'pagar' 
-                            ? 'bg-red-100 text-red-800' 
+                          conta.type === 'payable'
+                            ? 'bg-red-100 text-red-800'
                             : 'bg-green-100 text-green-800'
                         }`}>
-                          {conta.tipo === 'pagar' ? 'A Pagar' : 'A Receber'}
+                          {conta.type === 'payable' ? 'A Pagar' : 'A Receber'}
                         </span>
                       </div>
                     </div>
@@ -370,17 +328,17 @@ export default function DashboardFinanceiro() {
                   {proximosVencimentos.map((conta) => (
                     <div key={conta.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
                       <div>
-                        <p className="font-medium text-gray-900">{conta.descricao}</p>
+                        <p className="font-medium text-gray-900">{conta.description}</p>
                         <p className="text-sm text-gray-600">
-                          Vencimento: {formatDate(conta.vencimento)}
+                          Vencimento: {formatDate(conta.dueDate)}
                         </p>
                       </div>
                       <div className="text-right">
                         <p className="font-semibold text-yellow-600">
-                          {formatCurrency(conta.valor)}
+                          {formatCurrency(conta.value)}
                         </p>
                         <span className="text-xs text-yellow-600">
-                          {conta.dias} dias
+                          {conta.days} dias
                         </span>
                       </div>
                     </div>
@@ -406,25 +364,25 @@ export default function DashboardFinanceiro() {
               <div className="text-center">
                 <p className="text-sm text-gray-600">Faturamento</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {formatCurrency(metrics.faturamentoMes)}
+                  {formatCurrency(metrics.monthlyRevenue)}
                 </p>
               </div>
               <div className="text-center">
                 <p className="text-sm text-gray-600">Despesas</p>
                 <p className="text-2xl font-bold text-red-600">
-                  {formatCurrency(metrics.despesasMes)}
+                  {formatCurrency(metrics.monthlyExpenses)}
                 </p>
               </div>
               <div className="text-center">
                 <p className="text-sm text-gray-600">Lucro Bruto</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {formatCurrency(metrics.lucroBruto)}
+                  {formatCurrency(metrics.grossProfit)}
                 </p>
               </div>
               <div className="text-center">
                 <p className="text-sm text-gray-600">Margem de Lucro</p>
                 <p className="text-2xl font-bold text-purple-600">
-                  {metrics.margemLucro}%
+                  {metrics.profitMargin}%
                 </p>
               </div>
             </div>
