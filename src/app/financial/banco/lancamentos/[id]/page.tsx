@@ -29,7 +29,7 @@ import {
   X
 } from 'lucide-react';
 import NovoLancamentoModal from '@/components/NovoLancamentoModal';
-import { useMovements } from '@/hooks/useMovements';
+import { useMovimentacoes } from '@/hooks/useMovimentacoes';
 
 interface Movimentacao {
   id: string;
