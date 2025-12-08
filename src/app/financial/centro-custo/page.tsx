@@ -47,7 +47,7 @@ export default function CentroCustosPage() {
     refreshCentros,
     refreshStats
   } = useCostCenters({
-    company_id: companyId,
+    company_id: companyId || undefined,
     centro_pai_id: null, // Sempre null para lista simples
     search: searchTerm || undefined
   });
@@ -124,7 +124,7 @@ export default function CentroCustosPage() {
         const createData = {
           ...data as CreateCostCenterRequest,
           company_id: companyId,
-          centro_pai_id: null // Sempre null para lista simples
+          centro_pai_id: undefined // Sempre undefined para lista simples
         };
         await createCentro(createData);
         alert('Centro de custo criado com sucesso!');
@@ -197,7 +197,7 @@ export default function CentroCustosPage() {
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="text-sm text-slate-600 mb-1">Total</p>
-                <h3 className="text-2xl font-bold text-slate-900">{stats?.total || 0}</h3>
+                <h3 className="text-2xl font-bold text-slate-900">{stats?.total_centros || 0}</h3>
               </div>
               <div className="h-12 w-12 bg-slate-100 rounded-lg flex items-center justify-center">
                 <DollarSign className="h-5 w-5 text-slate-600" />
@@ -214,7 +214,7 @@ export default function CentroCustosPage() {
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="text-sm text-slate-600 mb-1">Ativos</p>
-                <h3 className="text-2xl font-bold text-green-600">{stats?.ativos || 0}</h3>
+                <h3 className="text-2xl font-bold text-green-600">{stats?.centros_ativos || 0}</h3>
               </div>
               <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
                 <TrendingUp className="h-5 w-5 text-green-600" />
@@ -231,7 +231,7 @@ export default function CentroCustosPage() {
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="text-sm text-slate-600 mb-1">Inativos</p>
-                <h3 className="text-2xl font-bold text-red-600">{stats?.inativos || 0}</h3>
+                <h3 className="text-2xl font-bold text-red-600">{stats?.centros_inativos || 0}</h3>
               </div>
               <div className="h-12 w-12 bg-red-100 rounded-lg flex items-center justify-center">
                 <TrendingDown className="h-5 w-5 text-red-600" />
