@@ -565,10 +565,11 @@ export default function PedidosCompraPage() {
                         <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
                       </motion.button>
                     </div>
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </motion.div>
         ) : (
           /* Table View */
