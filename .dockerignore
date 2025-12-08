@@ -3,6 +3,8 @@ node_modules
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
 
 # Next.js
 .next/
@@ -104,8 +106,6 @@ Thumbs.db
 .gitignore
 
 # Docker
-Dockerfile*
-docker-compose*
 .dockerignore
 
 # Documentation
