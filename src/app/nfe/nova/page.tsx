@@ -42,6 +42,11 @@ interface NFeItem {
   valorUnitario: number;
   valorDesconto: number;
   valorTotal: number;
+  icmsCST?: string;
+  ipiCST?: string;
+  pisCST?: string;
+  cofinsCST?: string;
+  codigoBeneficioFiscal?: string;
 }
 
 interface Cliente {
@@ -979,6 +984,7 @@ export default function NovaNotaFiscalPage() {
 
     try {
       // Buscar configuração NFe ativa para usar como base
+      if (!token) throw new Error('Token não encontrado');
       const configuracoes = await apiService.getConfiguracoesNfe(token, true);
       if (configuracoes.length === 0) {
         throw new Error('Nenhuma configuração NFe ativa encontrada. Configure uma configuração NFe primeiro.');
