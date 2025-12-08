@@ -149,6 +149,9 @@ export async function recalculateTaxes(id: string) {
   }
 }
 
+// Alias for backward compatibility
+export const recalcularImpostos = recalculateTaxes;
+
 /**
  * Delete a sales order
  */
