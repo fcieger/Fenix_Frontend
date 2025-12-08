@@ -444,32 +444,35 @@ function NovoClienteForm() {
 
       // Validações básicas
       if (!formData.nomeRazaoSocial.trim()) {
-        toast.error('Validação', 'Nome/Razão Social é obrigatório');
+        toast.error('Nome/Razão Social é obrigatório');
         return;
       }
 
       if (formData.tipoPessoa === 'Pessoa Física' && !formData.cpf.replace(/\D/g, '')) {
-        toast.error('Validação', 'CPF é obrigatório para Pessoa Física');
+        toast.error('CPF é obrigatório para Pessoa Física');
         return;
       }
 
       if (formData.tipoPessoa === 'Pessoa Jurídica' && !formData.cnpj.replace(/\D/g, '')) {
-        toast.error('Validação', 'CNPJ é obrigatório para Pessoa Jurídica');
+        toast.error('CNPJ é obrigatório para Pessoa Jurídica');
         return;
       }
 
       if (!formData.enderecos || formData.enderecos.length === 0) {
-        toast.error('Validação', 'Pelo menos um endereço é obrigatório');
+        toast.error('Pelo menos um endereço é obrigatório');
         return;
       }
 
       if (!formData.contatos || formData.contatos.length === 0) {
-        toast.error('Validação', 'Pelo menos um contato é obrigatório');
+        toast.error('Pelo menos um contato é obrigatório');
         return;
       }
 
       // Usar função helper para mapear formData para UpdatePartnerDto do SDK
-      const updateData = mapFormDataToUpdatePartnerDto(formData);
+      const updateData = mapFormDataToUpdatePartnerDto({
+        ...formData,
+        tipoPessoa: formData.tipoPessoa as 'Pessoa Física' | 'Pessoa Jurídica'
+      });
 
       // Validar usando schema do SDK
       const validation = validateAndNotify(updatePartnerSchema, updateData, setFieldErrors);
@@ -591,7 +594,7 @@ function NovoClienteForm() {
     try {
       // Validações básicas antes de enviar
       if (!formData.nomeRazaoSocial.trim()) {
-        toast.error('Validação', 'Nome/Razão Social é obrigatório');
+        toast.error('Nome/Razão Social é obrigatório');
         return;
       }
 
@@ -617,7 +620,7 @@ function NovoClienteForm() {
       }
 
       if (!formData.contatos || formData.contatos.length === 0) {
-        toast.error('Validação', 'Pelo menos um contato é obrigatório');
+        toast.error('Pelo menos um contato é obrigatório');
         return;
       }
 
