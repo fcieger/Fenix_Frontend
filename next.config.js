@@ -15,8 +15,8 @@ const nextConfig = {
     // Remover console.log em produção
     removeConsole: process.env.NODE_ENV === 'production',
   },
-  // Configuração para Docker (remover standalone temporariamente)
-  // output: 'standalone',
+  // Configuração para Docker
+  output: 'standalone',
   // Configurações de experimental
   experimental: {
     // Otimizações para produção
