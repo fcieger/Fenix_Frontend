@@ -9,7 +9,7 @@ export default function DiagnosticoPage() {
 
   useEffect(() => {
     const token = localStorage.getItem('fenix_token');
-    
+
     if (token) {
       setHasToken(true);
       try {
@@ -30,24 +30,24 @@ export default function DiagnosticoPage() {
   const forcarLimpeza = () => {
     localStorage.clear();
     sessionStorage.clear();
-    
+
     // Limpar cookies também
-    document.cookie.split(";").forEach(function(c) { 
-      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+    document.cookie.split(";").forEach(function(c) {
+      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
     });
-    
+
     alert('✅ Cache limpo! Redirecionando para login...');
     window.location.href = '/login';
   };
 
   const corrigirAgora = () => {
     // IDs corretos do banco
-    const correctUserI = '876fcdff-e957-4ca7-987f-19b934094f1d';
+    const correctUserId = '876fcdff-e957-4ca7-987f-19b934094f1d';
     const correctCompanyId = 'eb198f2a-a95b-413a-abb9-464e3b7af303';
-    
+
     const isWrongUser = tokenInfo?.userId && tokenInfo.userId !== correctUserId;
     const isWrongCompany = tokenInfo?.companyId && tokenInfo.companyId !== correctCompanyId;
-    
+
     if (isWrongUser || isWrongCompany) {
       forcarLimpeza();
     } else {
@@ -129,13 +129,13 @@ export default function DiagnosticoPage() {
             {/* Diagnóstico */}
             {hasToken && tokenInfo && (
               <div className={`border rounded-lg p-4 ${
-                tokenInfo.userId === '876fcdff-e957-4ca7-987f-19b934094f1d' && 
+                tokenInfo.userId === '876fcdff-e957-4ca7-987f-19b934094f1d' &&
                 tokenInfo.companyId === 'eb198f2a-a95b-413a-abb9-464e3b7af303'
                   ? 'border-green-200 bg-green-50'
                   : 'border-red-200 bg-red-50'
               }`}>
                 <h2 className="text-xl font-semibold mb-3">Diagnóstico</h2>
-                {tokenInfo.userId === '876fcdff-e957-4ca7-987f-19b934094f1d' && 
+                {tokenInfo.userId === '876fcdff-e957-4ca7-987f-19b934094f1d' &&
                  tokenInfo.companyId === 'eb198f2a-a95b-413a-abb9-464e3b7af303' ? (
                   <p className="text-green-800">
                     ✅ Seus IDs estão corretos! O token está OK.
@@ -164,7 +164,7 @@ export default function DiagnosticoPage() {
                 🗑️ Forçar Limpeza Total
               </button>
               {hasToken && tokenInfo && (
-                tokenInfo.userId !== '876fcdff-e957-4ca7-987f-19b934094f1d' || 
+                tokenInfo.userId !== '876fcdff-e957-4ca7-987f-19b934094f1d' ||
                 tokenInfo.companyId !== 'eb198f2a-a95b-413a-abb9-464e3b7af303'
               ) && (
                 <button
