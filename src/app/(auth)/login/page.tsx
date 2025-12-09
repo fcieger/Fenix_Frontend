@@ -15,8 +15,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    email: 'teste@ieger.com.br',
-    password: '123456'
+    email: '',
+    password: ''
   });
   const [success, setSuccess] = useState(false);
 
@@ -31,7 +31,7 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
       await login(formData.email, formData.password);
       router.push('/dashboard');
@@ -79,25 +79,6 @@ export default function LoginPage() {
               </div>
             </motion.div>
           )}
-
-          {/* Test Data Info */}
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6"
-          >
-            <div className="flex items-center">
-              <CheckCircle className="w-5 h-5 text-blue-600 mr-2" />
-              <div>
-                <p className="text-blue-800 font-medium">
-                  Dados de teste pré-preenchidos
-                </p>
-                <p className="text-blue-600 text-sm">
-                  Email: teste@ieger.com.br | Senha: 123456
-                </p>
-              </div>
-            </div>
-          </motion.div>
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
