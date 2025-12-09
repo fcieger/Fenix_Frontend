@@ -4,6 +4,25 @@ import { Pool } from 'pg';
 // Isso evita tentativas de conexão durante o build/SSR
 let pool: Pool | null = null;
 
+/**
+ * Configura SSL para conexão PostgreSQL
+ */
+function getSslConfig() {
+  // Verificar variável de ambiente específica primeiro
+  if (process.env.DATABASE_SSL === 'true') {
+    return {
+      rejectUnauthorized: process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== 'false',
+    };
+  }
+
+  // Fallback para lógica antiga (compatibilidade)
+  if (process.env.DATABASE_URL?.includes('neon.tech') || process.env.NODE_ENV === 'production') {
+    return { rejectUnauthorized: false };
+  }
+
+  return undefined;
+}
+
 function getPool(): Pool {
   if (!pool) {
     // Priorizar DATABASE_URL se disponível (para produção/Vercel)
@@ -14,9 +33,7 @@ function getPool(): Pool {
         max: 20,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 2000,
-        ssl: process.env.DATABASE_URL?.includes('neon.tech') || process.env.NODE_ENV === 'production' 
-          ? { rejectUnauthorized: false } 
-          : undefined,
+        ssl: getSslConfig(),
       });
     } else {
       // Fallback para configuração manual (desenvolvimento local)
@@ -31,6 +48,7 @@ function getPool(): Pool {
         max: 20,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 2000,
+        ssl: getSslConfig(),
       });
     }
   }
@@ -89,46 +107,46 @@ export async function initializeTables() {
     // Verificar conexão
     await query('SELECT 1');
     console.log('✅ Conexão com banco de dados estabelecida');
-    
+
     // Verificar se as tabelas CORE existem (users, companies, user_companies)
     const coreTablesResult = await query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public' 
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = 'public'
       AND table_name IN ('users', 'companies', 'user_companies')
     `);
-    
+
     const existingCoreTables = coreTablesResult.rows.map(row => row.table_name);
     const requiredCoreTables = ['users', 'companies', 'user_companies'];
     const missingCoreTables = requiredCoreTables.filter(t => !existingCoreTables.includes(t));
-    
+
     if (missingCoreTables.length > 0) {
       console.log('🔧 Tabelas core não encontradas:', missingCoreTables);
       console.log('🔧 Inicializando schema core...');
-      
+
       // Ler e executar schema core
       const { readFileSync } = await import('fs');
       const { join } = await import('path');
       const schemaCorePath = join(process.cwd(), 'src', 'lib', 'schema-core.sql');
       const schemaCore = readFileSync(schemaCorePath, 'utf8');
-      
+
       // Executar schema core
       await query(schemaCore);
       console.log('✅ Schema core inicializado com sucesso!');
     } else {
       console.log('✅ Tabelas core já existem:', existingCoreTables);
     }
-    
+
     // Verificar se as tabelas financeiras existem
     const tablesResult = await query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public' 
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = 'public'
       AND table_name IN ('contas_financeiras', 'movimentacoes_financeiras')
     `);
-    
+
     const existingTables = tablesResult.rows.map(row => row.table_name);
-    
+
     if (existingTables.length < 2) {
       console.log('🔧 Tabelas financeiras não encontradas, inicializando schema financeiro...');
       const { initializeDatabase } = await import('./init-db');
@@ -140,6 +158,58 @@ export async function initializeTables() {
     console.error('❌ Erro ao conectar com banco de dados:', error);
     throw error;
   }
+}
+
+/**
+ * Health check do banco de dados
+ * Retorna true se a conexão está saudável, false caso contrário
+ */
+export async function healthCheck(): Promise<boolean> {
+  try {
+    await query('SELECT 1');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Obtém métricas do pool de conexões
+ */
+export function getPoolMetrics() {
+  const poolInstance = getPool();
+  return {
+    totalCount: poolInstance.totalCount,
+    idleCount: poolInstance.idleCount,
+    waitingCount: poolInstance.waitingCount,
+  };
+}
+
+/**
+ * Fecha o pool de conexões
+ * Deve ser chamado ao encerrar a aplicação
+ */
+export async function closePool(): Promise<void> {
+  if (pool) {
+    await pool.end();
+    pool = null;
+    console.log('✅ Pool de conexões PostgreSQL fechado');
+  }
+}
+
+// Registrar handlers para cleanup ao encerrar aplicação
+if (typeof process !== 'undefined') {
+  process.on('SIGTERM', async () => {
+    console.log('🛑 SIGTERM recebido, fechando pool de conexões...');
+    await closePool();
+    process.exit(0);
+  });
+
+  process.on('SIGINT', async () => {
+    console.log('🛑 SIGINT recebido, fechando pool de conexões...');
+    await closePool();
+    process.exit(0);
+  });
 }
 
 // Exportar função para obter o pool (mantendo compatibilidade)
