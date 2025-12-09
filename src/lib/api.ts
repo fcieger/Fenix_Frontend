@@ -1,5 +1,4 @@
-import { API_CONFIG } from "@/config/api";
-import { api } from "@/config/api";
+import { API_CONFIG, api } from "@/config/api";
 import type { Product, CreateProductDto, UpdateProductDto } from "@/types/sdk";
 
 const BASE_URL = API_CONFIG.BASE_URL;
@@ -292,64 +291,29 @@ class ApiService {
 
   async login(data: LoginData): Promise<AuthResponse> {
     try {
-      const response = await fetch(`${BASE_URL}/api/auth/login`, {
-        method: "POST",
+      const response = await api.post<AuthResponse>("/api/auth/login", data, {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
       });
 
-      // Verificar se a resposta está OK antes de tentar fazer parse do JSON
-      if (!response.ok) {
-        // Tentar obter o texto da resposta primeiro
-        const responseText = await response.text();
-        let errorData = {};
-
-        try {
-          if (responseText && responseText.trim()) {
-            errorData = JSON.parse(responseText);
-          } else {
-            errorData = {
-              message: `Erro ${response.status}: ${response.statusText}`,
-            };
-          }
-        } catch (parseError) {
-          errorData = {
-            message:
-              responseText || `Erro ${response.status}: ${response.statusText}`,
-            rawResponse: responseText,
-          };
-        }
-
-        console.error("❌ Erro no login:", {
-          status: response.status,
-          statusText: response.statusText,
-          errorData,
-        });
-
-        throw new Error(errorData.message || `Erro ${response.status}`);
+      // Verificar se a resposta está OK
+      if (response.status >= 200 && response.status < 300) {
+        return response.data;
       }
 
-      // Verificar se há conteúdo na resposta antes de fazer parse JSON
-      const responseText = await response.text();
+      // Tratar erros de resposta
+      const errorData = response.data as any;
+      const errorMessage = errorData?.message || `Erro ${response.status}`;
 
-      if (!responseText || !responseText.trim()) {
-        console.error("❌ Resposta vazia do servidor");
-        throw new Error("Resposta vazia do servidor");
-      }
+      console.error("❌ Erro no login:", {
+        status: response.status,
+        statusText: response.statusText,
+        errorData,
+      });
 
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error("❌ Erro ao fazer parse do JSON:", parseError);
-        console.error("📡 Resposta recebida:", responseText);
-        throw new Error("Resposta inválida do servidor");
-      }
-
-      return result;
-    } catch (error) {
+      throw new Error(errorMessage);
+    } catch (error: any) {
       console.error("❌ Erro no login:", error);
 
       // Se o erro já é uma string, propagar
@@ -358,7 +322,7 @@ class ApiService {
       }
 
       // Caso contrário, criar um novo erro
-      throw new Error("Erro desconhecido ao fazer login");
+      throw new Error(error?.response?.data?.message || "Erro desconhecido ao fazer login");
     }
   }
 
@@ -369,19 +333,20 @@ class ApiService {
         typeof window !== "undefined"
           ? ""
           : BASE_URL || "http://localhost:3004";
-      const response = await fetch(`${apiUrl}/api/users/profile`, {
-        method: "GET",
+
+      // Usar axios para consistência
+      const response = await api.get<AuthResponse["user"]>(`${apiUrl}/api/users/profile`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
       });
 
-      if (!response.ok) {
-        throw new Error(`Erro ${response.status}: ${response.statusText}`);
+      if (response.status >= 200 && response.status < 300) {
+        return response.data;
       }
 
-      return await response.json();
+      throw new Error(`Erro ${response.status}: ${response.statusText}`);
     } catch (error) {
       console.error("Erro ao obter perfil:", error);
       throw error;
@@ -787,86 +752,44 @@ class ApiService {
 
       // Testar conectividade com o backend primeiro
       try {
-        const healthCheck = await fetch(`${this.baseURL}/health`, {
-          method: "GET",
-        });
+        const healthCheck = await api.get(`${this.baseURL}/health`);
         console.log("🏥 Health check status:", healthCheck.status);
       } catch (healthError) {
         console.log("⚠️ Health check falhou, mas continuando...", healthError);
       }
 
-      const response = await fetch(
+      const response = await api.post(
         `${this.baseURL}/api/natureza-operacao/${naturezaId}/configuracao-estados`,
+        configuracoes,
         {
-          method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(configuracoes),
         }
       );
 
       console.log("📡 Response status:", response.status);
       console.log("📡 Response statusText:", response.statusText);
-      console.log(
-        "📡 Response headers:",
-        Object.fromEntries(response.headers.entries())
-      );
 
-      if (!response.ok) {
-        // Tentar obter o texto da resposta primeiro
-        const responseText = await response.text();
-        console.log("📡 Response text (raw):", responseText);
-        console.log("📡 Response text length:", responseText.length);
-
-        let errorData = {};
-        try {
-          if (responseText && responseText.trim()) {
-            errorData = JSON.parse(responseText);
-            console.log("📡 Response parsed as JSON:", errorData);
-          } else {
-            console.log("📡 Response is empty or whitespace only");
-            errorData = {
-              message: `Erro ${response.status}: ${response.statusText}`,
-            };
-          }
-        } catch (parseError) {
-          console.log("📡 Erro ao fazer parse do JSON:", parseError);
-          console.log("📡 Tentando parse como texto simples");
-          errorData = {
-            message:
-              responseText || `Erro ${response.status}: ${response.statusText}`,
-            rawResponse: responseText,
-          };
-        }
-
-        console.error("❌ Erro na resposta:", {
-          status: response.status,
-          statusText: response.statusText,
-          headers: Object.fromEntries(response.headers.entries()),
-          body: errorData,
-          url: `${this.baseURL}/api/natureza-operacao/${naturezaId}/configuracao-estados`,
-        });
-
-        throw new Error(
-          (errorData as any).message ||
-            `Erro ${response.status}: ${response.statusText}`
-        );
+      if (response.status >= 200 && response.status < 300) {
+        console.log("✅ API saveConfiguracaoEstados sucesso");
+        // Retornar dados se houver, caso contrário undefined (resposta vazia é OK)
+        return response.data;
       }
 
-      // Verificar se há conteúdo na resposta antes de tentar fazer parse JSON
-      const text = await response.text();
-      if (text) {
-        try {
-          return JSON.parse(text);
-        } catch {
-          // Se não conseguir fazer parse, retorna undefined (resposta vazia é OK)
-          return;
-        }
-      }
+      // Tratar erros de resposta
+      const errorData = response.data as any;
+      const errorMessage = errorData?.message || `Erro ${response.status}: ${response.statusText}`;
 
-      console.log("✅ API saveConfiguracaoEstados sucesso");
+      console.error("❌ Erro na resposta:", {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorData,
+        url: `${this.baseURL}/api/natureza-operacao/${naturezaId}/configuracao-estados`,
+      });
+
+      throw new Error(errorMessage);
     } catch (error) {
       console.error("❌ API saveConfiguracaoEstados erro:", error);
       throw error;
