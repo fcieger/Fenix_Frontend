@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, queryOptions } from "@tanstack/react-query";
 import {
   listPurchaseOrders,
   getPurchaseOrder,
@@ -15,21 +15,40 @@ import type {
   PaginatedResponse,
 } from "@/types/sdk";
 
-/**
- * Hook to fetch list of purchase orders
- */
-export const usePurchaseOrders = (params?: {
+export type PurchaseOrdersQueryParams = {
   page?: number;
   limit?: number;
   search?: string;
   status?: PurchaseOrderStatus;
   partnerId?: string;
-}) => {
-  return useQuery({
+};
+
+/**
+ * Query options for purchase orders list
+ * Reutilizável e com melhor tipagem
+ */
+export const purchaseOrdersQueryOptions = (params?: PurchaseOrdersQueryParams) =>
+  queryOptions({
     queryKey: ["purchase-orders", params],
     queryFn: () => listPurchaseOrders(params),
     staleTime: 2 * 60 * 1000, // 2 minutos
   });
+
+/**
+ * Query options for a single purchase order
+ * Reutilizável e com melhor tipagem
+ */
+export const purchaseOrderQueryOptions = (id: string) =>
+  queryOptions({
+    queryKey: ["purchase-order", id],
+    queryFn: () => getPurchaseOrder(id),
+  });
+
+/**
+ * Hook to fetch list of purchase orders
+ */
+export const usePurchaseOrders = (params?: PurchaseOrdersQueryParams) => {
+  return useQuery(purchaseOrdersQueryOptions(params));
 };
 
 /**
@@ -40,8 +59,7 @@ export const usePurchaseOrder = (
   options?: { enabled?: boolean }
 ) => {
   return useQuery({
-    queryKey: ["purchase-order", id],
-    queryFn: () => getPurchaseOrder(id),
+    ...purchaseOrderQueryOptions(id),
     enabled: options?.enabled !== undefined ? options.enabled : !!id,
   });
 };
