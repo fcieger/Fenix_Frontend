@@ -47,6 +47,11 @@ Solução de problemas e validações.
 
 - [**Validações**](./troubleshooting/validacoes.md) - Validações e testes
 
+### 📐 [Standards](./standards/)
+Padrões e convenções de código obrigatórios.
+
+- [**Service Layer Pattern**](./standards/service-layer-pattern.md) - Padrão obrigatório para implementação de services com formatação de request/response
+
 ---
 
 ## 🎯 Início Rápido
