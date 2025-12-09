@@ -1,13 +1,17 @@
-import axios from "axios";
+import axios, { AxiosRequestConfig } from "axios";
 
 /**
- * Legacy axios instance - kept for backward compatibility during migration
- * @deprecated Use SDK clients instead. Will be removed after migration is complete.
+ * Axios instance configurada para uso em toda a aplicação
+ * Suporta cancelamento de requisições via AbortController
  */
 export const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
   timeout: 10000, // 10 segundos
   withCredentials: true, // Habilitar cookies cross-domain
+  validateStatus: (status) => {
+    // Aceitar até 4xx como resposta válida (para tratamento de erros)
+    return status >= 200 && status < 500;
+  },
 });
 
 // Interceptor para adicionar o token de autenticação automaticamente
@@ -27,10 +31,16 @@ api.interceptors.request.use(
   }
 );
 
-// Interceptor para tratar erros de autenticação
+// Interceptor para tratar erros de autenticação e timeout
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Tratamento específico para timeout
+    if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
+      console.error("Request timeout");
+      // Aqui você pode adicionar notificação ao usuário ou retry automático
+    }
+
     // Se receber 401, redirecionar para login
     if (error.response?.status === 401 && typeof window !== "undefined") {
       const currentPath = window.location.pathname;
@@ -44,6 +54,21 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+/**
+ * Cria um AbortController para cancelar requisições
+ * Útil para cancelar requisições quando o componente é desmontado
+ *
+ * @example
+ * ```typescript
+ * const controller = createAbortController();
+ * api.get('/endpoint', { signal: controller.signal });
+ * // Para cancelar: controller.abort();
+ * ```
+ */
+export function createAbortController(): AbortController {
+  return new AbortController();
+}
 
 /**
  * API Configuration
