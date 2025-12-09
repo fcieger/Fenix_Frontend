@@ -20,6 +20,7 @@ Este guia documenta os padrões e convenções para usar React Query no projeto 
 ## Visão Geral
 
 React Query é usado para:
+
 - ✅ Cache automático de dados
 - ✅ Invalidação inteligente de cache
 - ✅ Estados de loading/error centralizados
@@ -246,11 +247,7 @@ function CreateProductForm() {
     }
   };
 
-  return (
-    <form onSubmit={handleSubmit}>
-      {/* form fields */}
-    </form>
-  );
+  return <form onSubmit={handleSubmit}>{/* form fields */}</form>;
 }
 ```
 
@@ -286,13 +283,13 @@ Query keys seguem o padrão:
 
 ```typescript
 // ✅ Correto
-queryKey: ["products", { page: 1, search: "laptop" }]
-queryKey: ["product", "123"]
-queryKey: ["purchase-orders", { status: "pending" }]
+queryKey: ["products", { page: 1, search: "laptop" }];
+queryKey: ["product", "123"];
+queryKey: ["purchase-orders", { status: "pending" }];
 
 // ❌ Incorreto
-queryKey: "products"  // Deve ser array
-queryKey: ["products", 1]  // Parâmetros devem ser objetos
+queryKey: "products"; // Deve ser array
+queryKey: ["products", 1]; // Parâmetros devem ser objetos
 ```
 
 ---
@@ -446,11 +443,13 @@ const product = getEntityFromCache<Product>(queryClient, "product", productId);
 ### Quando Usar setQueryData vs invalidateQueries
 
 **Use `setQueryData` (updateEntityCache) quando:**
+
 - Você tem os dados atualizados e quer atualizar o cache imediatamente
 - Você está fazendo optimistic updates
 - Você quer evitar um refetch (ex: após mutation que retorna os dados atualizados)
 
 **Use `invalidateQueries` (invalidateEntity) quando:**
+
 - Você quer marcar dados como stale e triggerar um refetch
 - Você não tem os dados atualizados
 - Você quer garantir que os dados estão frescos do servidor
@@ -470,7 +469,11 @@ function ProductsList() {
     return (
       <div>
         <p>Erro ao carregar produtos: {error.message}</p>
-        <button onClick={() => queryClient.invalidateQueries({ queryKey: ["products"] })}>
+        <button
+          onClick={() =>
+            queryClient.invalidateQueries({ queryKey: ["products"] })
+          }
+        >
           Tentar novamente
         </button>
       </div>
@@ -493,7 +496,9 @@ function CreateProductForm() {
       await createProduct.mutateAsync(data);
       toast.success("Produto criado!");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao criar produto");
+      toast.error(
+        error instanceof Error ? error.message : "Erro ao criar produto"
+      );
     }
   };
 
@@ -512,6 +517,7 @@ Para erros não tratados, considere usar Error Boundaries do React.
 ### Problema: Cache não está sendo invalidado
 
 **Solução:**
+
 - Verifique se a query key está correta
 - Use `queryClient.invalidateQueries` com a query key exata
 - Verifique se está usando o mesmo `QueryClient` instance
@@ -527,6 +533,7 @@ queryClient.invalidateQueries({ queryKey: ["product"] });
 ### Problema: Dados não estão sendo atualizados
 
 **Solução:**
+
 - Verifique se a mutation está invalidando as queries corretas
 - Use React Query Devtools para inspecionar o cache
 - Verifique se `staleTime` não está muito alto
@@ -534,6 +541,7 @@ queryClient.invalidateQueries({ queryKey: ["product"] });
 ### Problema: Múltiplos fetches desnecessários
 
 **Solução:**
+
 - Verifique se as query keys estão consistentes
 - Use `staleTime` apropriado
 - Considere usar `refetchOnWindowFocus: false` (já configurado)
@@ -541,6 +549,7 @@ queryClient.invalidateQueries({ queryKey: ["product"] });
 ### Problema: Optimistic update não está funcionando
 
 **Solução:**
+
 - Verifique se `getQueryKey` retorna a query key correta
 - Verifique se `applyOptimisticUpdate` está retornando os dados corretos
 - Use React Query Devtools para ver o estado do cache
@@ -548,6 +557,7 @@ queryClient.invalidateQueries({ queryKey: ["product"] });
 ### Debugging com Devtools
 
 O React Query Devtools está habilitado em desenvolvimento. Use-o para:
+
 - Ver todas as queries ativas
 - Inspecionar o cache
 - Ver estados de loading/error
@@ -642,4 +652,3 @@ function ProductListItem({ product }: { product: Product }) {
 ---
 
 **Última atualização:** Janeiro 2025
-
