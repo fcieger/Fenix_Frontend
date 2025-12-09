@@ -1,39 +1,40 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { useAuth } from "@/contexts/auth-context"
-import { Menu, X, Zap, User, LogOut } from "lucide-react"
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/auth-context";
+import { Menu, X, Zap, User, LogOut, LayoutDashboard } from "lucide-react";
 
 export default function Header() {
-  const { user, isAuthenticated, logout } = useAuth()
-  const [isScrolled, setIsScrolled] = useState(false)
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const router = useRouter()
+  const { user, isAuthenticated, logout } = useAuth();
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20)
-    }
+      setIsScrolled(window.scrollY > 20);
+    };
 
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled
-          ? "bg-white/95 backdrop-blur-md shadow-lg"
-          : "bg-transparent"
+        isScrolled ? "bg-white/95 backdrop-blur-md shadow-lg" : "bg-transparent"
       }`}
     >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
+          <Link
+            href={isAuthenticated ? "/dashboard" : "/"}
+            className="flex items-center space-x-2"
+          >
             <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg flex items-center justify-center">
               <Zap className="w-6 h-6 text-white" />
             </div>
@@ -72,6 +73,14 @@ export default function Header() {
                   <User className="w-4 h-4" />
                   <span>Olá, {user?.name}</span>
                 </div>
+                <Button
+                  size="sm"
+                  onClick={() => router.push("/dashboard")}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                >
+                  <LayoutDashboard className="w-4 h-4 mr-2" />
+                  Acessar Plataforma
+                </Button>
                 <Button variant="ghost" size="sm" onClick={logout}>
                   <LogOut className="w-4 h-4 mr-2" />
                   Sair
@@ -79,10 +88,14 @@ export default function Header() {
               </div>
             ) : (
               <>
-                <Button variant="ghost" size="sm" onClick={() => router.push('/login')}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push("/login")}
+                >
                   Entrar
                 </Button>
-                <Button size="sm" onClick={() => router.push('/register')}>
+                <Button size="sm" onClick={() => router.push("/register")}>
                   Cadastrar
                 </Button>
               </>
@@ -134,6 +147,16 @@ export default function Header() {
                       <User className="w-4 h-4" />
                       <span>Olá, {user?.name}</span>
                     </div>
+                    <Button
+                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                      onClick={() => {
+                        router.push("/dashboard");
+                        setIsMobileMenuOpen(false);
+                      }}
+                    >
+                      <LayoutDashboard className="w-4 h-4 mr-2" />
+                      Acessar Plataforma
+                    </Button>
                     <Button variant="ghost" className="w-full" onClick={logout}>
                       <LogOut className="w-4 h-4 mr-2" />
                       Sair
@@ -141,10 +164,17 @@ export default function Header() {
                   </>
                 ) : (
                   <>
-                    <Button variant="ghost" className="w-full" onClick={() => router.push('/login')}>
+                    <Button
+                      variant="ghost"
+                      className="w-full"
+                      onClick={() => router.push("/login")}
+                    >
                       Entrar
                     </Button>
-                    <Button className="w-full" onClick={() => router.push('/register')}>
+                    <Button
+                      className="w-full"
+                      onClick={() => router.push("/register")}
+                    >
                       Cadastrar
                     </Button>
                   </>
@@ -154,7 +184,6 @@ export default function Header() {
           </div>
         )}
       </div>
-
     </header>
-  )
+  );
 }
