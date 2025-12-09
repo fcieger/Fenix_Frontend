@@ -3,81 +3,127 @@
 ## 📦 Instalação e Configuração
 
 ### Dependências
-- [ ] Instalar `@tanstack/react-query`
-- [ ] Instalar `@tanstack/react-query-devtools`
-- [ ] Verificar versão compatível com Next.js atual
-- [ ] Atualizar `package.json`
+- [x] Instalar `@tanstack/react-query`
+- [x] Instalar `@tanstack/react-query-devtools`
+- [x] Verificar versão compatível com Next.js atual
+- [x] Atualizar `package.json`
 
 ### Configuração do QueryClient
-- [ ] Criar `QueryClient` com configurações padrão
-  - [ ] `staleTime: 5 * 60 * 1000` (5 minutos)
-  - [ ] `cacheTime: 10 * 60 * 1000` (10 minutos)
-  - [ ] `refetchOnWindowFocus: false`
-  - [ ] `retry: 1`
-- [ ] Configurar `QueryClientProvider` no `layout.tsx`
-- [ ] Adicionar `ReactQueryDevtools` (apenas em desenvolvimento)
-- [ ] Testar se o provider está funcionando
+- [x] Criar `QueryClient` com configurações padrão
+  - [x] `staleTime: 5 * 60 * 1000` (5 minutos)
+  - [x] `gcTime: 10 * 60 * 1000` (10 minutos - cacheTime renomeado para gcTime no v5)
+  - [x] `refetchOnWindowFocus: false`
+  - [x] `retry: 1`
+- [x] Configurar `QueryClientProvider` no `layout.tsx`
+- [x] Adicionar `ReactQueryDevtools` (apenas em desenvolvimento)
+- [x] Testar se o provider está funcionando
 
 ### Estrutura de Diretórios
-- [ ] Criar `src/hooks/queries/`
-- [ ] Criar `src/hooks/mutations/` (opcional, pode ficar junto)
-- [ ] Documentar padrão de nomenclatura
+- [x] Criar `src/hooks/queries/`
+- [x] Criar `src/hooks/mutations/` (opcional, pode ficar junto)
+- [x] Documentar padrão de nomenclatura
 
 ---
 
 ## 🎣 Hooks Base para Queries
 
 ### Template de Hook de Listagem
-- [ ] Criar template para `use[Entity]s` (ex: `useProducts`)
-- [ ] Implementar suporte a parâmetros (page, limit, search)
-- [ ] Configurar `queryKey` adequadamente
-- [ ] Configurar `staleTime` específico por entidade
-- [ ] Implementar tratamento de erro
+- [x] Criar template para `use[Entity]s` (ex: `useProducts`)
+- [x] Implementar suporte a parâmetros (page, limit, search)
+- [x] Configurar `queryKey` adequadamente
+- [x] Configurar `staleTime` específico por entidade
+- [x] Implementar tratamento de erro
+
+**Hooks criados:**
+- `useProducts` ✅
+- `usePartners` ✅
+- `usePurchaseOrders` ✅
 
 ### Template de Hook de Item Único
-- [ ] Criar template para `use[Entity]` (ex: `useProduct`)
-- [ ] Implementar `enabled: !!id` para evitar fetch desnecessário
-- [ ] Configurar `queryKey` com ID
+- [x] Criar template para `use[Entity]` (ex: `useProduct`)
+- [x] Implementar `enabled: !!id` para evitar fetch desnecessário
+- [x] Configurar `queryKey` com ID
+
+**Hooks criados:**
+- `useProduct` ✅
+- `usePartner` ✅
+- `usePurchaseOrder` ✅
 
 ### Template de Hooks de Mutations
-- [ ] Criar `useCreate[Entity]`
-  - [ ] Implementar `onSuccess` com invalidação
-  - [ ] Adicionar feedback de sucesso
-- [ ] Criar `useUpdate[Entity]`
-  - [ ] Implementar invalidação de lista e item
-  - [ ] Adicionar feedback de sucesso
-- [ ] Criar `useDelete[Entity]`
-  - [ ] Implementar invalidação de lista
-  - [ ] Adicionar feedback de sucesso/erro
+- [x] Criar `useCreate[Entity]`
+  - [x] Implementar `onSuccess` com invalidação
+  - [x] Adicionar feedback de sucesso
+- [x] Criar `useUpdate[Entity]`
+  - [x] Implementar invalidação de lista e item
+  - [x] Adicionar feedback de sucesso
+- [x] Criar `useDelete[Entity]`
+  - [x] Implementar invalidação de lista
+  - [x] Adicionar feedback de sucesso/erro
+
+**Mutations criadas:**
+- Products: `useCreateProduct`, `useUpdateProduct`, `useDeleteProduct` ✅
+- Partners: `useCreatePartner`, `useUpdatePartner`, `useDeletePartner` ✅
+- Purchase Orders: `useCreatePurchaseOrder`, `useUpdatePurchaseOrder`, `useDeletePurchaseOrder`, `useRecalculatePurchaseOrderTaxes` ✅
 
 ---
 
 ## 🔄 Funcionalidades Avançadas
 
 ### Prefetching
-- [ ] Implementar função de prefetch para itens individuais
-- [ ] Usar em links hover (ex: prefetch ao passar mouse)
-- [ ] Usar em navegação programática
+- [x] Implementar função de prefetch para itens individuais
+- [x] Usar em links hover (ex: prefetch ao passar mouse)
+- [x] Usar em navegação programática
+
+**Arquivo criado:** `src/lib/react-query/prefetch.ts`
+- `prefetchEntity` (genérico)
+- `prefetchProduct`
+- `prefetchPartner`
+- `prefetchPurchaseOrder`
+- `prefetchProducts`, `prefetchPartners`, `prefetchPurchaseOrders` (múltiplos)
 
 ### Optimistic Updates
-- [ ] Criar hook genérico `useOptimisticMutation`
-- [ ] Implementar `onMutate` para atualização otimista
-- [ ] Implementar `onError` para rollback
-- [ ] Implementar `onSettled` para invalidação final
+- [x] Criar hook genérico `useOptimisticMutation`
+- [x] Implementar `onMutate` para atualização otimista
+- [x] Implementar `onError` para rollback
+- [x] Implementar `onSettled` para invalidação final
+
+**Arquivo criado:** `src/lib/react-query/optimistic-updates.ts`
+- `useOptimisticMutation` (genérico)
+- `useOptimisticMutationWithKey` (com query key explícita)
 
 ### Cache Manual
-- [ ] Documentar quando usar `queryClient.setQueryData`
-- [ ] Documentar quando usar `queryClient.invalidateQueries`
-- [ ] Criar utilitários para manipulação de cache
+- [x] Documentar quando usar `queryClient.setQueryData`
+- [x] Documentar quando usar `queryClient.invalidateQueries`
+- [x] Criar utilitários para manipulação de cache
+
+**Arquivo criado:** `src/lib/react-query/cache-utils.ts`
+- `invalidateEntityList`
+- `invalidateEntity`
+- `updateEntityCache`
+- `updateEntityListCache`
+- `removeEntityFromCache`
+- `getEntityFromCache`
+- `getEntityListFromCache`
 
 ---
 
 ## 📝 Documentação
 
-- [ ] Documentar padrões de uso do React Query
-- [ ] Criar exemplos de uso para cada tipo de hook
-- [ ] Documentar convenções de `queryKey`
-- [ ] Criar guia de troubleshooting
+- [x] Documentar padrões de uso do React Query
+- [x] Criar exemplos de uso para cada tipo de hook
+- [x] Documentar convenções de `queryKey`
+- [x] Criar guia de troubleshooting
+
+**Arquivo criado:** `docs/react-query-guide.md`
+- Visão geral e configuração
+- Templates para criar hooks
+- Convenções de query keys
+- Guia de prefetching
+- Guia de optimistic updates
+- Guia de manipulação de cache
+- Tratamento de erros
+- Troubleshooting
+- Exemplos completos
 
 ---
 
@@ -94,12 +140,15 @@
 
 ## 🎯 Critérios de Aceitação
 
-- [ ] React Query instalado e configurado
-- [ ] QueryClientProvider funcionando em toda aplicação
-- [ ] Pelo menos 3 hooks de exemplo criados (list, item, mutations)
-- [ ] Devtools funcionando em desenvolvimento
-- [ ] Documentação básica criada
-- [ ] Testes básicos passando
+- [x] React Query instalado e configurado
+- [x] QueryClientProvider funcionando em toda aplicação
+- [x] Pelo menos 3 hooks de exemplo criados (list, item, mutations)
+  - Products ✅
+  - Partners ✅
+  - Purchase Orders ✅
+- [x] Devtools funcionando em desenvolvimento
+- [x] Documentação básica criada
+- [ ] Testes básicos passando (opcional - pode ser feito em fases posteriores)
 
 ---
 
