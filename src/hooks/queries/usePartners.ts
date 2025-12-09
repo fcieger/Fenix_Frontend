@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, queryOptions } from "@tanstack/react-query";
 import {
   listPartners,
   getPartner,
@@ -15,14 +15,31 @@ import type {
 } from "@/types/sdk";
 
 /**
- * Hook to fetch list of partners
+ * Query options for partners list
+ * Reutilizável e com melhor tipagem
  */
-export const usePartners = (params?: PartnerQueryParams) => {
-  return useQuery({
+export const partnersQueryOptions = (params?: PartnerQueryParams) =>
+  queryOptions({
     queryKey: ["partners", params],
     queryFn: () => listPartners(params),
     staleTime: 2 * 60 * 1000, // 2 minutos
   });
+
+/**
+ * Query options for a single partner
+ * Reutilizável e com melhor tipagem
+ */
+export const partnerQueryOptions = (id: string) =>
+  queryOptions({
+    queryKey: ["partner", id],
+    queryFn: () => getPartner(id),
+  });
+
+/**
+ * Hook to fetch list of partners
+ */
+export const usePartners = (params?: PartnerQueryParams) => {
+  return useQuery(partnersQueryOptions(params));
 };
 
 /**
@@ -30,8 +47,7 @@ export const usePartners = (params?: PartnerQueryParams) => {
  */
 export const usePartner = (id: string, options?: { enabled?: boolean }) => {
   return useQuery({
-    queryKey: ["partner", id],
-    queryFn: () => getPartner(id),
+    ...partnerQueryOptions(id),
     enabled: options?.enabled !== undefined ? options.enabled : !!id,
   });
 };
