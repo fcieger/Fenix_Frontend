@@ -13,7 +13,7 @@ const ERROR_MESSAGES: Record<number, string> = {
   401: "Authentication required. Please log in again.",
   403: "You do not have permission to perform this action.",
   404: "The requested resource was not found.",
-  409: "A conflict occurred. This resource may already exist.",
+  409: "Já existe um registro com essas informações.",
   422: "Validation error. Please check the form fields.",
   500: "An internal server error occurred. Please try again later.",
   503: "Service temporarily unavailable. Please try again later.",
