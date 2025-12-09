@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, queryOptions } from "@tanstack/react-query";
 import {
   listProducts,
   getProduct,
@@ -13,19 +13,38 @@ import type {
   PaginatedResponse,
 } from "@/types/sdk";
 
-/**
- * Hook to fetch list of products
- */
-export const useProducts = (params?: {
+export type ProductsQueryParams = {
   page?: number;
   limit?: number;
   search?: string;
-}) => {
-  return useQuery({
+};
+
+/**
+ * Query options for products list
+ * Reutilizável e com melhor tipagem
+ */
+export const productsQueryOptions = (params?: ProductsQueryParams) =>
+  queryOptions({
     queryKey: ["products", params],
     queryFn: () => listProducts(params),
     staleTime: 2 * 60 * 1000, // 2 minutos
   });
+
+/**
+ * Query options for a single product
+ * Reutilizável e com melhor tipagem
+ */
+export const productQueryOptions = (id: string) =>
+  queryOptions({
+    queryKey: ["product", id],
+    queryFn: () => getProduct(id),
+  });
+
+/**
+ * Hook to fetch list of products
+ */
+export const useProducts = (params?: ProductsQueryParams) => {
+  return useQuery(productsQueryOptions(params));
 };
 
 /**
@@ -33,8 +52,7 @@ export const useProducts = (params?: {
  */
 export const useProduct = (id: string, options?: { enabled?: boolean }) => {
   return useQuery({
-    queryKey: ["product", id],
-    queryFn: () => getProduct(id),
+    ...productQueryOptions(id),
     enabled: options?.enabled !== undefined ? options.enabled : !!id,
   });
 };
