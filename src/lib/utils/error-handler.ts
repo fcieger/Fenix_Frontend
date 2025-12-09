@@ -1,4 +1,5 @@
 import { toast } from 'sonner';
+import { SdkErrorHandler } from '@/lib/sdk/error-handler';
 
 /**
  * Parse validation errors from backend
@@ -106,6 +107,12 @@ export function handleValidationError(error: any, setFieldErrors?: (errors: Reco
 
   if (!error) {
     toast.error('Erro', 'Ocorreu um erro desconhecido');
+    return fieldErrors;
+  }
+
+  // Check for 409 Conflict error (duplicate data)
+  if (SdkErrorHandler.isConflictError(error) || error.statusCode === 409 || error?.response?.status === 409) {
+    toast.error('Registro duplicado', 'Já existe um registro com essas informações');
     return fieldErrors;
   }
 
