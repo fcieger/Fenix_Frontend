@@ -42,11 +42,12 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml* ./
 # para usar HTTPS com token em vez de SSH
 RUN if [ -n "$GITHUB_TOKEN" ]; then \
       echo "Modificando package.json e pnpm-lock.yaml para usar HTTPS com token..." && \
-      sed -i "s|github:imLeonam/fenix-api-sdk|https://${GITHUB_TOKEN}@github.com/imLeonam/fenix-api-sdk.git|g" package.json; \
-      sed -i "s|specifier: github:imLeonam/fenix-api-sdk|specifier: https://${GITHUB_TOKEN}@github.com/imLeonam/fenix-api-sdk.git|g" pnpm-lock.yaml; \
-      sed -i "s|git@github.com:imLeonam/fenix-api-sdk|https://${GITHUB_TOKEN}@github.com/imLeonam/fenix-api-sdk|g" pnpm-lock.yaml; \
-      sed -i "s|git+https://git@github.com:imLeonam/fenix-api-sdk|git+https://${GITHUB_TOKEN}@github.com/imLeonam/fenix-api-sdk|g" pnpm-lock.yaml; \
-      sed -i "s|@fenix/api-sdk@git+https://git@github.com|@fenix/api-sdk@git+https://${GITHUB_TOKEN}@github.com|g" pnpm-lock.yaml; \
+      ESCAPED_TOKEN=$(echo "$GITHUB_TOKEN" | sed 's/\\/\\\\/g; s/&/\\&/g; s|/|\\/|g; s/|/\\|/g') && \
+      sed -i "s|github:imLeonam/fenix-api-sdk|https://${ESCAPED_TOKEN}@github.com/imLeonam/fenix-api-sdk.git|g" package.json; \
+      sed -i "s|specifier: github:imLeonam/fenix-api-sdk|specifier: https://${ESCAPED_TOKEN}@github.com/imLeonam/fenix-api-sdk.git|g" pnpm-lock.yaml; \
+      sed -i "s|git@github.com:imLeonam/fenix-api-sdk|https://${ESCAPED_TOKEN}@github.com/imLeonam/fenix-api-sdk|g" pnpm-lock.yaml; \
+      sed -i "s|git+https://git@github.com:imLeonam/fenix-api-sdk|git+https://${ESCAPED_TOKEN}@github.com/imLeonam/fenix-api-sdk|g" pnpm-lock.yaml; \
+      sed -i "s|@fenix/api-sdk@git+https://git@github.com|@fenix/api-sdk@git+https://${ESCAPED_TOKEN}@github.com|g" pnpm-lock.yaml; \
       echo "Verificando token do GitHub..." && \
       git ls-remote "https://${GITHUB_TOKEN}@github.com/imLeonam/fenix-api-sdk.git" HEAD > /dev/null 2>&1 || \
       (echo "ERRO: Token do GitHub inválido ou sem permissão para acessar o repositório" && exit 1); \
