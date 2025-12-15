@@ -11,7 +11,6 @@ import {
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import type { Partner } from "@/types/sdk";
-import { mapPartnerToDisplay } from "@/lib/sdk/field-mappers";
 import { RegistrationType, PersonType } from "@/types/sdk";
 import {
   FileText,
@@ -32,11 +31,9 @@ import {
   ChevronRight,
   CreditCard,
 } from "lucide-react";
-import CadastrosAIAssistant from "@/components/CadastrosAIAssistant";
+import PartnersAIAssistant from "@/components/CadastrosAIAssistant";
 
-type PartnerTypeValue = RegistrationType | "BOTH";
-
-export default function CadastrosPage() {
+export default function PartnersPage() {
   const router = useRouter();
   const { user, token, logout, isAuthenticated, isLoading, activeCompanyId } =
     useAuth();
@@ -210,42 +207,18 @@ export default function CadastrosPage() {
   };
 
   const handleNewCadastro = () => {
-    router.push("/partners/novo");
-  };
-
-  const resolvePartnerType = (partner: Partner): PartnerTypeValue => {
-    const types = partner.types || [];
-    const hasCustomer = types.includes(RegistrationType.CUSTOMER);
-    const hasSupplier = types.includes(RegistrationType.SUPPLIER);
-
-    if (hasCustomer && hasSupplier) return "BOTH";
-    if (hasSupplier) return RegistrationType.SUPPLIER;
-    if (hasCustomer) return RegistrationType.CUSTOMER;
-    return types[0] ?? RegistrationType.CUSTOMER;
-  };
-
-  const resolvePartnerType = (partner: Partner): PartnerTypeValue => {
-    const types = partner.types || [];
-    const hasCustomer = types.includes(RegistrationType.CUSTOMER);
-    const hasSupplier = types.includes(RegistrationType.SUPPLIER);
-
-    if (hasCustomer && hasSupplier) return "BOTH";
-    if (hasSupplier) return RegistrationType.SUPPLIER;
-    if (hasCustomer) return RegistrationType.CUSTOMER;
-    return types[0] ?? RegistrationType.CUSTOMER;
+    router.push("/partners/create");
   };
 
   // Calcular estatísticas
   const stats = {
-    total: cadastros.length,
-    clientes: cadastros.filter((c) => {
-      const type = resolvePartnerType(c);
-      return type === RegistrationType.CUSTOMER || type === "BOTH";
-    }).length,
-    fornecedores: cadastros.filter((c) => {
-      const type = resolvePartnerType(c);
-      return type === RegistrationType.SUPPLIER || type === "BOTH";
-    }).length,
+    total: partners.length,
+    clientes: partners.filter((c) =>
+      c.types?.includes(RegistrationType.CUSTOMER)
+    ).length,
+    fornecedores: partners.filter((c) =>
+      c.types.includes(RegistrationType.SUPPLIER)
+    ).length,
     vendedores: 0, // Not available in SDK
     transportadoras: 0, // Not available in SDK
   };
@@ -491,17 +464,14 @@ export default function CadastrosPage() {
               transition={{ delay: 0.3 }}
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6"
             >
-              {currentCadastros.map((cadastro, index) => {
-                const partnerType = resolvePartnerType(cadastro);
-
-                return (
-                  <motion.div
-                    key={cadastro.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200 p-6"
-                  >
+              {currentPartners.map((cadastro, index) => (
+                <motion.div
+                  key={cadastro.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-200 p-6"
+                >
                   {/* Header do Card */}
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center flex-1 min-w-0">
@@ -583,28 +553,15 @@ export default function CadastrosPage() {
                       Tipos
                     </label>
                     <div className="mt-1 flex flex-wrap gap-1">
-                      {partnerType === RegistrationType.CUSTOMER && (
-                      {partnerType === RegistrationType.CUSTOMER && (
+                      {cadastro.types?.includes(RegistrationType.CUSTOMER) && (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           Cliente
                         </span>
                       )}
-                      {partnerType === RegistrationType.SUPPLIER && (
-                      {partnerType === RegistrationType.SUPPLIER && (
+                      {cadastro.types?.includes(RegistrationType.SUPPLIER) && (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                           Fornecedor
                         </span>
-                      )}
-                      {partnerType === "BOTH" && (
-                      {partnerType === "BOTH" && (
-                        <>
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            Cliente
-                          </span>
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                            Fornecedor
-                          </span>
-                        </>
                       )}
                     </div>
                   </div>
@@ -633,12 +590,8 @@ export default function CadastrosPage() {
                       Excluir
                     </Button>
                   </div>
-                  </motion.div>
-                );
-              })}
-                  </motion.div>
-                );
-              })}
+                </motion.div>
+              ))}
             </motion.div>
           ) : (
             /* Table View */
@@ -685,10 +638,8 @@ export default function CadastrosPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-100">
-                    {currentCadastros.map((cadastro, index) => {
-                      const isExpanded = expandedCadastros.has(cadastro.id);
-                      const partnerType = resolvePartnerType(cadastro);
-
+                    {currentPartners.map((cadastro, index) => {
+                      const isExpanded = expandedPartners.has(cadastro.id);
                       return (
                         <React.Fragment key={cadastro.id}>
                           <motion.tr
@@ -728,35 +679,30 @@ export default function CadastrosPage() {
                             </td>
                             <td className="px-3 lg:px-6 py-4 lg:py-6">
                               <div className="flex flex-wrap gap-1">
-                                {partnerType === RegistrationType.CUSTOMER && (
-                                {partnerType === RegistrationType.CUSTOMER && (
+                                {cadastro.types?.includes(
+                                  RegistrationType.CUSTOMER
+                                ) && (
                                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                     Cliente
                                   </span>
                                 )}
-                                {partnerType === RegistrationType.SUPPLIER && (
-                                {partnerType === RegistrationType.SUPPLIER && (
+                                {cadastro.types?.includes(
+                                  RegistrationType.SUPPLIER
+                                ) && (
                                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                                     Fornecedor
                                   </span>
                                 )}
-                                {partnerType === "BOTH" && (
-                                {partnerType === "BOTH" && (
-                                  <>
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                      Cliente
+                                {!cadastro.types?.includes(
+                                  RegistrationType.CUSTOMER
+                                ) &&
+                                  !cadastro.types?.includes(
+                                    RegistrationType.SUPPLIER
+                                  ) && (
+                                    <span className="text-xs lg:text-sm text-gray-500">
+                                      Não definido
                                     </span>
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                      Fornecedor
-                                    </span>
-                                  </>
-                                )}
-                                {!cadastro.types?.length && (
-                                {!cadastro.types?.length && (
-                                  <span className="text-xs lg:text-sm text-gray-500">
-                                    Não definido
-                                  </span>
-                                )}
+                                  )}
                               </div>
                             </td>
                             <td className="px-3 lg:px-6 py-4 lg:py-6">
@@ -1235,272 +1181,132 @@ export default function CadastrosPage() {
 
               {/* Cards Mobile */}
               <div className="md:hidden space-y-4 p-4">
-                {currentCadastros.map((cadastro, index) => {
-                  const partnerType = resolvePartnerType(cadastro);
-                  const extraTypes =
-                    cadastro.types?.filter(
-                      (type) =>
-                        type !== RegistrationType.CUSTOMER &&
-                        type !== RegistrationType.SUPPLIER
-                    ) || [];
-
-                  const typeLabels: Record<RegistrationType, string> = {
-                    [RegistrationType.CUSTOMER]: "Cliente",
-                    [RegistrationType.SUPPLIER]: "Fornecedor",
-                    [RegistrationType.SELLER]: "Vendedor",
-                    [RegistrationType.EMPLOYEE]: "Funcionário",
-                    [RegistrationType.CARRIER]: "Transportadora",
-                    [RegistrationType.SERVICE_PROVIDER]: "Prestador",
-                  };
-
-                  return (
-                    <motion.div
-                      key={cadastro.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: index * 0.05 }}
-                      className="bg-white rounded-2xl shadow-lg border border-gray-200 p-4 hover:shadow-xl transition-all duration-200"
-                    >
-                      {/* Header do Card */}
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center flex-1 min-w-0">
-                          <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center mr-3 shadow-lg flex-shrink-0">
-                            <Users className="w-5 h-5 text-white" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <h3 className="text-base font-semibold text-gray-900 truncate">
-                              {cadastro.legalName || cadastro.tradeName || "Nome não informado"}
-                            </h3>
-                            <p className="text-xs text-gray-500 flex items-center mt-1">
-                              <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                              {cadastro.personType === PersonType.INDIVIDUAL ? "PF" : "PJ"}
-                            </p>
-                          </div>
+                {currentPartners.map((cadastro, index) => (
+                  <motion.div
+                    key={cadastro.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                    className="bg-white rounded-2xl shadow-lg border border-gray-200 p-4 hover:shadow-xl transition-all duration-200"
+                  >
+                    {/* Header do Card */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center flex-1 min-w-0">
+                        <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center mr-3 shadow-lg flex-shrink-0">
+                          <Users className="w-5 h-5 text-white" />
                         </div>
-                        <div className="flex items-center space-x-1 ml-2">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md">
-                            {cadastro.personType === PersonType.INDIVIDUAL ? "PF" : "PJ"}
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-base font-semibold text-gray-900 truncate">
+                            {cadastro.legalName || "Nome não informado"}
+                          </h3>
+                          <p className="text-xs text-gray-500 flex items-center mt-1">
+                            <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                            {cadastro.personType === PersonType.INDIVIDUAL
+                              ? "PF"
+                              : "PJ"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-1 ml-2">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md">
+                          {cadastro.personType === PersonType.INDIVIDUAL
+                            ? "PF"
+                            : "PJ"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Informações do Card */}
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Apelido
+                        </label>
+                        <div className="mt-1">
+                          <span className="text-xs font-medium text-gray-900">
+                            {cadastro.tradeName || "-"}
                           </span>
                         </div>
                       </div>
-
-                      {/* Informações do Card */}
-                      <div className="grid grid-cols-2 gap-3 mb-3">
-                        <div>
-                          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Apelido
-                          </label>
-                          <div className="mt-1">
-                            <span className="text-xs font-medium text-gray-900">
-                              {cadastro.tradeName || "-"}
-                            </span>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Documento
-                          </label>
-                          <div className="mt-1">
-                            <span className="text-xs font-medium text-gray-900 font-mono">
-                              {cadastro.taxId || "-"}
-                            </span>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Email
-                          </label>
-                          <div className="mt-1">
-                            <span className="text-xs text-gray-500">
-                              {cadastro.email || "-"}
-                            </span>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Telefone
-                          </label>
-                          <div className="mt-1">
-                            <span className="text-xs text-gray-500">
-                              {cadastro.phone || cadastro.contacts?.[0]?.phone || "-"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      {/* Informações do Card */}
-                      <div className="grid grid-cols-2 gap-3 mb-3">
-                        <div>
-                          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Apelido
-                          </label>
-                          <div className="mt-1">
-                            <span className="text-xs font-medium text-gray-900">
-                              {cadastro.tradeName || "-"}
-                            </span>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Documento
-                          </label>
-                          <div className="mt-1">
-                            <span className="text-xs font-medium text-gray-900 font-mono">
-                              {cadastro.taxId || "-"}
-                            </span>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Email
-                          </label>
-                          <div className="mt-1">
-                            <span className="text-xs text-gray-500">
-                              {cadastro.email || "-"}
-                            </span>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Telefone
-                          </label>
-                          <div className="mt-1">
-                            <span className="text-xs text-gray-500">
-                              {cadastro.phone || cadastro.contacts?.[0]?.phone || "-"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Tipos de Cliente */}
-                      {/* Tipos de Cliente */}
-                      <div className="mb-3">
+                      <div>
                         <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Tipos
+                          Documento
                         </label>
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {partnerType === RegistrationType.CUSTOMER && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              Cliente
-                            </span>
-                          )}
-                          {partnerType === RegistrationType.SUPPLIER && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                              Fornecedor
-                            </span>
-                          )}
-                          {partnerType === "BOTH" && (
-                            <>
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                Cliente
-                              </span>
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                Fornecedor
-                              </span>
-                            </>
-                          )}
-                          {!cadastro.types?.length && (
-                            <span className="text-xs text-gray-500">Não definido</span>
-                          )}
-                          {extraTypes.map((type) => (
-                            <span
-                              key={type}
-                              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
-                            >
-                              {typeLabels[type] || type}
-                            </span>
-                          ))}
-                          {partnerType === RegistrationType.CUSTOMER && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              Cliente
-                            </span>
-                          )}
-                          {partnerType === RegistrationType.SUPPLIER && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                              Fornecedor
-                            </span>
-                          )}
-                          {partnerType === "BOTH" && (
-                            <>
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                Cliente
-                              </span>
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                Fornecedor
-                              </span>
-                            </>
-                          )}
-                          {!cadastro.types?.length && (
-                            <span className="text-xs text-gray-500">Não definido</span>
-                          )}
-                          {extraTypes.map((type) => (
-                            <span
-                              key={type}
-                              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
-                            >
-                              {typeLabels[type] || type}
-                            </span>
-                          ))}
+                        <div className="mt-1">
+                          <span className="text-xs font-medium text-gray-900 font-mono">
+                            {cadastro.taxId || "-"}
+                          </span>
                         </div>
                       </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Email
+                        </label>
+                        <div className="mt-1">
+                          <span className="text-xs text-gray-500">
+                            {cadastro.email || "-"}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Telefone
+                        </label>
+                        <div className="mt-1">
+                          <span className="text-xs text-gray-500">
+                            {cadastro.phone || "-"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
 
-                      {/* Ações do Card */}
-                      <div className="flex flex-col gap-2">
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={() => handleEdit(cadastro.id)}
-                            size="sm"
-                            className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 px-3 py-2 rounded-xl font-medium text-xs"
-                          >
-                            <Edit className="w-3 h-3 mr-1" />
-                            Editar
-                          </Button>
-                          <Button
-                            onClick={() =>
-                              handleDelete(
-                                cadastro.id,
-                                cadastro.legalName || "Cadastro"
-                              )
-                            }
-                            size="sm"
-                            className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 px-3 py-2 rounded-xl font-medium text-xs"
-                          >
-                            <Trash2 className="w-3 h-3 mr-1" />
-                            Excluir
-                          </Button>
-                        </div>
+                    {/* Tipos de Cliente */}
+                    <div className="mb-3">
+                      <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Tipos
+                      </label>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {cadastro.types?.includes(RegistrationType.CUSTOMER) && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            Cliente
+                          </span>
+                        )}
+                        {cadastro.types?.includes(RegistrationType.SUPPLIER) && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                            Fornecedor
+                          </span>
+                        )}
                       </div>
-                    </motion.div>
-                  );
-                })}
-                      {/* Ações do Card */}
-                      <div className="flex flex-col gap-2">
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={() => handleEdit(cadastro.id)}
-                            size="sm"
-                            className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 px-3 py-2 rounded-xl font-medium text-xs"
-                          >
-                            <Edit className="w-3 h-3 mr-1" />
-                            Editar
-                          </Button>
-                          <Button
-                            onClick={() =>
-                              handleDelete(
-                                cadastro.id,
-                                cadastro.legalName || "Cadastro"
-                              )
-                            }
-                            size="sm"
-                            className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 px-3 py-2 rounded-xl font-medium text-xs"
-                          >
-                            <Trash2 className="w-3 h-3 mr-1" />
-                            Excluir
-                          </Button>
-                        </div>
+                    </div>
+
+                    {/* Ações do Card */}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => handleEdit(cadastro.id)}
+                          size="sm"
+                          className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 px-3 py-2 rounded-xl font-medium text-xs"
+                        >
+                          <Edit className="w-3 h-3 mr-1" />
+                          Editar
+                        </Button>
+                        <Button
+                          onClick={() =>
+                            handleDelete(
+                              cadastro.id,
+                              cadastro.legalName || "Cadastro"
+                            )
+                          }
+                          size="sm"
+                          className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 px-3 py-2 rounded-xl font-medium text-xs"
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" />
+                          Excluir
+                        </Button>
                       </div>
-                    </motion.div>
-                  );
-                })}
+                    </div>
+                  </motion.div>
+                ))}
               </div>
             </div>
           )}
@@ -1529,7 +1335,7 @@ export default function CadastrosPage() {
       </div>
 
       {/* AI Assistant Modal */}
-      <CadastrosAIAssistant
+      <PartnersAIAssistant
         isOpen={isAIAssistantOpen}
         onClose={() => setIsAIAssistantOpen(false)}
       />
@@ -1557,8 +1363,8 @@ export default function CadastrosPage() {
             <p className="text-gray-600 mb-6">
               Tem certeza que deseja excluir o cadastro{" "}
               <strong>"{deleteConfirm.name}"</strong>?
-              {deleteConfirm &&
-                ((cadastros.find((c) => c.id === deleteConfirm.id)?.addresses?.length ?? 0) > 0) && (
+              {partners.find((c) => c.id === deleteConfirm.id)?.addresses
+                ?.length ? (
                 <span className="block mt-2 text-sm text-orange-600">
                   ⚠️ Este cadastro possui endereços vinculados e será inativado
                   em vez de excluído.
@@ -1577,10 +1383,18 @@ export default function CadastrosPage() {
                 onClick={confirmDelete}
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
               >
-                <Trash2 className="w-4 h-4 mr-2" />
-                {(cadastros.find((c) => c.id === deleteConfirm?.id)?.addresses?.length ?? 0) > 0
-                  ? "Inativar"
-                  : "Excluir"}
+                {partners?.find((p) => p?.id === deleteConfirm.id)?.addresses
+                  ?.length ? (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Inativar
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Excluir
+                  </>
+                )}
               </Button>
             </div>
           </motion.div>
