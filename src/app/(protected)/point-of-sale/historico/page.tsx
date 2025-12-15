@@ -33,7 +33,6 @@ interface Venda {
   meioPagamento?: string;
   dataVenda: string;
   status: string;
-  status: string;
   motivoCancelamento?: string;
   dataCancelamento?: string;
 }
@@ -205,7 +204,6 @@ export default function HistoricoVendasPage() {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
 
-
     return (
       venda.id.toLowerCase().includes(term) ||
       (venda.clienteNome?.toLowerCase().includes(term) ?? false) ||
@@ -230,8 +228,6 @@ export default function HistoricoVendasPage() {
   };
 
   return (
-    <>
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
     <>
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
         <div className="max-w-7xl mx-auto px-4 py-8">
@@ -366,6 +362,7 @@ export default function HistoricoVendasPage() {
                       className="pl-10 h-12"
                     />
                   </div>
+
 
                   {/* Toggle Mostrar Canceladas */}
                   <div className="flex items-center justify-between">
@@ -564,7 +561,4 @@ export default function HistoricoVendasPage() {
       <ToastContainer toasts={toasts} />
     </>
   );
-    </>
-  );
 }
-
