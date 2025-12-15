@@ -14,7 +14,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   ArrowLeft,
@@ -44,30 +43,14 @@ function NovaConfiguracaoNfeForm() {
   const configId = searchParams.get("id");
   const isEditMode = !!configId;
 
+
   // Estados para configuração do modelo
-  const [descricaoModelo, setDescricaoModelo] = useState('');
-  type TipoModelo =
-    | 'nfe-produto'
-    | 'nfse-servico'
-    | 'nf-entrada'
-    | 'nfce-consumidor'
-    | 'mdfe';
-  type AmbienteTipo = 'producao' | 'homologacao';
-
-  const [tipoModelo, setTipoModelo] = useState<TipoModelo>('nfe-produto');
-  type TipoModelo =
-    | 'nfe-produto'
-    | 'nfse-servico'
-    | 'nf-entrada'
-    | 'nfce-consumidor'
-    | 'mdfe';
-  type AmbienteTipo = 'producao' | 'homologacao';
-
-  const [tipoModelo, setTipoModelo] = useState<TipoModelo>('nfe-produto');
-  const [modelo, setModelo] = useState('');
-  const [serie, setSerie] = useState('');
-  const [numeroAtual, setNumeroAtual] = useState('');
-  const [ambiente, setAmbiente] = useState<AmbienteTipo>('producao');
+  const [descricaoModelo, setDescricaoModelo] = useState("");
+  const [tipoModelo, setTipoModelo] = useState("");
+  const [modelo, setModelo] = useState("");
+  const [serie, setSerie] = useState("");
+  const [numeroAtual, setNumeroAtual] = useState("");
+  const [ambiente, setAmbiente] = useState("PRODUCAO");
 
   // Estados para RPS
   const [naturezaOperacao, setNaturezaOperacao] = useState("1");
@@ -144,17 +127,12 @@ function NovaConfiguracaoNfeForm() {
         // Preencher os campos com os dados existentes
         setDescricaoModelo(config.descricaoModelo);
         if (config.tipoModelo) {
-          setTipoModelo(config.tipoModelo as TipoModelo);
-        }
-        if (config.tipoModelo) {
-          setTipoModelo(config.tipoModelo as TipoModelo);
+          setTipoModelo(config.tipoModelo as any);
         }
         setModelo(config.modelo);
         setSerie(config.serie);
         setNumeroAtual(config.numeroAtual.toString());
-        if (config.ambiente) {
-          setAmbiente(config.ambiente.toLowerCase() as AmbienteTipo);
-        }
+        setAmbiente(config.ambiente);
 
         // Campos RPS
         setNaturezaOperacao(config.rpsNaturezaOperacao || "1");
@@ -387,25 +365,42 @@ function NovaConfiguracaoNfeForm() {
               />
             </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="tipoModelo" className="text-sm font-semibold text-gray-700">
-                  Tipo de modelo Documentos Fiscais *
-                </Label>
-                <Select value={tipoModelo} onValueChange={(value) => setTipoModelo(value as TipoModelo)}>
-                <Select value={tipoModelo} onValueChange={(value) => setTipoModelo(value as TipoModelo)}>
-                  <SelectTrigger className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg">
-                    <SelectValue placeholder="Selecione o tipo" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-lg">
-                    {tiposModelo.map((tipo) => (
-                      <SelectItem key={tipo.value} value={tipo.value}>
-                        {tipo.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor="tipoModelo"
+                className="text-sm font-semibold text-gray-700"
+              >
+                Tipo de modelo Documentos Fiscais *
+              </Label>
+              <Select value={tipoModelo} onValueChange={setTipoModelo}>
+                <SelectTrigger className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg">
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent className="rounded-lg">
+                  {tiposModelo.map((tipo) => (
+                    <SelectItem key={tipo.value} value={tipo.value}>
+                      {tipo.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
+            <div className="space-y-2">
+              <Label
+                htmlFor="modelo"
+                className="text-sm font-semibold text-gray-700"
+              >
+                Modelo *
+              </Label>
+              <Input
+                id="modelo"
+                value={modelo}
+                onChange={(e) => setModelo(e.target.value)}
+                placeholder="Ex: 55"
+                className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg"
+              />
+            </div>
             <div className="space-y-2">
               <Label
                 htmlFor="modelo"
@@ -437,6 +432,21 @@ function NovaConfiguracaoNfeForm() {
                 className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg"
               />
             </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor="serie"
+                className="text-sm font-semibold text-gray-700"
+              >
+                Série *
+              </Label>
+              <Input
+                id="serie"
+                value={serie}
+                onChange={(e) => setSerie(e.target.value)}
+                placeholder="Ex: 1"
+                className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg"
+              />
+            </div>
 
             <div className="space-y-2">
               <Label
@@ -453,27 +463,42 @@ function NovaConfiguracaoNfeForm() {
                 className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg"
               />
             </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor="numeroAtual"
+                className="text-sm font-semibold text-gray-700"
+              >
+                Número Atual
+              </Label>
+              <Input
+                id="numeroAtual"
+                value={numeroAtual}
+                onChange={(e) => setNumeroAtual(e.target.value)}
+                placeholder="Ex: 1"
+                className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg"
+              />
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="ambiente" className="text-sm font-semibold text-gray-700">
-                  Ambiente *
-                </Label>
-                <Select value={ambiente} onValueChange={(value) => setAmbiente(value as AmbienteTipo)}>
-                <Select value={ambiente} onValueChange={(value) => setAmbiente(value as AmbienteTipo)}>
-                  <SelectTrigger className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-lg">
-                    <SelectItem value="homologacao">Homologação</SelectItem>
-                    <SelectItem value="producao">Produção</SelectItem>
-                    <SelectItem value="homologacao">Homologação</SelectItem>
-                    <SelectItem value="producao">Produção</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor="ambiente"
+                className="text-sm font-semibold text-gray-700"
+              >
+                Ambiente *
+              </Label>
+              <Select value={ambiente} onValueChange={setAmbiente}>
+                <SelectTrigger className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-lg">
+                  <SelectItem value="HOMOLOGACAO">Homologação</SelectItem>
+                  <SelectItem value="PRODUCAO">Produção</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-        </Card>
+        </div>
+      </Card>
 
       {/* Abas RPS e NFC-e */}
       <Card className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
