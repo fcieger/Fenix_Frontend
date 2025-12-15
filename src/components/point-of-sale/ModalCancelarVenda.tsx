@@ -1,12 +1,18 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { AlertCircle, X, Trash2, Loader2, FileText } from 'lucide-react';
-import { useToast } from '@/components/ui/toast';
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { AlertCircle, X, Trash2, Loader2, FileText } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
 
 interface Venda {
   id: string;
@@ -14,7 +20,7 @@ interface Venda {
   valorTotal: number;
   meioPagamento?: string;
   dataVenda: string;
-  status: string;
+  status?: string;
 }
 
 interface ModalCancelarVendaProps {
@@ -34,27 +40,27 @@ export function ModalCancelarVenda({
   companyId,
   token,
   usuarioId,
-  onSuccess
+  onSuccess,
 }: ModalCancelarVendaProps) {
   const { success, error: showError } = useToast();
   const [loading, setLoading] = useState(false);
-  const [motivo, setMotivo] = useState('');
+  const [motivo, setMotivo] = useState("");
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
     }).format(value);
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return date.toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -63,7 +69,7 @@ export function ModalCancelarVenda({
 
     // Validações
     if (!motivo.trim() || motivo.trim().length < 10) {
-      showError('Motivo inválido', 'O motivo deve ter no mínimo 10 caracteres');
+      showError("Motivo inválido", "O motivo deve ter no mínimo 10 caracteres");
       return;
     }
 
@@ -71,46 +77,46 @@ export function ModalCancelarVenda({
 
     try {
       const response = await fetch(`/api/caixa/venda/${venda.id}/cancelar`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           company_id: companyId,
           usuario_id: usuarioId,
-          motivo: motivo.trim()
-        })
+          motivo: motivo.trim(),
+        }),
       });
 
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Erro ao cancelar venda');
+        throw new Error(data.error || "Erro ao cancelar venda");
       }
 
-      success('Venda cancelada!', 'A venda foi cancelada com sucesso');
-      
+      success("Venda cancelada!", "A venda foi cancelada com sucesso");
+
       // Limpar campos
-      setMotivo('');
-      
+      setMotivo("");
+
       // Fechar modal
       onOpenChange(false);
-      
+
       // Callback de sucesso
       if (onSuccess) {
         onSuccess();
       }
     } catch (err: any) {
-      console.error('Erro ao cancelar venda:', err);
-      showError('Erro ao cancelar', err.message || 'Erro ao cancelar venda');
+      console.error("Erro ao cancelar venda:", err);
+      showError("Erro ao cancelar", err.message || "Erro ao cancelar venda");
     } finally {
       setLoading(false);
     }
   };
 
   const handleCancel = () => {
-    setMotivo('');
+    setMotivo("");
     onOpenChange(false);
   };
 
@@ -126,9 +132,7 @@ export function ModalCancelarVenda({
             </div>
             Cancelar Venda
           </DialogTitle>
-          <DialogDescription>
-            Esta ação não pode ser desfeita
-          </DialogDescription>
+          <DialogDescription>Esta ação não pode ser desfeita</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
@@ -140,15 +144,18 @@ export function ModalCancelarVenda({
                 ⚠️ Esta ação não pode ser desfeita!
               </p>
               <p className="text-sm text-red-700">
-                A venda será cancelada permanentemente e o estoque será devolvido (se aplicável).
+                A venda será cancelada permanentemente e o estoque será
+                devolvido (se aplicável).
               </p>
             </div>
           </div>
 
           {/* Informações da Venda */}
           <div className="bg-indigo-50 border-2 border-indigo-200 rounded-lg p-4 space-y-2">
-            <h3 className="font-semibold text-indigo-900 mb-3">Dados da Venda:</h3>
-            
+            <h3 className="font-semibold text-indigo-900 mb-3">
+              Dados da Venda:
+            </h3>
+
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
                 <span className="text-gray-600">ID:</span>
@@ -165,13 +172,13 @@ export function ModalCancelarVenda({
               <div>
                 <span className="text-gray-600">Cliente:</span>
                 <p className="font-semibold text-gray-900">
-                  {venda.clienteNome || 'Cliente Avulso'}
+                  {venda.clienteNome || "Cliente Avulso"}
                 </p>
               </div>
               <div>
                 <span className="text-gray-600">Pagamento:</span>
                 <p className="font-semibold text-gray-900 capitalize">
-                  {venda.meioPagamento || 'Não informado'}
+                  {venda.meioPagamento || "Não informado"}
                 </p>
               </div>
               <div className="col-span-2">
@@ -185,7 +192,10 @@ export function ModalCancelarVenda({
 
           {/* Motivo do Cancelamento */}
           <div className="space-y-2">
-            <Label htmlFor="motivo" className="text-base font-semibold text-gray-900">
+            <Label
+              htmlFor="motivo"
+              className="text-base font-semibold text-gray-900"
+            >
               Motivo do Cancelamento *
             </Label>
             <div className="relative">
@@ -202,12 +212,12 @@ export function ModalCancelarVenda({
               />
             </div>
             <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500">
-                Mínimo de 10 caracteres
-              </p>
-              <p className={`text-sm font-medium ${
-                motivo.length >= 10 ? 'text-green-600' : 'text-gray-400'
-              }`}>
+              <p className="text-sm text-gray-500">Mínimo de 10 caracteres</p>
+              <p
+                className={`text-sm font-medium ${
+                  motivo.length >= 10 ? "text-green-600" : "text-gray-400"
+                }`}
+              >
                 {motivo.length}/10
               </p>
             </div>
@@ -247,7 +257,3 @@ export function ModalCancelarVenda({
     </Dialog>
   );
 }
-
-
-
-
