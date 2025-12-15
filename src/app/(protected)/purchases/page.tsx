@@ -9,8 +9,6 @@ import {
   FileText,
   Plus,
   Search,
-  Eye,
-  Edit,
   Trash2,
   CheckCircle,
   Clock,
@@ -27,7 +25,6 @@ import {
   ChevronDown,
   Truck,
   CreditCard,
-  MapPin,
   Pencil,
   Sparkles,
 } from "lucide-react";
@@ -99,9 +96,7 @@ export default function PedidosCompraPage() {
     try {
       const partner = await getPartner(order.partnerId);
       if (partner && order.partnerId && partner.id) {
-        setPartnersCache((prev) =>
-          new Map(prev).set(order.partnerId!, partner as Partner)
-        );
+        setPartnersCache((prev) => new Map(prev).set(order.partnerId!, partner as Partner));
         return partner as Partner;
       }
       return null;
@@ -792,10 +787,7 @@ export default function PedidosCompraPage() {
                                         </span>
                                       </div>
                                       <p className="text-sm text-gray-900">
-                                        {
-                                          (detalhes as any).vendedor
-                                            .nomeRazaoSocial
-                                        }
+                                        {(detalhes as any).vendedor.nomeRazaoSocial}
                                       </p>
                                     </div>
                                   )}
@@ -809,10 +801,7 @@ export default function PedidosCompraPage() {
                                         </span>
                                       </div>
                                       <p className="text-sm text-gray-900">
-                                        {
-                                          (detalhes as any).transportadora
-                                            .nomeRazaoSocial
-                                        }
+                                        {(detalhes as any).transportadora.nomeRazaoSocial}
                                       </p>
                                     </div>
                                   )}
@@ -1004,21 +993,13 @@ export default function PedidosCompraPage() {
                                               <td className="px-4 py-3 text-right text-sm font-bold text-gray-900">
                                                 {formatCurrency(
                                                   Number(
-                                                    (detalhes as any)
-                                                      .totalProdutos ||
-                                                      (detalhes as any)
-                                                        .totalProducts ||
-                                                      0
+                                                    (detalhes as any).totalProdutos || (detalhes as any).totalProducts || 0
                                                   )
                                                 )}
                                               </td>
                                             </tr>
                                             {Number(
-                                              (detalhes as any)
-                                                .totalDescontos ||
-                                                (detalhes as any)
-                                                  .totalDiscounts ||
-                                                0
+                                              (detalhes as any).totalDescontos || (detalhes as any).totalDiscounts || 0
                                             ) > 0 && (
                                               <tr>
                                                 <td
@@ -1031,10 +1012,7 @@ export default function PedidosCompraPage() {
                                                   -
                                                   {formatCurrency(
                                                     Number(
-                                                      (detalhes as any)
-                                                        .totalDescontos ||
-                                                        (detalhes as any)
-                                                          .totalDiscounts ||
+                                                      (detalhes as any).totalDescontos || (detalhes as any).totalDiscounts ||
                                                         0
                                                     )
                                                   )}
@@ -1042,9 +1020,7 @@ export default function PedidosCompraPage() {
                                               </tr>
                                             )}
                                             {Number(
-                                              (detalhes as any).totalImpostos ||
-                                                (detalhes as any).totalTaxes ||
-                                                0
+                                              (detalhes as any).totalImpostos || (detalhes as any).totalTaxes || 0
                                             ) > 0 && (
                                               <tr>
                                                 <td
@@ -1056,22 +1032,15 @@ export default function PedidosCompraPage() {
                                                 <td className="px-4 py-2 text-right text-sm font-medium text-orange-600">
                                                   {formatCurrency(
                                                     Number(
-                                                      (detalhes as any)
-                                                        .totalImpostos ||
-                                                        (detalhes as any)
-                                                          .totalTaxes ||
+                                                      (detalhes as any).totalImpostos || (detalhes as any).totalTaxes ||
                                                         0
                                                     )
                                                   )}
                                                 </td>
                                               </tr>
                                             )}
-                                            {Number(
-                                              (detalhes as any).valorFrete ||
-                                                (detalhes as any)
-                                                  .shippingValue ||
-                                                0
-                                            ) > 0 && (
+                                             {Number((detalhes as any).valorFrete || (detalhes as any).shippingValue || 0) >
+                                              0 && (
                                               <tr>
                                                 <td
                                                   colSpan={6}
@@ -1082,21 +1051,14 @@ export default function PedidosCompraPage() {
                                                 <td className="px-4 py-2 text-right text-sm font-medium text-gray-900">
                                                   {formatCurrency(
                                                     Number(
-                                                      (detalhes as any)
-                                                        .valorFrete ||
-                                                        (detalhes as any)
-                                                          .shippingValue ||
-                                                        0
+                                                      (detalhes as any).valorFrete || (detalhes as any).shippingValue || 0
                                                     )
                                                   )}
                                                 </td>
                                               </tr>
                                             )}
-                                            {Number(
-                                              (detalhes as any).despesas ||
-                                                (detalhes as any).expenses ||
-                                                0
-                                            ) > 0 && (
+                                            {Number((detalhes as any).despesas || (detalhes as any).expenses || 0) >
+                                              0 && (
                                               <tr>
                                                 <td
                                                   colSpan={6}
@@ -1107,11 +1069,7 @@ export default function PedidosCompraPage() {
                                                 <td className="px-4 py-2 text-right text-sm font-medium text-gray-900">
                                                   {formatCurrency(
                                                     Number(
-                                                      (detalhes as any)
-                                                        .despesas ||
-                                                        (detalhes as any)
-                                                          .expenses ||
-                                                        0
+                                                      (detalhes as any).despesas || (detalhes as any).expenses || 0
                                                     )
                                                   )}
                                                 </td>
@@ -1127,10 +1085,7 @@ export default function PedidosCompraPage() {
                                               <td className="px-4 py-3 text-right text-base font-bold text-purple-600">
                                                 {formatCurrency(
                                                   Number(
-                                                    (detalhes as any)
-                                                      .totalGeral ||
-                                                      (detalhes as any).total ||
-                                                      0
+                                                    (detalhes as any).totalGeral || (detalhes as any).total || 0
                                                   )
                                                 )}
                                               </td>
@@ -1142,14 +1097,13 @@ export default function PedidosCompraPage() {
                                   )}
 
                                 {/* Observações */}
-                                {(detalhes as any).observacoes && (
+                                 {(detalhes as any).observacoes && (
                                   <div className="bg-white p-4 rounded-lg shadow-sm">
                                     <h4 className="text-sm font-semibold text-gray-700 mb-2">
                                       Observações
                                     </h4>
                                     <p className="text-sm text-gray-600 whitespace-pre-line">
-                                      {(detalhes as any).observacoes ||
-                                        (detalhes as any).notes}
+                                      {(detalhes as any).observacoes || (detalhes as any).notes}
                                     </p>
                                   </div>
                                 )}
@@ -1271,9 +1225,9 @@ export default function PedidosCompraPage() {
                 Confirmar Exclusão
               </h3>
               <p className="text-gray-600 mb-6">
-                Tem certeza que deseja excluir o pedido de venda{" "}
-                <strong>{deleteConfirm.id}</strong> do fornecedor{" "}
-                <strong>{deleteConfirm.fornecedor}</strong>?
+                 Tem certeza que deseja excluir o pedido de compra{" "}
+                 <strong>{deleteConfirm.id}</strong> do fornecedor{" "}
+                 <strong>{deleteConfirm.fornecedor}</strong>?
               </p>
               <div className="flex gap-3 justify-end">
                 <Button variant="outline" onClick={cancelDelete}>
