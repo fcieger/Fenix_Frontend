@@ -1,19 +1,40 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Search, Package, DollarSign, Hash, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
-import { useAuth } from '@/contexts/auth-context';
-import { API_CONFIG } from '@/config/api';
-import { listProducts } from '@/services/products-service';
-import type { Product } from '@/types/sdk';
-import { mapProductToDisplay } from '@/lib/sdk/field-mappers';
+import { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Search,
+  Package,
+  DollarSign,
+  Hash,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
+import { API_CONFIG } from "@/config/api";
+import { listProducts } from "@/services/products-service";
+import type { Product } from "@/types/sdk";
 
 interface Produto {
   id: string;
@@ -35,9 +56,12 @@ interface ProdutoSearchDialogProps {
   children: React.ReactNode;
 }
 
-export default function ProdutoSearchDialog({ onProdutoSelect, children }: ProdutoSearchDialogProps) {
+export default function ProdutoSearchDialog({
+  onProdutoSelect,
+  children,
+}: ProdutoSearchDialogProps) {
   const [open, setOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,25 +83,24 @@ export default function ProdutoSearchDialog({ onProdutoSelect, children }: Produ
 
       // Map SDK Product to local Produto format
       const produtosMapeados = products.map((product: Product) => {
-        const displayProduct = mapProductToDisplay(product);
         return {
-          id: displayProduct.id,
-          codigo: displayProduct.code,
-          descricao: displayProduct.description,
-          ncm: displayProduct.ncm,
-          cfop: '5102', // Default value
-          unidade: displayProduct.unit,
-          valorUnitario: displayProduct.price,
+          id: product.id,
+          codigo: product.code,
+          descricao: product.description,
+          ncm: product.ncm,
+          cfop: "5102", // Default value
+          unidade: product.unit,
+          valorUnitario: product.price,
           estoqueAtual: 0, // Needs to fetch StockBalance separately if needed
-          categoria: 'Geral', // Not available in SDK
-          marca: 'N/A', // Not available in SDK
+          categoria: "Geral", // Not available in SDK
+          marca: "N/A", // Not available in SDK
         };
       });
 
       setProdutos(produtosMapeados);
     } catch (err) {
-      console.error('Erro ao buscar produtos:', err);
-      setError('Erro ao buscar produtos. Tente novamente.');
+      console.error("Erro ao buscar produtos:", err);
+      setError("Erro ao buscar produtos. Tente novamente.");
       setProdutos([]);
     } finally {
       setLoading(false);
@@ -95,29 +118,30 @@ export default function ProdutoSearchDialog({ onProdutoSelect, children }: Produ
   const handleProdutoSelect = (produto: Produto) => {
     onProdutoSelect(produto);
     setOpen(false);
-    setSearchTerm('');
+    setSearchTerm("");
     setProdutos([]);
   };
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
     }).format(value);
   };
 
   const getEstoqueStatus = (estoque?: number) => {
-    if (estoque === undefined) return { label: 'N/A', color: 'bg-gray-100 text-gray-800' };
-    if (estoque === 0) return { label: 'Sem estoque', color: 'bg-red-100 text-red-800' };
-    if (estoque < 10) return { label: 'Baixo estoque', color: 'bg-yellow-100 text-yellow-800' };
-    return { label: 'Em estoque', color: 'bg-green-100 text-green-800' };
+    if (estoque === undefined)
+      return { label: "N/A", color: "bg-gray-100 text-gray-800" };
+    if (estoque === 0)
+      return { label: "Sem estoque", color: "bg-red-100 text-red-800" };
+    if (estoque < 10)
+      return { label: "Baixo estoque", color: "bg-yellow-100 text-yellow-800" };
+    return { label: "Em estoque", color: "bg-green-100 text-green-800" };
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="max-w-5xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -143,7 +167,9 @@ export default function ProdutoSearchDialog({ onProdutoSelect, children }: Produ
           {error && (
             <Alert className="bg-red-50 border-red-200">
               <AlertCircle className="h-4 w-4 text-red-600" />
-              <AlertDescription className="text-red-800">{error}</AlertDescription>
+              <AlertDescription className="text-red-800">
+                {error}
+              </AlertDescription>
             </Alert>
           )}
 
@@ -169,7 +195,9 @@ export default function ProdutoSearchDialog({ onProdutoSelect, children }: Produ
                 </TableHeader>
                 <TableBody>
                   {produtos.map((produto) => {
-                    const estoqueStatus = getEstoqueStatus(produto.estoqueAtual);
+                    const estoqueStatus = getEstoqueStatus(
+                      produto.estoqueAtual
+                    );
 
                     return (
                       <TableRow key={produto.id} className="hover:bg-gray-50">
@@ -197,17 +225,17 @@ export default function ProdutoSearchDialog({ onProdutoSelect, children }: Produ
                         </TableCell>
                         <TableCell>
                           <div className="font-mono text-sm">
-                            {produto.ncm || '-'}
+                            {produto.ncm || "-"}
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="font-mono text-sm">
-                            {produto.cfop || '-'}
+                            {produto.cfop || "-"}
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            {produto.unidade || 'UN'}
+                            {produto.unidade || "UN"}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -269,21 +297,3 @@ export default function ProdutoSearchDialog({ onProdutoSelect, children }: Produ
     </Dialog>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
