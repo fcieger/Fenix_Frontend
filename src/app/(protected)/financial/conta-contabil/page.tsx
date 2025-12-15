@@ -1,20 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  ChartOfAccount,
-  CreateChartOfAccountRequest,
-  UpdateChartOfAccountRequest,
-} from "@/types/chart-of-account";
-import type {
-  ContaContabil,
-  CreateContaContabilRequest,
-  UpdateContaContabilRequest,
-} from "@/types/conta-contabil";
+import { motion } from "framer-motion";
+import type { ContaContabil } from "@/types/conta-contabil";
+import type { ChartOfAccount } from "@/types/chart-of-account";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ModalContaContabil } from "@/components/chart-of-accounts/ModalContaContabil";
+import { useRouter } from "next/navigation";
 import { ListaContasContabeis } from "@/components/chart-of-accounts/ListaContasContabeis";
 import {
   Plus,
@@ -30,12 +22,8 @@ import { useAuth } from "@/contexts/auth-context";
 export default function ContasContabeisPage() {
   // Hook de autenticação
   const { activeCompanyId, isAuthenticated } = useAuth();
+  const router = useRouter();
 
-  // Estados do modal
-  const [showModal, setShowModal] = useState(false);
-  const [contaEditando, setContaEditando] = useState<ChartOfAccount | null>(
-    null
-  );
   const [searchTerm, setSearchTerm] = useState("");
 
   // Estados dos dados
@@ -95,56 +83,12 @@ export default function ContasContabeisPage() {
     inativos: contas.filter((c) => !c.ativo).length,
   };
 
-  // Lista de todas as contas para o dropdown (já é uma lista simples)
-  const todasAsContas = contas;
-
   const handleNovoConta = () => {
-    setContaEditando(null);
-    setShowModal(true);
+    router.push("/financial/conta-contabil/create");
   };
 
   const handleEditarConta = (conta: ContaContabil) => {
-    setContaEditando(conta);
-    setShowModal(true);
-  };
-
-  const handleSaveConta = async (
-    data: CreateChartOfAccountRequest | UpdateChartOfAccountRequest
-  ) => {
-    try {
-      if (contaEditando) {
-        // Implementar update se necessário
-        alert("Funcionalidade de edição será implementada em breve");
-      } else {
-        const response = await fetch("/api/contas-contabeis", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            ...(data as CreateChartOfAccountRequest),
-            company_id: companyId,
-          }),
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-          alert("Conta contábil criada com sucesso!");
-          await fetchContas(); // Recarregar a lista
-        } else {
-          throw new Error(result.error || "Erro ao criar conta contábil");
-        }
-      }
-      setShowModal(false);
-    } catch (err) {
-      console.error("Erro ao criar conta contábil:", err);
-      alert(
-        `Erro ao criar conta contábil: ${
-          err instanceof Error ? err.message : "Erro desconhecido"
-        }`
-      );
-    }
+    router.push(`/financial/conta-contabil/edit/${conta.id}`);
   };
 
   const handleAtualizar = async () => {
@@ -375,20 +319,6 @@ export default function ContasContabeisPage() {
           onEditar={handleEditarConta}
           onExcluir={handleDeleteConta}
         />
-
-        {/* Modal */}
-        <AnimatePresence>
-          {showModal && (
-            <ModalContaContabil
-              isOpen={showModal}
-              onClose={() => setShowModal(false)}
-              onSave={handleSaveConta}
-              conta={contaEditando}
-              loading={loading}
-              contasDisponiveis={todasAsContas}
-            />
-          )}
-        </AnimatePresence>
       </div>
     </>
   );
