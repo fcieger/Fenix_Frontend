@@ -1,7 +1,15 @@
 "use client";
 
 import React, { useState } from "react";
-import { FileText, DollarSign, Ruler, Palette, Info, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  FileText,
+  DollarSign,
+  Ruler,
+  Palette,
+  Info,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -91,7 +99,7 @@ export function ProdutoForm({
   };
 
   return (
-    <div className="p-8">
+    <div>
       <div className="space-y-8">
         {/* Dados Gerais */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
@@ -301,7 +309,9 @@ export function ProdutoForm({
               <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                 <Ruler className="w-5 h-5 text-blue-600" />
               </div>
-              <h2 className="text-xl font-bold text-gray-900">Dimensões e Peso</h2>
+              <h2 className="text-xl font-bold text-gray-900">
+                Dimensões e Peso
+              </h2>
             </div>
             <button
               type="button"
@@ -411,7 +421,9 @@ export function ProdutoForm({
               <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center">
                 <Palette className="w-5 h-5 text-pink-600" />
               </div>
-              <h2 className="text-xl font-bold text-gray-900">Características Físicas</h2>
+              <h2 className="text-xl font-bold text-gray-900">
+                Características Físicas
+              </h2>
             </div>
             <button
               type="button"
@@ -498,7 +510,9 @@ export function ProdutoForm({
               <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
                 <Info className="w-5 h-5 text-indigo-600" />
               </div>
-              <h2 className="text-xl font-bold text-gray-900">Informações Adicionais</h2>
+              <h2 className="text-xl font-bold text-gray-900">
+                Informações Adicionais
+              </h2>
             </div>
             <button
               type="button"
@@ -549,7 +563,9 @@ export function ProdutoForm({
                   id="certificacao"
                   type="text"
                   value={formData.certificacao}
-                  onChange={(e) => onInputChange("certificacao", e.target.value)}
+                  onChange={(e) =>
+                    onInputChange("certificacao", e.target.value)
+                  }
                   placeholder="Ex: ISO 9001, CE, ANATEL"
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 text-gray-700"
                   disabled={isLoading}
