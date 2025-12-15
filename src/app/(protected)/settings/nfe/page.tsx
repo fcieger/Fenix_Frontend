@@ -174,8 +174,10 @@ export default function ConfiguracoesNFEPage() {
     try {
       if (!token) return;
 
+
       // Buscar configuração original
       const configOriginal = await apiService.getConfiguracaoNfe(id, token);
+
 
       // Criar nova configuração com dados similares
       const novaConfig = {
@@ -185,18 +187,34 @@ export default function ConfiguracoesNFEPage() {
         numeroAtual: 1,
       };
 
+
       // Remover campos que não devem ser copiados
       delete (novaConfig as any).id;
       delete (novaConfig as any).companyId;
       delete (novaConfig as any).createdAt;
       delete (novaConfig as any).updatedAt;
+      const configuracaoData = {
+        ...novaConfig,
+        tipoModelo: novaConfig.tipoModelo as
+          | "nfe-produto"
+          | "nfse-servico"
+          | "nf-entrada"
+          | "nfce-consumidor"
+          | "mdfe",
+        ambiente: novaConfig.ambiente as "producao" | "homologacao",
+        rpsAliquotaISS:
+          typeof novaConfig.rpsAliquotaISS === "string"
+            ? parseFloat(novaConfig.rpsAliquotaISS) || 0
+            : novaConfig.rpsAliquotaISS || 0,
+      };
 
-      await apiService.createConfiguracaoNfe(novaConfig as any, token);
+      await apiService.createConfiguracaoNfe(configuracaoData, token);
 
       // Recarregar lista
       const data = await apiService.getConfiguracoesNfe(token, false);
       const configuracoesConvertidas = convertApiDataToNFeConfig(data);
       setConfiguracoes(configuracoesConvertidas);
+
 
       openSuccess({
         title: "Configuração duplicada!",
@@ -216,12 +234,15 @@ export default function ConfiguracoesNFEPage() {
     try {
       if (!token) return;
 
+
       await apiService.deleteConfiguracaoNfe(id, token);
+
 
       // Recarregar lista
       const data = await apiService.getConfiguracoesNfe(token, false);
       const configuracoesConvertidas = convertApiDataToNFeConfig(data);
       setConfiguracoes(configuracoesConvertidas);
+
 
       openSuccess({
         title: "Configuração excluída!",
@@ -595,4 +616,3 @@ export default function ConfiguracoesNFEPage() {
     </div>
   );
 }
-
