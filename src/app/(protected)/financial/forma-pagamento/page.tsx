@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   FormaPagamento,
   CreateFormaPagamentoRequest,
 } from "@/types/forma-pagamento";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ModalFormaPagamento } from "@/components/payment-methods/ModalFormaPagamento";
+import { useRouter } from "next/navigation";
 import { ListaFormasPagamento } from "@/components/payment-methods/ListaFormasPagamento";
 import {
   Plus,
@@ -23,12 +23,8 @@ import { useAuth } from "@/contexts/auth-context";
 export default function FormasPagamentoPage() {
   // Hook de autenticação
   const { activeCompanyId, isAuthenticated } = useAuth();
+  const router = useRouter();
 
-  // Estados do modal
-  const [showModal, setShowModal] = useState(false);
-  const [formaEditando, setFormaEditando] = useState<FormaPagamento | null>(
-    null
-  );
   const [searchTerm, setSearchTerm] = useState("");
 
   // Estados dos dados
@@ -93,47 +89,11 @@ export default function FormasPagamentoPage() {
   };
 
   const handleNovaForma = () => {
-    setFormaEditando(null);
-    setShowModal(true);
+    router.push("/financial/forma-pagamento/create");
   };
 
   const handleEditarForma = (forma: FormaPagamento) => {
-    setFormaEditando(forma);
-    setShowModal(true);
-  };
-
-  const handleSaveForma = async (data: CreateFormaPagamentoRequest) => {
-    try {
-      if (formaEditando) {
-        // Implementar update se necessário
-        alert("Funcionalidade de edição será implementada em breve");
-      } else {
-        const response = await fetch("/api/formas-pagamento", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ ...data, company_id: companyId }),
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-          alert("Forma de pagamento criada com sucesso!");
-          await fetchFormasPagamento(); // Recarregar a lista
-        } else {
-          throw new Error(result.error || "Erro ao criar forma de pagamento");
-        }
-      }
-      setShowModal(false);
-    } catch (err) {
-      console.error("Erro ao criar forma de pagamento:", err);
-      alert(
-        `Erro ao criar forma de pagamento: ${
-          err instanceof Error ? err.message : "Erro desconhecido"
-        }`
-      );
-    }
+    router.push(`/financial/forma-pagamento/edit/${forma.id}`);
   };
 
   const handleAtualizar = async () => {
@@ -382,19 +342,6 @@ export default function FormasPagamentoPage() {
           onExcluir={handleDeleteForma}
           onSetPadrao={handleSetPadrao}
         />
-
-        {/* Modal */}
-        <AnimatePresence>
-          {showModal && (
-            <ModalFormaPagamento
-              isOpen={showModal}
-              onClose={() => setShowModal(false)}
-              onSave={handleSaveForma}
-              forma={formaEditando}
-              loading={loading}
-            />
-          )}
-        </AnimatePresence>
       </div>
     </>
   );
