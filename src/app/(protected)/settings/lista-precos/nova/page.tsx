@@ -15,9 +15,7 @@ import {
   Save,
   X,
   Plus,
-  Minus,
   Calculator,
-  Percent,
   Calendar,
   Tag,
   Users,
@@ -28,13 +26,9 @@ import {
   Info,
   Settings,
   Search,
-  Filter,
-  Grid,
-  List,
   ArrowUp,
   ArrowDown,
   RefreshCw,
-  Check,
   Square,
   CheckSquare,
   FileText,
@@ -294,9 +288,10 @@ export default function NovaListaPrecosPage() {
       console.log("✅ Resposta da API:", response);
       alert(`API funcionando! Encontrados ${response.length} produtos.`);
     } catch (error) {
-      console.error('❌ Erro na API:', error);
-      const message = error instanceof Error ? error.message : String(error);
-      alert(`Erro na API: ${message}`);
+      console.error("❌ Erro na API:", error);
+      alert(
+        `Erro na API: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   };
 
@@ -475,8 +470,6 @@ export default function NovaListaPrecosPage() {
   // }
 
   return (
-    <>
-      <div className="space-y-8">
     <>
       <div className="space-y-8">
         {/* Header */}
@@ -742,6 +735,7 @@ export default function NovaListaPrecosPage() {
                     />
                   </div>
 
+
                   <select
                     value={categoriaFilter}
                     onChange={(e) => setCategoriaFilter(e.target.value)}
@@ -805,6 +799,7 @@ export default function NovaListaPrecosPage() {
                     </h3>
                   </div>
 
+
                   <div className="flex flex-col sm:flex-row gap-4">
                     <div className="flex-1">
                       <Label className="text-sm font-medium text-gray-700 mb-2 block">
@@ -829,6 +824,7 @@ export default function NovaListaPrecosPage() {
                       </select>
                     </div>
 
+
                     <div className="flex-1">
                       <Label className="text-sm font-medium text-gray-700 mb-2 block">
                         Valor
@@ -850,6 +846,7 @@ export default function NovaListaPrecosPage() {
                         }}
                       />
                     </div>
+
 
                     <div className="flex items-end">
                       <Button
@@ -1040,6 +1037,7 @@ export default function NovaListaPrecosPage() {
                                   </Button>
                                 </div>
 
+
                                 <div className="flex items-center gap-1">
                                   <Input
                                     type="number"
@@ -1227,6 +1225,7 @@ export default function NovaListaPrecosPage() {
                   </span>
                 </div>
 
+
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Selecionados</span>
                   <span className="font-medium text-purple-600">
@@ -1252,6 +1251,7 @@ export default function NovaListaPrecosPage() {
                       )}
                     </span>
                   </div>
+
 
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">
@@ -1327,7 +1327,6 @@ export default function NovaListaPrecosPage() {
           Voltar
         </Button>
       </motion.div>
-    </>
     </>
   );
 }
