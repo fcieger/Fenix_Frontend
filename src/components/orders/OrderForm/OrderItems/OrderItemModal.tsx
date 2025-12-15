@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +11,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useProducts } from "@/hooks/queries/useProducts";
 import type { OrderItem } from "../OrderFormProvider";
 
 export interface OrderItemModalProps {
@@ -38,6 +46,33 @@ export function OrderItemModal({
     unit: "UN",
   });
 
+  // Fetch products - only when modal is open
+  const {
+    data: productsResponse,
+    isLoading: isLoadingProducts,
+    error: productsError,
+  } = useProducts({
+    limit: 1000, // Get a large number of products
+  });
+
+  // Extract products from response (handle different response formats)
+  const products = useMemo(() => {
+    if (!productsResponse) {
+      return [];
+    }
+
+    // If response has a 'data' property that is an array
+    if ("data" in productsResponse && Array.isArray(productsResponse.data)) {
+      return productsResponse.data;
+    }
+    // If response is directly an array
+    if (Array.isArray(productsResponse)) {
+      return productsResponse;
+    }
+
+    return [];
+  }, [productsResponse]);
+
   useEffect(() => {
     if (item) {
       setFormData({
@@ -62,16 +97,42 @@ export function OrderItemModal({
     }
   }, [item, isOpen]);
 
+  // Handle product selection by code
+  const handleProductSelectByCode = (productId: string) => {
+    const product = products.find((p) => p.id === productId);
+    if (product) {
+      setFormData({
+        ...formData,
+        productId: product.id,
+        code: product.code,
+        name: product.description,
+        unitPrice: product.price || 0,
+        unit: product.unit || "UN",
+      });
+    }
+  };
+
+  // Handle product selection by name
+  const handleProductSelectByName = (productId: string) => {
+    const product = products.find((p) => p.id === productId);
+    if (product) {
+      setFormData({
+        ...formData,
+        productId: product.id,
+        code: product.code,
+        name: product.description,
+        unitPrice: product.price || 0,
+        unit: product.unit || "UN",
+      });
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const newItem: any = {
       ...formData,
       id: item ? (item as any).id : undefined,
-      product: (item as any)?.product || {
-        id: formData.productId,
-        code: formData.code,
-        name: formData.name,
-      },
+      productId: formData.productId,
     };
     onSave(newItem);
     onClose();
@@ -89,26 +150,73 @@ export function OrderItemModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="code">Código</Label>
-              <Input
-                id="code"
-                value={formData.code}
-                onChange={(e) =>
-                  setFormData({ ...formData, code: e.target.value })
-                }
-                placeholder="Código do produto"
-              />
+              <Select
+                value={formData.productId || undefined}
+                onValueChange={handleProductSelectByCode}
+                disabled={isLoadingProducts}
+              >
+                <SelectTrigger id="code">
+                  <SelectValue placeholder="Selecione um produto pelo código" />
+                </SelectTrigger>
+                <SelectContent>
+                  {isLoadingProducts ? (
+                    <SelectItem value="loading" disabled>
+                      Carregando produtos...
+                    </SelectItem>
+                  ) : productsError ? (
+                    <SelectItem value="error" disabled>
+                      Erro ao carregar produtos
+                    </SelectItem>
+                  ) : products.length === 0 ? (
+                    <SelectItem value="no-products" disabled>
+                      Nenhum produto disponível
+                    </SelectItem>
+                  ) : (
+                    products.map((product) => {
+                      return (
+                        <SelectItem key={product.id} value={product.id}>
+                          {product.code || "Sem código"}
+                        </SelectItem>
+                      );
+                    })
+                  )}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="name">Nome do Produto</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                placeholder="Nome do produto"
-                required
-              />
+              <Select
+                value={formData.productId || undefined}
+                onValueChange={handleProductSelectByName}
+                disabled={isLoadingProducts}
+              >
+                <SelectTrigger id="name">
+                  <SelectValue placeholder="Selecione um produto pelo nome" />
+                </SelectTrigger>
+                <SelectContent>
+                  {isLoadingProducts ? (
+                    <SelectItem value="loading" disabled>
+                      Carregando produtos...
+                    </SelectItem>
+                  ) : productsError ? (
+                    <SelectItem value="error" disabled>
+                      Erro ao carregar produtos
+                    </SelectItem>
+                  ) : products.length === 0 ? (
+                    <SelectItem value="no-products" disabled>
+                      Nenhum produto disponível
+                    </SelectItem>
+                  ) : (
+                    products.map((product) => {
+                      return (
+                        <SelectItem key={product.id} value={product.id}>
+                          {product.description || "Sem nome"}
+                        </SelectItem>
+                      );
+                    })
+                  )}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
