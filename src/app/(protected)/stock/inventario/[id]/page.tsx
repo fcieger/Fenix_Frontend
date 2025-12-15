@@ -1,14 +1,12 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Package,
   Save,
   ArrowLeft,
-  ClipboardList,
   Warehouse,
   TrendingUp,
   TrendingDown,
@@ -48,6 +46,7 @@ export default function InventarioEditarPage() {
   const { activeCompanyId } = useActiveCompany();
   const { openSuccess, openConfirm } = useFeedback();
 
+
   const [inventario, setInventario] = useState<Inventario | null>(null);
   const [itens, setItens] = useState<ItemInv[]>([]);
   const [loading, setLoading] = useState(false);
@@ -65,13 +64,9 @@ export default function InventarioEditarPage() {
       if (!json?.success) {
         openSuccess({
           title: "Erro",
-          message: json?.error || 'Erro ao carregar inventário'
+          message: json?.error || "Erro ao carregar inventário",
         });
-        openSuccess({
-          title: "Erro",
-          message: json?.error || 'Erro ao carregar inventário'
-        });
-        router.push('/stock/inventario');
+        router.push("/stock/inventario");
         return;
       }
 
@@ -79,15 +74,8 @@ export default function InventarioEditarPage() {
       setItens(json.data.itens || []);
     } catch (e) {
       console.error("Erro ao carregar inventário:", e);
-      openSuccess({
-        title: "Erro",
-        message: "Erro ao carregar inventário"
-      });
-      openSuccess({
-        title: "Erro",
-        message: "Erro ao carregar inventário"
-      });
-      router.push('/stock/inventario');
+      openSuccess({ title: "Erro", message: "Erro ao carregar inventário" });
+      router.push("/stock/inventario");
     } finally {
       setLoading(false);
     }
@@ -121,20 +109,18 @@ export default function InventarioEditarPage() {
   const salvar = async () => {
     if (!inventario || !activeCompanyId) return;
 
+
     // Primeiro, salvar todas as contagens atualizadas (incluindo zero)
     const itensComContagem = itens.filter((item) => {
       const qtd = item.qtdContada;
       return qtd !== null && qtd !== undefined;
     });
 
+
     if (itensComContagem.length === 0) {
       openSuccess({
         title: "Atenção",
-        message: "Nenhuma contagem foi preenchida"
-      });
-      openSuccess({
-        title: "Atenção",
-        message: "Nenhuma contagem foi preenchida"
+        message: "Nenhuma contagem foi preenchida",
       });
       return;
     }
@@ -161,16 +147,13 @@ export default function InventarioEditarPage() {
 
       const jsonContagens = await resContagens.json();
       if (!jsonContagens?.success) {
-      openSuccess({
-        title: "Erro",
-        message: jsonContagens?.error || 'Erro ao salvar contagens'
-      });
-      openSuccess({
-        title: "Erro",
-        message: jsonContagens?.error || 'Erro ao salvar contagens'
-      });
+        openSuccess({
+          title: "Erro",
+          message: jsonContagens?.error || "Erro ao salvar contagens",
+        });
         return;
       }
+
 
       // Recarregar itens atualizados
       const resReload = await fetch(`/api/stock/inventarios/${inventario.id}`, {
@@ -191,14 +174,10 @@ export default function InventarioEditarPage() {
       });
 
       if (itensComDiferenca.length === 0) {
-      openSuccess({
-        title: "Sucesso",
-        message: "Contagens salvas! Não há diferenças para aplicar."
-      });
-      openSuccess({
-        title: "Sucesso",
-        message: "Contagens salvas! Não há diferenças para aplicar."
-      });
+        openSuccess({
+          title: "Sucesso",
+          message: "Contagens salvas! Não há diferenças para aplicar.",
+        });
         return;
       }
 
@@ -208,24 +187,23 @@ export default function InventarioEditarPage() {
       });
 
       if (!confirmou) {
-      openSuccess({
-        title: "Sucesso",
-        message: "Contagens salvas com sucesso!"
-      });
-      openSuccess({
-        title: "Sucesso",
-        message: "Contagens salvas com sucesso!"
-      });
+        openSuccess({
+          title: "Sucesso",
+          message: "Contagens salvas com sucesso!",
+        });
         return;
       }
+
 
       // Para cada item com diferença, criar dois movimentos:
       // 1. Saída para zerar o saldo atual
       // 2. Entrada para ajustar ao valor contado
 
+
       for (const item of itensComDiferenca) {
         const qtdSistema = Number(item.qtdSistema) || 0;
         const qtdContada = Number(item.qtdContada) || 0;
+
 
         // Movimento 1: Saída para zerar
         if (qtdSistema > 0) {
@@ -250,6 +228,7 @@ export default function InventarioEditarPage() {
             console.error("Erro ao criar movimento de saída:", jsonSaida);
           }
         }
+
 
         // Movimento 2: Entrada para ajustar ao valor contado
         if (qtdContada > 0) {
@@ -277,19 +256,17 @@ export default function InventarioEditarPage() {
       }
 
       // Atualizar status do inventário
-      await fetch(`/api/stock/inventarios/${inventario.id}/aplicar`, { method: 'POST' });
+      await fetch(`/api/stock/inventarios/${inventario.id}/aplicar`, {
+        method: "POST",
+      });
 
       openSuccess({
         title: "Sucesso",
-        message: "Inventário aplicado com sucesso!"
+        message: "Inventário aplicado com sucesso!",
       });
-      router.push('/stock/inventario');
+      router.push("/stock/inventario");
     } catch (e) {
       console.error("Erro ao aplicar inventário:", e);
-      openSuccess({
-        title: "Erro",
-        message: "Erro ao aplicar inventário"
-      });
       openSuccess({
         title: "Erro",
         message: "Erro ao aplicar inventário"
@@ -371,7 +348,6 @@ export default function InventarioEditarPage() {
   const itensComContagem = itens.filter((item) => {
     const qtd = item.qtdContada;
     return qtd !== null && qtd !== undefined;
-    return qtd !== null && qtd !== undefined;
   });
 
   return (
@@ -450,6 +426,24 @@ export default function InventarioEditarPage() {
             </div>
           </div>
         </motion.div>
+      {/* Info Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-purple-100 rounded-xl">
+              <Package className="w-6 h-6 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Total de Itens</p>
+              <p className="text-2xl font-bold text-gray-900">{itens.length}</p>
+            </div>
+          </div>
+        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -469,7 +463,44 @@ export default function InventarioEditarPage() {
             </div>
           </div>
         </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-blue-100 rounded-xl">
+              <TrendingUp className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Itens com Diferença</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {itensComDiferenca.length}
+              </p>
+            </div>
+          </div>
+        </motion.div>
 
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-green-100 rounded-xl">
+              <CheckCircle2 className="w-6 h-6 text-green-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Itens Sem Diferença</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {itens.length - itensComDiferenca.length}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      </div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
