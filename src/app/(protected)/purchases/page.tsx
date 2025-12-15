@@ -43,7 +43,15 @@ import {
   translateOrderStatus,
   getOrderStatusBadgeColor,
 } from "@/lib/sdk/enum-translators";
-import { mapPurchaseOrderToDisplay } from "@/lib/sdk/field-mappers";
+// Helper function to map purchase order to display format
+const mapPurchaseOrderToDisplay = (order: PurchaseOrder, partner?: Partner) => {
+  return {
+    number: order.number || order.id || "-",
+    partnerName: partner?.legalName || "-",
+    date: order.createdAt || order.date || new Date().toISOString(),
+    total: (order as any).total || (order as any).totalGeral || 0,
+  };
+};
 
 export default function PedidosCompraPage() {
   const router = useRouter();
@@ -90,8 +98,11 @@ export default function PedidosCompraPage() {
 
     try {
       const partner = await getPartner(order.partnerId);
-      setPartnersCache((prev) => new Map(prev).set(order.partnerId!, partner));
-      return partner;
+      if (partner && order.partnerId && partner.id) {
+        setPartnersCache((prev) => new Map(prev).set(order.partnerId!, partner as Partner));
+        return partner as Partner;
+      }
+      return null;
     } catch (error) {
       console.error(`Erro ao buscar parceiro ${order.partnerId}:`, error);
       return null;
@@ -761,16 +772,16 @@ export default function PedidosCompraPage() {
                                       </span>
                                     </div>
                                     <p className="text-sm text-gray-900">
-                                      {detalhes.cliente?.nomeRazaoSocial || "-"}
+                                      {partner?.legalName || "-"}
                                     </p>
-                                    {detalhes.cliente?.nomeFantasia && (
+                                    {partner?.tradeName && (
                                       <p className="text-xs text-gray-500 mt-1">
-                                        {detalhes.cliente.nomeFantasia}
+                                        {partner.tradeName}
                                       </p>
                                     )}
                                   </div>
 
-                                  {detalhes.vendedor && (
+                                  {(detalhes as any).vendedor && (
                                     <div className="bg-white p-4 rounded-lg shadow-sm">
                                       <div className="flex items-center mb-2">
                                         <User className="w-4 h-4 mr-2 text-gray-500" />
@@ -779,12 +790,12 @@ export default function PedidosCompraPage() {
                                         </span>
                                       </div>
                                       <p className="text-sm text-gray-900">
-                                        {detalhes.vendedor.nomeRazaoSocial}
+                                        {(detalhes as any).vendedor.nomeRazaoSocial}
                                       </p>
                                     </div>
                                   )}
 
-                                  {detalhes.transportadora && (
+                                  {(detalhes as any).transportadora && (
                                     <div className="bg-white p-4 rounded-lg shadow-sm">
                                       <div className="flex items-center mb-2">
                                         <Truck className="w-4 h-4 mr-2 text-gray-500" />
@@ -794,14 +805,14 @@ export default function PedidosCompraPage() {
                                       </div>
                                       <p className="text-sm text-gray-900">
                                         {
-                                          detalhes.transportadora
+                                          (detalhes as any).transportadora
                                             .nomeRazaoSocial
                                         }
                                       </p>
                                     </div>
                                   )}
 
-                                  {detalhes.prazoPagamento && (
+                                  {(detalhes as any).prazoPagamento && (
                                     <div className="bg-white p-4 rounded-lg shadow-sm">
                                       <div className="flex items-center mb-2">
                                         <CreditCard className="w-4 h-4 mr-2 text-gray-500" />
@@ -810,12 +821,12 @@ export default function PedidosCompraPage() {
                                         </span>
                                       </div>
                                       <p className="text-sm text-gray-900">
-                                        {detalhes.prazoPagamento.nome}
+                                        {(detalhes as any).prazoPagamento.nome}
                                       </p>
                                     </div>
                                   )}
 
-                                  {detalhes.formaPagamento && (
+                                  {(detalhes as any).formaPagamento && (
                                     <div className="bg-white p-4 rounded-lg shadow-sm">
                                       <div className="flex items-center mb-2">
                                         <CreditCard className="w-4 h-4 mr-2 text-gray-500" />
@@ -824,12 +835,12 @@ export default function PedidosCompraPage() {
                                         </span>
                                       </div>
                                       <p className="text-sm text-gray-900">
-                                        {detalhes.formaPagamento.nome}
+                                        {(detalhes as any).formaPagamento.nome}
                                       </p>
                                     </div>
                                   )}
 
-                                  {detalhes.localEstoque && (
+                                  {(detalhes as any).localEstoque && (
                                     <div className="bg-white p-4 rounded-lg shadow-sm">
                                       <div className="flex items-center mb-2">
                                         <Package className="w-4 h-4 mr-2 text-gray-500" />
@@ -838,7 +849,7 @@ export default function PedidosCompraPage() {
                                         </span>
                                       </div>
                                       <p className="text-sm text-gray-900">
-                                        {detalhes.localEstoque.nome}
+                                        {(detalhes as any).localEstoque.nome}
                                       </p>
                                     </div>
                                   )}
@@ -851,15 +862,15 @@ export default function PedidosCompraPage() {
                                       </span>
                                     </div>
                                     <p className="text-sm text-gray-900">
-                                      {detalhes.dataEmissao
+                                      {(detalhes as any).dataEmissao
                                         ? new Date(
-                                            detalhes.dataEmissao
+                                            (detalhes as any).dataEmissao
                                           ).toLocaleDateString("pt-BR")
                                         : "-"}
                                     </p>
                                   </div>
 
-                                  {detalhes.dataPrevisaoEntrega && (
+                                  {(detalhes as any).dataPrevisaoEntrega && (
                                     <div className="bg-white p-4 rounded-lg shadow-sm">
                                       <div className="flex items-center mb-2">
                                         <TrendingUp className="w-4 h-4 mr-2 text-gray-500" />
@@ -869,13 +880,13 @@ export default function PedidosCompraPage() {
                                       </div>
                                       <p className="text-sm text-gray-900">
                                         {new Date(
-                                          detalhes.dataPrevisaoEntrega
+                                          (detalhes as any).dataPrevisaoEntrega
                                         ).toLocaleDateString("pt-BR")}
                                       </p>
                                     </div>
                                   )}
 
-                                  {detalhes.dataEntrega && (
+                                  {(detalhes as any).dataEntrega && (
                                     <div className="bg-white p-4 rounded-lg shadow-sm">
                                       <div className="flex items-center mb-2">
                                         <Calendar className="w-4 h-4 mr-2 text-gray-500" />
@@ -885,7 +896,7 @@ export default function PedidosCompraPage() {
                                       </div>
                                       <p className="text-sm text-gray-900">
                                         {new Date(
-                                          detalhes.dataEntrega
+                                          (detalhes as any).dataEntrega
                                         ).toLocaleDateString("pt-BR")}
                                       </p>
                                     </div>
@@ -893,13 +904,13 @@ export default function PedidosCompraPage() {
                                 </div>
 
                                 {/* Itens do Pedido de Venda */}
-                                {detalhes.itens &&
-                                  detalhes.itens.length > 0 && (
+                                {(detalhes as any).itens &&
+                                  (detalhes as any).itens.length > 0 && (
                                     <div className="bg-white p-4 rounded-lg shadow-sm">
                                       <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                                         <Package className="w-5 h-5 mr-2 text-purple-600" />
                                         Itens do Pedido de Venda (
-                                        {detalhes.itens.length})
+                                        {(detalhes as any).itens.length})
                                       </h4>
                                       <div className="overflow-x-auto">
                                         <table className="min-w-full divide-y divide-gray-200">
@@ -929,7 +940,7 @@ export default function PedidosCompraPage() {
                                             </tr>
                                           </thead>
                                           <tbody className="bg-white divide-y divide-gray-200">
-                                            {detalhes.itens.map(
+                                            {(detalhes as any).itens.map(
                                               (item: any, idx: number) => (
                                                 <tr
                                                   key={item.id || idx}
@@ -988,13 +999,13 @@ export default function PedidosCompraPage() {
                                               <td className="px-4 py-3 text-right text-sm font-bold text-gray-900">
                                                 {formatCurrency(
                                                   Number(
-                                                    detalhes.totalProdutos || 0
+                                                    (detalhes as any).totalProdutos || (detalhes as any).totalProducts || 0
                                                   )
                                                 )}
                                               </td>
                                             </tr>
                                             {Number(
-                                              detalhes.totalDescontos || 0
+                                              (detalhes as any).totalDescontos || (detalhes as any).totalDiscounts || 0
                                             ) > 0 && (
                                               <tr>
                                                 <td
@@ -1007,7 +1018,7 @@ export default function PedidosCompraPage() {
                                                   -
                                                   {formatCurrency(
                                                     Number(
-                                                      detalhes.totalDescontos ||
+                                                      (detalhes as any).totalDescontos || (detalhes as any).totalDiscounts ||
                                                         0
                                                     )
                                                   )}
@@ -1015,7 +1026,7 @@ export default function PedidosCompraPage() {
                                               </tr>
                                             )}
                                             {Number(
-                                              detalhes.totalImpostos || 0
+                                              (detalhes as any).totalImpostos || (detalhes as any).totalTaxes || 0
                                             ) > 0 && (
                                               <tr>
                                                 <td
@@ -1027,14 +1038,14 @@ export default function PedidosCompraPage() {
                                                 <td className="px-4 py-2 text-right text-sm font-medium text-orange-600">
                                                   {formatCurrency(
                                                     Number(
-                                                      detalhes.totalImpostos ||
+                                                      (detalhes as any).totalImpostos || (detalhes as any).totalTaxes ||
                                                         0
                                                     )
                                                   )}
                                                 </td>
                                               </tr>
                                             )}
-                                            {Number(detalhes.valorFrete || 0) >
+                                             {Number((detalhes as any).valorFrete || (detalhes as any).shippingValue || 0) >
                                               0 && (
                                               <tr>
                                                 <td
@@ -1046,13 +1057,13 @@ export default function PedidosCompraPage() {
                                                 <td className="px-4 py-2 text-right text-sm font-medium text-gray-900">
                                                   {formatCurrency(
                                                     Number(
-                                                      detalhes.valorFrete || 0
+                                                      (detalhes as any).valorFrete || (detalhes as any).shippingValue || 0
                                                     )
                                                   )}
                                                 </td>
                                               </tr>
                                             )}
-                                            {Number(detalhes.despesas || 0) >
+                                            {Number((detalhes as any).despesas || (detalhes as any).expenses || 0) >
                                               0 && (
                                               <tr>
                                                 <td
@@ -1064,7 +1075,7 @@ export default function PedidosCompraPage() {
                                                 <td className="px-4 py-2 text-right text-sm font-medium text-gray-900">
                                                   {formatCurrency(
                                                     Number(
-                                                      detalhes.despesas || 0
+                                                      (detalhes as any).despesas || (detalhes as any).expenses || 0
                                                     )
                                                   )}
                                                 </td>
@@ -1080,7 +1091,7 @@ export default function PedidosCompraPage() {
                                               <td className="px-4 py-3 text-right text-base font-bold text-purple-600">
                                                 {formatCurrency(
                                                   Number(
-                                                    detalhes.totalGeral || 0
+                                                    (detalhes as any).totalGeral || (detalhes as any).total || 0
                                                   )
                                                 )}
                                               </td>
@@ -1092,13 +1103,13 @@ export default function PedidosCompraPage() {
                                   )}
 
                                 {/* Observações */}
-                                {detalhes.observacoes && (
+                                 {(detalhes as any).observacoes && (
                                   <div className="bg-white p-4 rounded-lg shadow-sm">
                                     <h4 className="text-sm font-semibold text-gray-700 mb-2">
                                       Observações
                                     </h4>
                                     <p className="text-sm text-gray-600 whitespace-pre-line">
-                                      {detalhes.observacoes}
+                                      {(detalhes as any).observacoes || (detalhes as any).notes}
                                     </p>
                                   </div>
                                 )}
@@ -1220,9 +1231,9 @@ export default function PedidosCompraPage() {
                 Confirmar Exclusão
               </h3>
               <p className="text-gray-600 mb-6">
-                Tem certeza que deseja excluir o pedido de venda{" "}
-                <strong>{deleteConfirm.id}</strong> do fornecedor{" "}
-                <strong>{deleteConfirm.fornecedor}</strong>?
+                 Tem certeza que deseja excluir o pedido de compra{" "}
+                 <strong>{deleteConfirm.id}</strong> do fornecedor{" "}
+                 <strong>{deleteConfirm.fornecedor}</strong>?
               </p>
               <div className="flex gap-3 justify-end">
                 <Button variant="outline" onClick={cancelDelete}>
