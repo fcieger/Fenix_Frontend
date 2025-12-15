@@ -11,12 +11,7 @@ import {
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import type { Partner } from "@/types/sdk";
-import { mapPartnerToDisplay } from "@/lib/sdk/field-mappers";
-import {
-  translateRegistrationType,
-  RegistrationType,
-  PersonType,
-} from "@/types/sdk";
+import { RegistrationType, PersonType } from "@/types/sdk";
 import {
   FileText,
   TrendingUp,
@@ -36,17 +31,17 @@ import {
   ChevronRight,
   CreditCard,
 } from "lucide-react";
-import CadastrosAIAssistant from "@/components/CadastrosAIAssistant";
+import PartnersAIAssistant from "@/components/CadastrosAIAssistant";
 
-export default function CadastrosPage() {
+export default function PartnersPage() {
   const router = useRouter();
   const { user, token, logout, isAuthenticated, isLoading, activeCompanyId } =
     useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-  const [cadastros, setCadastros] = useState<Partner[]>([]);
-  const [isLoadingCadastros, setIsLoadingCadastros] = useState(false);
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [isLoadingPartners, setIsLoadingPartners] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
   const [editingCadastro, setEditingCadastro] = useState<Partner | null>(null);
@@ -55,7 +50,7 @@ export default function CadastrosPage() {
     id: string;
     name: string;
   } | null>(null);
-  const [expandedCadastros, setExpandedCadastros] = useState<Set<string>>(
+  const [expandedPartners, setExpandedPartners] = useState<Set<string>>(
     new Set()
   );
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
@@ -66,9 +61,9 @@ export default function CadastrosPage() {
     }
   }, [isAuthenticated, isLoading, router]);
 
-  // Buscar cadastros do backend
+  // Buscar partners do backend
   useEffect(() => {
-    const fetchCadastros = async () => {
+    const fetchPartners = async () => {
       console.log("🔍 Estado de autenticação:", {
         isAuthenticated,
         token: !!token,
@@ -86,27 +81,27 @@ export default function CadastrosPage() {
 
       try {
         console.log(
-          "🔍 Buscando cadastros com token:",
+          "🔍 Buscando partners com token:",
           token.substring(0, 20) + "..."
         );
-        setIsLoadingCadastros(true);
+        setIsLoadingPartners(true);
         setError(null);
         // Note: company_id is handled automatically by JWT token
         const response = await listPartners();
         // SDK returns PaginatedResponse<Partner> with { data: Partner[], meta: {...} }
         const partners = response.data || [];
-        console.log("✅ Cadastros carregados:", partners);
-        setCadastros(partners);
+        console.log("✅ Partners carregados:", partners);
+        setPartners(partners);
       } catch (error) {
-        console.error("❌ Erro ao buscar cadastros:", error);
-        setError("Erro ao carregar cadastros");
+        console.error("❌ Erro ao buscar partners:", error);
+        setError("Erro ao carregar partners");
       } finally {
-        setIsLoadingCadastros(false);
+        setIsLoadingPartners(false);
       }
     };
 
     if (isAuthenticated && token && activeCompanyId) {
-      fetchCadastros();
+      fetchPartners();
     }
   }, [isAuthenticated, token, activeCompanyId]);
 
@@ -116,7 +111,7 @@ export default function CadastrosPage() {
         <div className="flex flex-col items-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
           <p className="text-purple-600 mt-4 font-medium">
-            Carregando cadastros...
+            Carregando partners...
           </p>
         </div>
       </div>
@@ -127,38 +122,24 @@ export default function CadastrosPage() {
     return null;
   }
 
-  // Filtrar cadastros baseado no termo de busca
-  const filteredCadastros = cadastros.filter((partner) => {
-    const displayPartner = mapPartnerToDisplay(partner);
+  // Filtrar partners baseado no termo de busca
+  const filteredPartners = partners.filter((partner) => {
     return (
-      displayPartner.legalName
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      displayPartner.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      displayPartner.tradeName
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      displayPartner.taxId?.toLowerCase().includes(searchTerm.toLowerCase())
+      partner.legalName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      partner.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      partner.tradeName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      partner.taxId?.toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
 
   // Calcular paginação
-  const totalCadastros = filteredCadastros.length;
+  const totalPartners = filteredPartners.length;
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, totalCadastros);
-  const currentCadastros = filteredCadastros.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + itemsPerPage, totalPartners);
+  const currentPartners = filteredPartners.slice(startIndex, endIndex);
 
   const handleEdit = (id: string) => {
-    const cadastro = cadastros.find((c) => c.id === id);
-    if (cadastro) {
-      // Redirecionar para a tela de novo cadastro com dados de edição
-      const queryParams = new URLSearchParams({
-        edit: "true",
-        id: cadastro.id,
-        data: JSON.stringify(cadastro),
-      });
-      router.push(`/partners/novo?${queryParams.toString()}`);
-    }
+    router.push(`/partners/edit/${id}`);
   };
 
   const handleDelete = (id: string, name: string) => {
@@ -174,7 +155,7 @@ export default function CadastrosPage() {
       console.log("✅ Cadastro deletado com sucesso");
 
       // Remover da lista local
-      setCadastros((prev) => prev.filter((c) => c.id !== deleteConfirm.id));
+      setPartners((prev) => prev.filter((c) => c.id !== deleteConfirm.id));
       setDeleteConfirm(null);
     } catch (error: any) {
       console.error("❌ Erro ao deletar cadastro:", error);
@@ -193,7 +174,7 @@ export default function CadastrosPage() {
           console.log("✅ Cadastro inativado com sucesso");
 
           // Atualizar na lista local
-          setCadastros((prev) =>
+          setPartners((prev) =>
             prev.map((c) =>
               c.id === deleteConfirm.id ? { ...c, ativo: false } : c
             )
@@ -214,7 +195,7 @@ export default function CadastrosPage() {
   };
 
   const toggleExpanded = (id: string) => {
-    setExpandedCadastros((prev) => {
+    setExpandedPartners((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(id)) {
         newSet.delete(id);
@@ -226,19 +207,17 @@ export default function CadastrosPage() {
   };
 
   const handleNewCadastro = () => {
-    router.push("/partners/novo");
+    router.push("/partners/create");
   };
 
   // Calcular estatísticas
   const stats = {
-    total: cadastros.length,
-    clientes: cadastros.filter(
-      (c) =>
-        c.type === RegistrationType.CUSTOMER || c.type === RegistrationType.BOTH
+    total: partners.length,
+    clientes: partners.filter((c) =>
+      c.types?.includes(RegistrationType.CUSTOMER)
     ).length,
-    fornecedores: cadastros.filter(
-      (c) =>
-        c.type === RegistrationType.SUPPLIER || c.type === RegistrationType.BOTH
+    fornecedores: partners.filter((c) =>
+      c.types.includes(RegistrationType.SUPPLIER)
     ).length,
     vendedores: 0, // Not available in SDK
     transportadoras: 0, // Not available in SDK
@@ -257,10 +236,10 @@ export default function CadastrosPage() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center">
                 <Users className="w-8 h-8 mr-3 text-purple-600" />
-                Lista de Cadastros
+                Lista de Partners
               </h1>
               <p className="text-gray-600">
-                Gerencie seus cadastros de clientes, fornecedores e parceiros
+                Gerencie seus partners de clientes, fornecedores e parceiros
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
@@ -396,7 +375,7 @@ export default function CadastrosPage() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
-                  placeholder="Buscar cadastros..."
+                  placeholder="Buscar partners..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 pr-4 py-2 w-full sm:w-80 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -430,18 +409,18 @@ export default function CadastrosPage() {
           </div>
         </motion.div>
 
-        {/* Cadastros Table */}
+        {/* Partners Table */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
           className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden"
         >
-          {isLoadingCadastros ? (
+          {isLoadingPartners ? (
             <div className="flex items-center justify-center py-12">
               <div className="flex flex-col items-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-                <p className="text-gray-600 mt-2">Carregando cadastros...</p>
+                <p className="text-gray-600 mt-2">Carregando partners...</p>
               </div>
             </div>
           ) : error ? (
@@ -457,7 +436,7 @@ export default function CadastrosPage() {
                 </Button>
               </div>
             </div>
-          ) : currentCadastros.length === 0 ? (
+          ) : currentPartners.length === 0 ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
                 <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -485,7 +464,7 @@ export default function CadastrosPage() {
               transition={{ delay: 0.3 }}
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6"
             >
-              {currentCadastros.map((cadastro, index) => (
+              {currentPartners.map((cadastro, index) => (
                 <motion.div
                   key={cadastro.id}
                   initial={{ opacity: 0, y: 20 }}
@@ -574,25 +553,15 @@ export default function CadastrosPage() {
                       Tipos
                     </label>
                     <div className="mt-1 flex flex-wrap gap-1">
-                      {cadastro.type === RegistrationType.CUSTOMER && (
+                      {cadastro.types?.includes(RegistrationType.CUSTOMER) && (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           Cliente
                         </span>
                       )}
-                      {cadastro.type === RegistrationType.SUPPLIER && (
+                      {cadastro.types?.includes(RegistrationType.SUPPLIER) && (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                           Fornecedor
                         </span>
-                      )}
-                      {cadastro.type === RegistrationType.BOTH && (
-                        <>
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            Cliente
-                          </span>
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                            Fornecedor
-                          </span>
-                        </>
                       )}
                     </div>
                   </div>
@@ -669,8 +638,8 @@ export default function CadastrosPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-100">
-                    {currentCadastros.map((cadastro, index) => {
-                      const isExpanded = expandedCadastros.has(cadastro.id);
+                    {currentPartners.map((cadastro, index) => {
+                      const isExpanded = expandedPartners.has(cadastro.id);
                       return (
                         <React.Fragment key={cadastro.id}>
                           <motion.tr
@@ -710,33 +679,30 @@ export default function CadastrosPage() {
                             </td>
                             <td className="px-3 lg:px-6 py-4 lg:py-6">
                               <div className="flex flex-wrap gap-1">
-                                {cadastro.type ===
-                                  RegistrationType.CUSTOMER && (
+                                {cadastro.types?.includes(
+                                  RegistrationType.CUSTOMER
+                                ) && (
                                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                     Cliente
                                   </span>
                                 )}
-                                {cadastro.type ===
-                                  RegistrationType.SUPPLIER && (
+                                {cadastro.types?.includes(
+                                  RegistrationType.SUPPLIER
+                                ) && (
                                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                                     Fornecedor
                                   </span>
                                 )}
-                                {cadastro.type === RegistrationType.BOTH && (
-                                  <>
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                      Cliente
+                                {!cadastro.types?.includes(
+                                  RegistrationType.CUSTOMER
+                                ) &&
+                                  !cadastro.types?.includes(
+                                    RegistrationType.SUPPLIER
+                                  ) && (
+                                    <span className="text-xs lg:text-sm text-gray-500">
+                                      Não definido
                                     </span>
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                      Fornecedor
-                                    </span>
-                                  </>
-                                )}
-                                {!cadastro.type && (
-                                  <span className="text-xs lg:text-sm text-gray-500">
-                                    Não definido
-                                  </span>
-                                )}
+                                  )}
                               </div>
                             </td>
                             <td className="px-3 lg:px-6 py-4 lg:py-6">
@@ -1215,7 +1181,7 @@ export default function CadastrosPage() {
 
               {/* Cards Mobile */}
               <div className="md:hidden space-y-4 p-4">
-                {currentCadastros.map((cadastro, index) => (
+                {currentPartners.map((cadastro, index) => (
                   <motion.div
                     key={cadastro.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -1231,11 +1197,11 @@ export default function CadastrosPage() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <h3 className="text-base font-semibold text-gray-900 truncate">
-                            {cadastro.nomeRazaoSocial || "Nome não informado"}
+                            {cadastro.legalName || "Nome não informado"}
                           </h3>
                           <p className="text-xs text-gray-500 flex items-center mt-1">
                             <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                            {cadastro.tipoPessoa === "Pessoa Física"
+                            {cadastro.personType === PersonType.INDIVIDUAL
                               ? "PF"
                               : "PJ"}
                           </p>
@@ -1243,7 +1209,7 @@ export default function CadastrosPage() {
                       </div>
                       <div className="flex items-center space-x-1 ml-2">
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md">
-                          {cadastro.tipoPessoa === "Pessoa Física"
+                          {cadastro.personType === PersonType.INDIVIDUAL
                             ? "PF"
                             : "PJ"}
                         </span>
@@ -1258,7 +1224,7 @@ export default function CadastrosPage() {
                         </label>
                         <div className="mt-1">
                           <span className="text-xs font-medium text-gray-900">
-                            {cadastro.nomeFantasia || "-"}
+                            {cadastro.tradeName || "-"}
                           </span>
                         </div>
                       </div>
@@ -1268,7 +1234,7 @@ export default function CadastrosPage() {
                         </label>
                         <div className="mt-1">
                           <span className="text-xs font-medium text-gray-900 font-mono">
-                            {cadastro.cpfCnpj || "-"}
+                            {cadastro.taxId || "-"}
                           </span>
                         </div>
                       </div>
@@ -1288,20 +1254,20 @@ export default function CadastrosPage() {
                         </label>
                         <div className="mt-1">
                           <span className="text-xs text-gray-500">
-                            {cadastro.telefone || "-"}
+                            {cadastro.phone || "-"}
                           </span>
                         </div>
                       </div>
                     </div>
 
                     {/* Tipos de Cliente */}
-                    {cadastro.tiposCliente && (
+                    {cadastro.types && (
                       <div className="mb-3">
                         <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Tipos
                         </label>
                         <div className="mt-1 flex flex-wrap gap-1">
-                          {Object.entries(cadastro.tiposCliente)
+                          {Object.entries(cadastro.types || [])
                             .filter(([_, value]) => value)
                             .map(([key, _]) => {
                               const tipos = {
@@ -1388,7 +1354,7 @@ export default function CadastrosPage() {
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
               <span className="text-sm text-gray-700 font-medium">
-                Total: {totalCadastros} cadastros
+                Total: {totalPartners} partners
               </span>
             </div>
             <div className="text-xs lg:text-sm text-gray-500">
@@ -1400,7 +1366,7 @@ export default function CadastrosPage() {
       </div>
 
       {/* AI Assistant Modal */}
-      <CadastrosAIAssistant
+      <PartnersAIAssistant
         isOpen={isAIAssistantOpen}
         onClose={() => setIsAIAssistantOpen(false)}
       />
@@ -1428,13 +1394,13 @@ export default function CadastrosPage() {
             <p className="text-gray-600 mb-6">
               Tem certeza que deseja excluir o cadastro{" "}
               <strong>"{deleteConfirm.name}"</strong>?
-              {cadastros.find((c) => c.id === deleteConfirm.id)?.addresses
-                ?.length > 0 && (
+              {partners.find((c) => c.id === deleteConfirm.id)?.addresses
+                ?.length ? (
                 <span className="block mt-2 text-sm text-orange-600">
                   ⚠️ Este cadastro possui endereços vinculados e será inativado
                   em vez de excluído.
                 </span>
-              )}
+              ) : null}
             </p>
             <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
               <Button
@@ -1448,11 +1414,18 @@ export default function CadastrosPage() {
                 onClick={confirmDelete}
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
               >
-                <Trash2 className="w-4 h-4 mr-2" />
-                {cadastros.find((c) => c.id === deleteConfirm.id)?.addresses
-                  ?.length > 0
-                  ? "Inativar"
-                  : "Excluir"}
+                {partners?.find((p) => p?.id === deleteConfirm.id)?.addresses
+                  ?.length ? (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Inativar
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Excluir
+                  </>
+                )}
               </Button>
             </div>
           </motion.div>
