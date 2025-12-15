@@ -7,8 +7,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-// Select components will be implemented as native HTML selects
 import {
   CreditCard,
   Plus,
@@ -20,21 +18,14 @@ import {
   Calendar,
   DollarSign,
   RefreshCw,
-  Filter,
   MoreVertical,
   X,
   ArrowLeft,
   ArrowRight,
-  TrendingUp,
   Settings,
-  Copy,
-  Eye,
-  EyeOff,
   Star,
-  StarOff,
   Sparkles,
   Zap,
-  Lightbulb,
 } from "lucide-react";
 import { apiService, PrazoPagamentoData } from "@/lib/api";
 import PrazoPagamentoForm from "@/components/payment-terms/PrazoPagamentoForm";
@@ -830,20 +821,20 @@ export default function PrazosPagamentoPage() {
         isLoading={false}
       />
 
-        {/* Modal de IA */}
-        <PrazoPagamentoAI
-          isOpen={showAIModal}
-          onClose={() => setShowAIModal(false)}
-          onSuccess={(prazo) => {
-            setShowAIModal(false);
-            loadPrazos(); // Recarregar a lista após criar
-          }}
-          context={{
-            tipo: 'cadastro',
-            nome: 'Novo Prazo de Pagamento',
-            descricao: 'Gerado automaticamente pela IA'
-          }}
-        />
-      </div>
+      {/* Modal de IA */}
+      <PrazoPagamentoAI
+        isOpen={showAIModal}
+        onClose={() => setShowAIModal(false)}
+        onSuccess={(prazo) => {
+          setShowAIModal(false);
+          loadPrazos(); // Recarregar a lista após criar
+        }}
+        context={{
+          tipo: "cadastro" as "produto" | "cadastro",
+          nome: "Novo Prazo de Pagamento",
+          descricao: "Gerado automaticamente pela IA",
+        }}
+      />
+    </div>
   );
 }
