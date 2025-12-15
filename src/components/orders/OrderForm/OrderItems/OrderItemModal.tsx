@@ -19,10 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useProducts } from "@/hooks/queries/useProducts";
-import type { PurchaseOrderItem, SalesOrderItem, QuoteItem } from "@/types/sdk";
-
-// Union type dos itens do SDK
-type OrderItem = PurchaseOrderItem | SalesOrderItem | QuoteItem;
+import type { OrderItem } from "../OrderFormProvider";
 
 export interface OrderItemModalProps {
   isOpen: boolean;
@@ -55,7 +52,7 @@ export function OrderItemModal({
     isLoading: isLoadingProducts,
     error: productsError,
   } = useProducts({
-    limit: 100, // Get a large number of products
+    limit: 1000, // Get a large number of products
   });
 
   // Extract products from response (handle different response formats)
@@ -135,11 +132,7 @@ export function OrderItemModal({
     const newItem: any = {
       ...formData,
       id: item ? (item as any).id : undefined,
-      product: (item as any)?.product || {
-        id: formData.productId,
-        code: formData.code,
-        name: formData.name,
-      },
+      productId: formData.productId,
     };
     onSave(newItem);
     onClose();
