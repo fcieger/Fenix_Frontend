@@ -12,17 +12,10 @@ import {
   BarChart3,
   Loader2,
   CheckCircle,
-  Clock,
-  FileText,
 } from "lucide-react";
 import {
-  LineChart,
   Line,
-  BarChart,
   Bar,
-  PieChart,
-  Pie,
-  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -40,16 +33,6 @@ import type {
   TopProduct,
   PurchasesByBuyer,
 } from "@fenix/api-sdk";
-
-const COLORS = [
-  "#3b82f6",
-  "#10b981",
-  "#f59e0b",
-  "#ef4444",
-  "#8b5cf6",
-  "#ec4899",
-  "#06b6d4",
-];
 
 export default function DashboardComprasPage() {
   const { token, activeCompanyId, isLoading: authLoading } = useAuth();
@@ -111,7 +94,6 @@ export default function DashboardComprasPage() {
           // Só enviar datas se não for o padrão de 30 dias
           const hoje = new Date();
           let dataInicio: Date = hoje;
-          let dataInicio: Date = hoje;
           let dataFim: Date = hoje;
 
           switch (filtroPeriodo) {
@@ -142,8 +124,8 @@ export default function DashboardComprasPage() {
               break;
           }
 
-          startDate = dataInicio.toISOString().split('T')[0];
-          endDate = dataFim.toISOString().split('T')[0];
+          startDate = dataInicio.toISOString().split("T")[0];
+          endDate = dataFim.toISOString().split("T")[0];
         }
         // Se filtroPeriodo === '30dias', não enviar parâmetros de data (undefined) para a API usar seu padrão
 
