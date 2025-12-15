@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -27,11 +27,9 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
-  Settings,
   Sparkles,
   Zap,
   Calendar,
-  TrendingUp,
   FileText,
 } from "lucide-react";
 import { licitacoesService, AlertaLicitacao } from "@/services/tenders-service";
@@ -69,6 +67,7 @@ export default function AlertasPage() {
   const carregarAlertas = async () => {
     try {
       setLoading(true);
+
 
       if (!activeCompanyId) {
         toast.error("CompanyId não encontrado. Faça login novamente.");
@@ -179,26 +178,23 @@ export default function AlertasPage() {
   if (showForm) {
     return (
       <div className="space-y-6">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between"
-          >
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                {editingAlerta ? 'Editar Alerta' : 'Novo Alerta'}
-              </h1>
-              <p className="text-gray-600 mt-1">
-                Configure critérios para receber notificações de licitações
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              onClick={handleCancelar}
-            >
-              Cancelar
-            </Button>
-          </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between"
+        >
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {editingAlerta ? "Editar Alerta" : "Novo Alerta"}
+            </h1>
+            <p className="text-gray-600 mt-1">
+              Configure critérios para receber notificações de licitações
+            </p>
+          </div>
+          <Button variant="outline" onClick={handleCancelar}>
+            Cancelar
+          </Button>
+        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -286,7 +282,50 @@ export default function AlertasPage() {
             </div>
           </CardContent>
         </Card>
+      {/* Estatísticas */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="grid grid-cols-1 md:grid-cols-4 gap-4"
+      >
+        <Card className="border-l-4 border-l-blue-500">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Total de Alertas</p>
+                <p className="text-3xl font-bold text-blue-600">
+                  {stats.total}
+                </p>
+              </div>
+              <div className="p-3 bg-blue-100 rounded-full">
+                <Bell className="w-6 h-6 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
+        <Card className="border-l-4 border-l-green-500">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Alertas Ativos</p>
+                <p className="text-3xl font-bold text-green-600">
+                  {stats.ativos}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {stats.total > 0
+                    ? Math.round((stats.ativos / stats.total) * 100)
+                    : 0}
+                  % do total
+                </p>
+              </div>
+              <div className="p-3 bg-green-100 rounded-full">
+                <CheckCircle2 className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
         <Card className="border-l-4 border-l-green-500">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -324,7 +363,41 @@ export default function AlertasPage() {
             </div>
           </CardContent>
         </Card>
+        <Card className="border-l-4 border-l-gray-500">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Alertas Inativos</p>
+                <p className="text-3xl font-bold text-gray-600">
+                  {stats.inativos}
+                </p>
+              </div>
+              <div className="p-3 bg-gray-100 rounded-full">
+                <XCircle className="w-6 h-6 text-gray-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
+        <Card className="border-l-4 border-l-purple-500">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Tempo Real</p>
+                <p className="text-3xl font-bold text-purple-600">
+                  {stats.tempoReal}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Notificações instantâneas
+                </p>
+              </div>
+              <div className="p-3 bg-purple-100 rounded-full">
+                <Zap className="w-6 h-6 text-purple-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
         <Card className="border-l-4 border-l-purple-500">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -722,53 +795,54 @@ export default function AlertasPage() {
         </div>
       )}
 
-        {/* Modal de Confirmação de Exclusão */}
-        <AnimatePresence>
-          {deleteConfirm && (
+      {/* Modal de Confirmação de Exclusão */}
+      <AnimatePresence>
+        {deleteConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setDeleteConfirm(null)}
+          >
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-              onClick={() => setDeleteConfirm(null)}
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full"
             >
-              <motion.div
-                initial={{ scale: 0.9 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0.9 }}
-                onClick={(e) => e.stopPropagation()}
-                className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full"
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-red-100 rounded-full">
-                    <AlertCircle className="w-6 h-6 text-red-600" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Confirmar Exclusão
-                  </h3>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-red-100 rounded-full">
+                  <AlertCircle className="w-6 h-6 text-red-600" />
                 </div>
-                <p className="text-gray-600 mb-6">
-                  Tem certeza que deseja excluir este alerta? Esta ação não pode ser desfeita.
-                </p>
-                <div className="flex gap-3 justify-end">
-                  <Button
-                    variant="outline"
-                    onClick={() => setDeleteConfirm(null)}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={() => handleExcluir(deleteConfirm)}
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Excluir
-                  </Button>
-                </div>
-              </motion.div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Confirmar Exclusão
+                </h3>
+              </div>
+              <p className="text-gray-600 mb-6">
+                Tem certeza que deseja excluir este alerta? Esta ação não pode
+                ser desfeita.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setDeleteConfirm(null)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => handleExcluir(deleteConfirm)}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Excluir
+                </Button>
+              </div>
             </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
