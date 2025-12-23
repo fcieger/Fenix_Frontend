@@ -67,6 +67,10 @@ export default function InventarioEditarPage() {
           title: "Erro",
           message: json?.error || 'Erro ao carregar inventário'
         });
+        openSuccess({
+          title: "Erro",
+          message: json?.error || 'Erro ao carregar inventário'
+        });
         router.push('/stock/inventario');
         return;
       }
@@ -75,6 +79,10 @@ export default function InventarioEditarPage() {
       setItens(json.data.itens || []);
     } catch (e) {
       console.error("Erro ao carregar inventário:", e);
+      openSuccess({
+        title: "Erro",
+        message: "Erro ao carregar inventário"
+      });
       openSuccess({
         title: "Erro",
         message: "Erro ao carregar inventário"
@@ -117,10 +125,13 @@ export default function InventarioEditarPage() {
     const itensComContagem = itens.filter((item) => {
       const qtd = item.qtdContada;
       return qtd !== null && qtd !== undefined;
-      return qtd !== null && qtd !== undefined;
     });
 
     if (itensComContagem.length === 0) {
+      openSuccess({
+        title: "Atenção",
+        message: "Nenhuma contagem foi preenchida"
+      });
       openSuccess({
         title: "Atenção",
         message: "Nenhuma contagem foi preenchida"
@@ -154,6 +165,10 @@ export default function InventarioEditarPage() {
         title: "Erro",
         message: jsonContagens?.error || 'Erro ao salvar contagens'
       });
+      openSuccess({
+        title: "Erro",
+        message: jsonContagens?.error || 'Erro ao salvar contagens'
+      });
         return;
       }
 
@@ -180,6 +195,10 @@ export default function InventarioEditarPage() {
         title: "Sucesso",
         message: "Contagens salvas! Não há diferenças para aplicar."
       });
+      openSuccess({
+        title: "Sucesso",
+        message: "Contagens salvas! Não há diferenças para aplicar."
+      });
         return;
       }
 
@@ -189,6 +208,10 @@ export default function InventarioEditarPage() {
       });
 
       if (!confirmou) {
+      openSuccess({
+        title: "Sucesso",
+        message: "Contagens salvas com sucesso!"
+      });
       openSuccess({
         title: "Sucesso",
         message: "Contagens salvas com sucesso!"
@@ -263,6 +286,10 @@ export default function InventarioEditarPage() {
       router.push('/stock/inventario');
     } catch (e) {
       console.error("Erro ao aplicar inventário:", e);
+      openSuccess({
+        title: "Erro",
+        message: "Erro ao aplicar inventário"
+      });
       openSuccess({
         title: "Erro",
         message: "Erro ao aplicar inventário"
@@ -343,6 +370,7 @@ export default function InventarioEditarPage() {
   );
   const itensComContagem = itens.filter((item) => {
     const qtd = item.qtdContada;
+    return qtd !== null && qtd !== undefined;
     return qtd !== null && qtd !== undefined;
   });
 

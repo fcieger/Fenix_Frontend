@@ -220,9 +220,37 @@ export default function NovoPrazoPagamentoPage() {
         }
       };
     });
+    setFormData(prev => {
+      const parcelasAtuais = prev.configuracoes.parcelas || [];
+      return {
+        ...prev,
+        configuracoes: {
+          ...prev.configuracoes,
+          parcelas: [
+            ...parcelasAtuais,
+            {
+              numero: parcelasAtuais.length + 1,
+              dias: 30,
+              percentual: 0,
+              descricao: ''
+            }
+          ]
+        }
+      };
+    });
   };
 
   const removeParcela = (index: number) => {
+    setFormData(prev => {
+      const parcelasAtuais = prev.configuracoes.parcelas || [];
+      return {
+        ...prev,
+        configuracoes: {
+          ...prev.configuracoes,
+          parcelas: parcelasAtuais.filter((_, i) => i !== index)
+        }
+      };
+    });
     setFormData(prev => {
       const parcelasAtuais = prev.configuracoes.parcelas || [];
       return {
@@ -895,6 +923,7 @@ export default function NovoPrazoPagamentoPage() {
                       <div className="space-y-4">
                         <AnimatePresence>
                           {(formData.configuracoes.parcelas || []).map((parcela, index) => (
+                          {(formData.configuracoes.parcelas || []).map((parcela, index) => (
                             <motion.div
                               key={index}
                               initial={{ opacity: 0, scale: 0.95 }}
@@ -1323,6 +1352,7 @@ export default function NovoPrazoPagamentoPage() {
                     {formData.tipo === "personalizado" && (
                       <div className="p-4 bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl">
                         <p className="text-sm font-semibold text-gray-600 mb-1">Parcelas</p>
+                        <p className="font-bold text-purple-700">{formData.configuracoes.parcelas?.length ?? 0} parcelas</p>
                         <p className="font-bold text-purple-700">{formData.configuracoes.parcelas?.length ?? 0} parcelas</p>
                       </div>
                     )}

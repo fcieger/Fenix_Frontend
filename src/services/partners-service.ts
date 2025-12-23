@@ -33,6 +33,10 @@ export async function listPartners(
     if ('company_id' in cleanParams) {
       delete (cleanParams as any).company_id;
     }
+    const cleanParams = { ...(params || {}) };
+    if ('company_id' in cleanParams) {
+      delete (cleanParams as any).company_id;
+    }
     const response = await partnersClient.findAll(cleanParams);
 
     // SDK returns PaginatedResponse<T> or T[] directly
@@ -116,3 +120,4 @@ export const obterCadastro = getPartner;
 export const criarCadastro = createPartner;
 export const atualizarCadastro = updatePartner;
 export const excluirCadastro = deletePartner;
+

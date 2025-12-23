@@ -33,6 +33,7 @@ interface Venda {
   meioPagamento?: string;
   dataVenda: string;
   status: string;
+  status: string;
   motivoCancelamento?: string;
   dataCancelamento?: string;
 }
@@ -204,8 +205,8 @@ export default function HistoricoVendasPage() {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
 
+
     return (
-      venda.id.toLowerCase().includes(term) ||
       venda.id.toLowerCase().includes(term) ||
       (venda.clienteNome?.toLowerCase().includes(term) ?? false) ||
       venda.meioPagamento?.toLowerCase().includes(term)
