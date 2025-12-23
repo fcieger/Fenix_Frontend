@@ -76,7 +76,10 @@ export default function InventarioPage() {
 
   const criar = async () => {
     if (!localId || !activeCompanyId) {
-      openSuccess("Erro", "Selecione um local de estoque");
+      openSuccess({
+        title: "Erro",
+        message: "Selecione um local de estoque"
+      });
       return;
     }
     
@@ -94,17 +97,26 @@ export default function InventarioPage() {
       });
       const json = await res.json();
       if (!json?.success) {
-        openSuccess("Erro", json?.error || 'Erro ao criar inventário');
+        openSuccess({
+          title: "Erro",
+          message: json?.error || 'Erro ao criar inventário'
+        });
         return;
       }
-      openSuccess("Sucesso", "Inventário criado com sucesso!");
+      openSuccess({
+        title: "Sucesso",
+        message: "Inventário criado com sucesso!"
+      });
       await load();
       setFormOpen(false);
       setLocalId("");
       setObservacao("");
     } catch (e) {
       console.error("Erro ao criar inventário:", e);
-      openSuccess("Erro", "Erro ao criar inventário");
+      openSuccess({
+        title: "Erro",
+        message: "Erro ao criar inventário"
+      });
     } finally {
       setLoading(false);
     }

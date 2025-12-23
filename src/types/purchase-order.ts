@@ -3,6 +3,12 @@
  * Use types from @/types/sdk instead of local types
  */
 
+import type {
+  OrderStatus as SdkOrderStatus,
+  PurchaseOrderItem as SdkPurchaseOrderItem,
+  PurchaseOrder as SdkPurchaseOrder,
+} from '@/types/sdk';
+
 // Re-export SDK types
 export type {
   PurchaseOrder,
@@ -11,14 +17,12 @@ export type {
   PurchaseOrderInstallment,
   CreatePurchaseOrderDto,
   UpdatePurchaseOrderDto,
-  PurchaseOrderChangeStatusDto,
 } from '@/types/sdk';
 
-export { OrderStatus as PurchaseOrderStatus } from '@/types/sdk';
+export type PurchaseOrderStatus = SdkOrderStatus;
+export { OrderStatus } from '@/types/sdk';
 
 // Legacy exports for backward compatibility
 export type StatusPedidoCompra = PurchaseOrderStatus;
-export type PedidoCompraItem = PurchaseOrderItem;
-export type PedidoCompra = PurchaseOrder;
-
-
+export type PedidoCompraItem = SdkPurchaseOrderItem;
+export type PedidoCompra = SdkPurchaseOrder;

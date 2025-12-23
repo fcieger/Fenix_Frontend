@@ -318,28 +318,30 @@ export default function FiltrosEspecificos({
       </div>
     </div>
   );
+  };
 
-  const renderFiltrosFiscal = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
-        <Label className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-          <DollarSign className="h-4 w-4 text-red-600" />
-          Status da NFe
-        </Label>
-        <Select value={filtroStatus} onValueChange={setFiltroStatus}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Todos" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos</SelectItem>
-            <SelectItem value="autorizada">Autorizada</SelectItem>
-            <SelectItem value="cancelada">Cancelada</SelectItem>
-            <SelectItem value="denegada">Denegada</SelectItem>
-            <SelectItem value="rejeitada">Rejeitada</SelectItem>
-          </SelectContent>
-        </Select>
+  const renderFiltrosFiscal = () => {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-red-600" />
+            Status da NFe
+          </Label>
+          <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="autorizada">Autorizada</SelectItem>
+              <SelectItem value="cancelada">Cancelada</SelectItem>
+              <SelectItem value="denegada">Denegada</SelectItem>
+              <SelectItem value="rejeitada">Rejeitada</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
-    </div>
     );
   };
 
@@ -451,4 +453,3 @@ export default function FiltrosEspecificos({
       return null;
   }
 }
-

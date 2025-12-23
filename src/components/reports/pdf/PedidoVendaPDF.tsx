@@ -6,6 +6,8 @@ import { formatCurrency, formatDate, formatNumber } from '@/lib/pdf/utils';
 import { PedidoVenda, PedidoVendaItem } from '@/types/pedido-venda';
 
 interface PedidoVendaCompleto extends PedidoVenda {
+  numero?: string | number;
+  [key: string]: any;
   cliente?: {
     id: string;
     nomeRazaoSocial?: string;
@@ -73,9 +75,11 @@ export function PedidoVendaPDF({ dados }: PedidoVendaPDFProps) {
     'rascunho': 'Rascunho'
   };
 
+  const numeroPedido = dados.numero ?? dados.number ?? '';
+
   return (
     <PDFLayout 
-      title={`PEDIDO DE VENDA ${dados.numero || ''}`}
+      title={`PEDIDO DE VENDA ${numeroPedido || ''}`}
       subtitle={`Emitido em ${formatDate(dados.dataEmissao)}`}
     >
       {/* Informações do Pedido */}
@@ -85,7 +89,7 @@ export function PedidoVendaPDF({ dados }: PedidoVendaPDFProps) {
           <tbody>
             <tr>
               <td style={{ width: '30%', fontWeight: '600' }}>Número:</td>
-              <td>{dados.numero || '-'}</td>
+              <td>{numeroPedido || '-'}</td>
               <td style={{ width: '30%', fontWeight: '600' }}>Série:</td>
               <td>{dados.serie || '-'}</td>
             </tr>
@@ -223,7 +227,7 @@ export function PedidoVendaPDF({ dados }: PedidoVendaPDFProps) {
           </thead>
           <tbody>
             {dados.itens && dados.itens.length > 0 ? (
-              dados.itens.map((item: PedidoVendaItem, index: number) => {
+              (dados.itens as any[]).map((item: any, index: number) => {
                 const descontoTotal = (item.descontoValor || 0) + 
                   ((item.precoUnitario * item.quantidade) * (item.descontoPercentual || 0) / 100);
                 const subtotal = (item.precoUnitario * item.quantidade) - descontoTotal;
@@ -397,9 +401,4 @@ export function PedidoVendaPDF({ dados }: PedidoVendaPDFProps) {
     </PDFLayout>
   );
 }
-
-
-
-
-
 

@@ -262,7 +262,7 @@ export default function PrazoPagamentoAI({
     if (naturalCommand) {
       // Usar comando natural processado
       nome = naturalCommand.nome || 'Novo Prazo';
-      tipo = naturalCommand.tipo;
+      tipo = (naturalCommand.tipo as 'dias' | 'parcelas' | 'personalizado') ?? 'dias';
       configuracoes = naturalCommand.configuracoes;
     } else {
       // Fallback para detecção baseada em palavras-chave
@@ -328,7 +328,7 @@ export default function PrazoPagamentoAI({
     const vencimentos = [];
 
     if (tipo === 'dias') {
-      const { dias, percentualEntrada, percentualRestante } = configuracoes;
+      const { dias = 0, percentualEntrada, percentualRestante } = configuracoes;
       
       if (percentualEntrada && percentualEntrada > 0) {
         vencimentos.push({
@@ -353,7 +353,7 @@ export default function PrazoPagamentoAI({
         });
       }
     } else if (tipo === 'parcelas') {
-      const { numeroParcelas, intervaloDias, percentualEntrada, percentualParcelas } = configuracoes;
+      const { numeroParcelas = 0, intervaloDias = 0, percentualEntrada = 0, percentualParcelas = 0 } = configuracoes;
       
       if (percentualEntrada && percentualEntrada > 0) {
         vencimentos.push({
@@ -379,7 +379,7 @@ export default function PrazoPagamentoAI({
         });
       }
     } else if (tipo === 'personalizado') {
-      const { parcelas } = configuracoes;
+      const parcelas = configuracoes.parcelas || [];
       
       parcelas.forEach((parcela: any, index: number) => {
         const dataVencimento = new Date(dataVenda);

@@ -25,20 +25,8 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
               // Retry até 3 vezes para outros erros
               return failureCount < 3;
             },
-            onError: (error: any) => {
-              // Tratamento global de erros de query
-              console.error('Query error:', error);
-              // Aqui você pode adicionar integração com serviço de monitoramento
-              // ou exibir notificações ao usuário
-            },
           },
           mutations: {
-            onError: (error: any) => {
-              // Tratamento global de erros de mutação
-              console.error('Mutation error:', error);
-              // Aqui você pode adicionar integração com serviço de monitoramento
-              // ou exibir notificações ao usuário
-            },
           },
         },
       }),
@@ -52,4 +40,3 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
     </QueryClientProvider>
   );
 }
-

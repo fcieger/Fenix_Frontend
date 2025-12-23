@@ -45,6 +45,7 @@ export interface MovimentacaoFilters {
   data_fim?: string;
   periodo?: string; // formato YYYY-MM
   search?: string;
+  situacao?: string;
   valor_min?: number;
   valor_max?: number;
   limit?: number;

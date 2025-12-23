@@ -7,7 +7,11 @@ interface UseContasReturn {
   error: string | null;
   createConta: (data: CreateContaFinanceiraRequest) => Promise<ContaFinanceira>;
   updateConta: (id: string, data: Partial<ContaFinanceira>) => Promise<ContaFinanceira>;
-  deleteConta: (id: string) => Promise<boolean>;
+  deleteConta: (id: string) => Promise<{
+    success: boolean;
+    action: "deleted" | "inactivated";
+    message: string;
+  }>;
   refreshContas: () => Promise<void>;
 }
 

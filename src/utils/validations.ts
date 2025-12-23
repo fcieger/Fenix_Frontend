@@ -1,4 +1,5 @@
-import { CreateContaFinanceiraRequest, CreateMovimentacaoRequest } from '@/types/conta';
+import { CreateContaFinanceiraRequest } from '@/types/conta';
+import type { CreateMovimentacaoRequest } from '@/types/movimentacao';
 
 export function validateContaFinanceira(data: CreateContaFinanceiraRequest): string[] {
   const errors: string[] = [];

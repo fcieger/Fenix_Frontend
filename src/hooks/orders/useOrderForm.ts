@@ -140,15 +140,19 @@ export function useOrderForm(orderType: OrderType) {
       };
 
       if (orderType === "purchase") {
-        const result = await createPurchaseOrder.mutateAsync(duplicatedData);
+        const result = await createPurchaseOrder.mutateAsync(
+          duplicatedData as any
+        );
         toast.success("Pedido duplicado com sucesso!");
         router.push(`/purchases/${result.id}`);
       } else if (orderType === "sales") {
-        const result = await createSalesOrder.mutateAsync(duplicatedData);
+        const result = await createSalesOrder.mutateAsync(
+          duplicatedData as any
+        );
         toast.success("Pedido duplicado com sucesso!");
         router.push(`/sales/${result.id}`);
       } else if (orderType === "quote") {
-        const result = await createQuote.mutateAsync(duplicatedData);
+        const result = await createQuote.mutateAsync(duplicatedData as any);
         toast.success("Orçamento duplicado com sucesso!");
         router.push(`/quotes/${result.id}`);
       }

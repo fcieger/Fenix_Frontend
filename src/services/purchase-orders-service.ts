@@ -2,7 +2,7 @@ import { SdkClientFactory } from '@/lib/sdk/client-factory';
 import { SdkErrorHandler } from '@/lib/sdk/error-handler';
 import { normalizeListResponse, normalizePaginatedResponse } from '@/lib/sdk/response-normalizer';
 import axios from 'axios';
-import type { PurchaseOrder, CreatePurchaseOrderDto, UpdatePurchaseOrderDto, PurchaseOrderStatus, PurchaseOrderChangeStatusDto, PaginatedResponse } from '@/types/sdk';
+import type { PurchaseOrder, CreatePurchaseOrderDto, UpdatePurchaseOrderDto, PurchaseOrderStatus, PaginatedResponse } from '@/types/sdk';
 
 /**
  * Purchase Orders Service
@@ -38,10 +38,16 @@ export async function listPurchaseOrders(params?: {
   status?: PurchaseOrderStatus;
   partnerId?: string;
 }): Promise<PaginatedResponse<PurchaseOrder> | { data: PurchaseOrder[] }> {
+  const cleanParams = { ...(params || {}) };
+  if ('company_id' in cleanParams) {
+    delete (cleanParams as any).company_id;
+  }
+  if ('companyId' in cleanParams) {
+    delete (cleanParams as any).companyId;
+  }
+
   try {
     const purchaseOrdersClient = SdkClientFactory.getPurchaseOrdersClient();
-    // Remove company_id/companyId from params if present (handled by JWT)
-    const { company_id, companyId, ...cleanParams } = params || {};
     const response = await purchaseOrdersClient.findAll(cleanParams);
 
     // SDK returns PaginatedResponse<T> or T[] directly
@@ -225,4 +231,3 @@ export const criarPedidoCompra = createPurchaseOrder;
 export const atualizarPedidoCompra = updatePurchaseOrder;
 export const excluirPedidoCompra = deletePurchaseOrder;
 export const entregarPedidoCompra = deliverPurchaseOrder;
-

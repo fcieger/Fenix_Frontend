@@ -205,7 +205,6 @@ export function ContaContabilFormPage({ contaId }: ContaContabilFormPageProps) {
       if (isEditMode && contaId) {
         // Modo edição
         const updateData: UpdateContaContabilRequest = {
-          id: contaId,
           codigo: formData.codigo.trim(),
           descricao: formData.descricao.trim(),
           tipo: formData.tipo,

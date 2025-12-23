@@ -294,10 +294,9 @@ export default function NovaListaPrecosPage() {
       console.log("✅ Resposta da API:", response);
       alert(`API funcionando! Encontrados ${response.length} produtos.`);
     } catch (error) {
-      console.error("❌ Erro na API:", error);
-      alert(
-        `Erro na API: ${error instanceof Error ? error.message : String(error)}`
-      );
+      console.error('❌ Erro na API:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      alert(`Erro na API: ${message}`);
     }
   };
 
@@ -1290,12 +1289,12 @@ export default function NovaListaPrecosPage() {
         </div>
       </div>
 
-      {/* Botões Flutuantes */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className="fixed bottom-6 right-6 flex flex-col gap-3 z-50"
+    {/* Botões Flutuantes */}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.2 }}
+      className="fixed bottom-6 right-6 flex flex-col gap-3 z-50"
       >
         <Button
           onClick={handleSave}

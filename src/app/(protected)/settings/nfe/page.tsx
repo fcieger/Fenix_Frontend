@@ -190,22 +190,8 @@ export default function ConfiguracoesNFEPage() {
       delete (novaConfig as any).companyId;
       delete (novaConfig as any).createdAt;
       delete (novaConfig as any).updatedAt;
-      const configuracaoData = {
-        ...novaConfig,
-        tipoModelo: novaConfig.tipoModelo as
-          | "nfe-produto"
-          | "nfse-servico"
-          | "nf-entrada"
-          | "nfce-consumidor"
-          | "mdfe",
-        ambiente: novaConfig.ambiente as "producao" | "homologacao",
-        rpsAliquotaISS:
-          typeof novaConfig.rpsAliquotaISS === "string"
-            ? parseFloat(novaConfig.rpsAliquotaISS) || 0
-            : novaConfig.rpsAliquotaISS || 0,
-      };
 
-      await apiService.createConfiguracaoNfe(configuracaoData, token);
+      await apiService.createConfiguracaoNfe(novaConfig as any, token);
 
       // Recarregar lista
       const data = await apiService.getConfiguracoesNfe(token, false);
@@ -609,3 +595,4 @@ export default function ConfiguracoesNFEPage() {
     </div>
   );
 }
+

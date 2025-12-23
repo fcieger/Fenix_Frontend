@@ -2,7 +2,7 @@ import { SdkClientFactory } from '@/lib/sdk/client-factory';
 import { SdkErrorHandler } from '@/lib/sdk/error-handler';
 import { normalizeListResponse, normalizePaginatedResponse } from '@/lib/sdk/response-normalizer';
 import axios from 'axios';
-import type { SalesOrder, CreateSalesOrderDto, UpdateSalesOrderDto, SalesOrderStatus, SalesOrderChangeStatusDto, PaginatedResponse } from '@/types/sdk';
+import type { SalesOrder, CreateSalesOrderDto, UpdateSalesOrderDto, SalesOrderStatus, PaginatedResponse } from '@/types/sdk';
 
 /**
  * Sales Orders Service
@@ -116,7 +116,7 @@ export async function createSalesOrderFromQuote(quoteId: string, adjustments?: a
 export async function changeSalesOrderStatus(id: string, status: SalesOrderStatus): Promise<SalesOrder> {
   try {
     const salesOrdersClient = SdkClientFactory.getSalesOrdersClient();
-    const statusDto: SalesOrderChangeStatusDto = { status };
+    const statusDto = { status } as any;
     const order = await salesOrdersClient.changeStatus(id, statusDto);
     return order;
   } catch (error) {
@@ -207,4 +207,3 @@ export const atualizarPedidoVenda = updateSalesOrder;
 export const criarPedidoVendaFromOrcamento = createSalesOrderFromQuote;
 export const excluirPedidoVenda = deleteSalesOrder;
 export const entregarPedidoVenda = deliverSalesOrder;
-

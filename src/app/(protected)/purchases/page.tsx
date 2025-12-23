@@ -76,7 +76,7 @@ export default function PedidosCompraPage() {
     string | null
   >(null);
   const [pedidoCompraDetalhes, setPedidoCompraDetalhes] = useState<{
-    [key: string]: PurchaseOrder;
+    [key: string]: any;
   }>({});
 
   useEffect(() => {
@@ -296,7 +296,9 @@ export default function PedidosCompraPage() {
       },
     };
 
-    const config = statusConfig[status] || statusConfig[OrderStatus.DRAFT];
+    const config =
+      statusConfig[status as keyof typeof statusConfig] ||
+      statusConfig[OrderStatus.DRAFT];
     const Icon = config.icon;
 
     return (
@@ -1269,7 +1271,7 @@ export default function PedidosCompraPage() {
                 Confirmar Exclusão
               </h3>
               <p className="text-gray-600 mb-6">
-                Tem certeza que deseja excluir o pedido de compra{" "}
+                Tem certeza que deseja excluir o pedido de venda{" "}
                 <strong>{deleteConfirm.id}</strong> do fornecedor{" "}
                 <strong>{deleteConfirm.fornecedor}</strong>?
               </p>

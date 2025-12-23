@@ -277,9 +277,9 @@ class ApiService {
 
       const contentType = response.headers.get("content-type") || "";
       if (contentType.includes("application/json")) {
-        return await response.json();
+        return (await response.json()) as T;
       }
-      return await response.text();
+      return (await response.text()) as unknown as T;
     } catch (error) {
       console.error("Error making request:", error);
       throw error;

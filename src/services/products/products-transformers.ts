@@ -16,12 +16,7 @@ import {
 export function formatCreateProductRequest(
   payload: CreateProductDto
 ): CreateProductDto {
-  const formatted = { ...payload };
-
-  // Normalizar nome (trim, remover espaços extras)
-  if (formatted.name) {
-    formatted.name = normalizeString(formatted.name);
-  }
+  const formatted: any = { ...payload };
 
   // Normalizar código (uppercase, sem espaços)
   if (formatted.code) {
@@ -31,11 +26,6 @@ export function formatCreateProductRequest(
   // Normalizar preço (garantir número)
   if (formatted.price !== undefined) {
     formatted.price = normalizeNumber(formatted.price);
-  }
-
-  // Normalizar custo (garantir número)
-  if (formatted.cost !== undefined) {
-    formatted.cost = normalizeNumber(formatted.cost);
   }
 
   // Normalizar descrição (trim)
@@ -75,7 +65,7 @@ export function formatUpdateProductRequest(
  * Formata a resposta do produto após receber da API
  */
 export function formatProductResponse(product: Product): Product {
-  const formatted = { ...product };
+  const formatted: any = { ...product };
 
   // Garantir que preço é número
   if (formatted.price !== undefined) {
@@ -107,4 +97,3 @@ export function formatProductResponse(product: Product): Product {
 export function formatProductsListResponse(products: Product[]): Product[] {
   return products.map(formatProductResponse);
 }
-

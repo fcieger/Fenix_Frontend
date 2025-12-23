@@ -29,8 +29,10 @@ export async function listPartners(
   try {
     const partnersClient = SdkClientFactory.getPartnersClient();
     // Remove company_id from params if present (handled by JWT)
-    // @ts-ignore
-    const { company_id, ...cleanParams } = params || {};
+    const cleanParams = { ...(params || {}) };
+    if ('company_id' in cleanParams) {
+      delete (cleanParams as any).company_id;
+    }
     const response = await partnersClient.findAll(cleanParams);
 
     // SDK returns PaginatedResponse<T> or T[] directly

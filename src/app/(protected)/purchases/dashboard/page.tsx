@@ -141,8 +141,8 @@ export default function DashboardComprasPage() {
               break;
           }
 
-          startDate = dataInicio.toISOString().split("T")[0];
-          endDate = dataFim.toISOString().split("T")[0];
+          startDate = dataInicio.toISOString().split('T')[0];
+          endDate = dataFim.toISOString().split('T')[0];
         }
         // Se filtroPeriodo === '30dias', não enviar parâmetros de data (undefined) para a API usar seu padrão
 

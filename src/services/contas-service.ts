@@ -43,7 +43,9 @@ export class ContasService {
         data.tipo_pessoa || null,
         data.saldo_inicial || 0,
         // Usar data_saldo como data de abertura quando informada pelo front
-        (data as any).data_saldo || data.data_abertura || new Date().toISOString().split('T')[0]
+        (data as any).data_saldo ||
+          (data as any).data_abertura ||
+          new Date().toISOString().split('T')[0]
       ];
 
       console.log('🔧 Campos filtrados - apenas campos que existem na tabela:', contaParams);
@@ -72,7 +74,7 @@ export class ContasService {
           0,
           'Saldo Inicial',
           `Saldo inicial da conta ${data.descricao}`,
-          data.data_abertura || new Date().toISOString(),
+          (data as any).data_abertura || new Date().toISOString(),
           0, // saldo anterior é 0
           data.saldo_inicial, // saldo posterior é o saldo inicial
           'pago', // situacao pago pois é o saldo inicial

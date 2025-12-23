@@ -81,7 +81,7 @@ export default function OrcamentosPage() {
     null
   );
   const [orcamentoDetalhes, setOrcamentoDetalhes] = useState<{
-    [key: string]: Quote;
+    [key: string]: any;
   }>({});
 
   useEffect(() => {

@@ -4,7 +4,7 @@ import React from "react";
 import { MapPin, Plus } from "lucide-react";
 import { FormSection } from "./FormSection";
 import { AddressForm } from "./AddressForm";
-import type { Partner, AddressDto } from "@/types/sdk";
+import type { Partner, PartnerAddressDto } from "@/types/sdk";
 
 interface AddressesSectionProps {
   formData: Partial<Partner>;

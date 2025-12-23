@@ -22,7 +22,10 @@ export async function listFinancialAccounts(params?: {
     // Try SDK first
     const financialAccountsClient = SdkClientFactory.getFinancialAccountsClient();
     // Remove company_id from params if present (handled by JWT)
-    const { company_id, ...cleanParams } = params || {};
+    const cleanParams = { ...(params || {}) };
+    if ('company_id' in cleanParams) {
+      delete (cleanParams as any).company_id;
+    }
     const response = await financialAccountsClient.findAll(cleanParams);
     return Array.isArray(response) ? response : response.data || [];
   } catch (error) {
@@ -159,5 +162,4 @@ export const obterConta = getFinancialAccount;
 export const criarConta = createFinancialAccount;
 export const atualizarConta = updateFinancialAccount;
 export const excluirConta = deleteFinancialAccount;
-
 

@@ -132,7 +132,7 @@ export function QuoteFormProvider({
     const calculatedTotals = items.reduce(
       (acc, item) => {
         const quantity = item.quantity || 0;
-        const unitPrice = item.unitPrice || 0;
+        const unitPrice = (item as any).unitPrice || 0;
         const discount = (item as any).discount || 0;
         const taxes = (item as any).taxes || 0;
 

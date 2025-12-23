@@ -16,7 +16,7 @@ export function useQuoteTaxes() {
 
     items.forEach((item) => {
       const itemTaxes = (item as any).taxes || {};
-      const itemSubtotal = (item.quantity || 0) * (item.unitPrice || 0);
+      const itemSubtotal = (item.quantity || 0) * ((item as any).unitPrice || 0);
 
       if (itemTaxes.icms) {
         const existing = taxMap.get("ICMS") || { name: "ICMS", value: 0, base: 0, rate: 0 };
@@ -48,7 +48,7 @@ export function useQuoteTaxes() {
     });
 
     taxMap.forEach((tax) => {
-      if (tax.base > 0) {
+      if (tax.base && tax.base > 0) {
         tax.rate = (tax.value / tax.base) * 100;
       }
     });

@@ -55,7 +55,10 @@ class ProductsService extends BaseService<
     try {
       const productsClient = SdkClientFactory.getProductsClient();
       // Remove company_id from params if present (handled by JWT)
-      const { company_id, ...cleanParams } = params || {};
+      const cleanParams = { ...(params || {}) };
+      if ('company_id' in cleanParams) {
+        delete (cleanParams as any).company_id;
+      }
       const response = await productsClient.findAll(cleanParams);
 
       // Normalizar resposta
@@ -156,4 +159,3 @@ export const obterProduto = getProduct;
 export const criarProduto = createProduct;
 export const atualizarProduto = updateProduct;
 export const excluirProduto = deleteProduct;
-

@@ -23,7 +23,7 @@ export function validateWithSchema<T extends z.ZodTypeAny>(
 
   const fieldErrors: Record<string, boolean> = {};
 
-  result.error.errors.forEach((error) => {
+  result.error.issues.forEach((error) => {
     const path = error.path.join('.');
     fieldErrors[path] = true;
 
@@ -55,16 +55,15 @@ export function validateAndNotify<T extends z.ZodTypeAny>(
   const { isValid, fieldErrors, errors } = validateWithSchema(schema, data);
 
   if (!isValid && errors) {
-    const errorMessages = errors.errors.map((err) => {
+    const errorMessages = errors.issues.map((err) => {
       const path = err.path.join('.');
       return `${path}: ${err.message}`;
     });
 
-    toast.error(
-      'Erro de Validação',
-      `Por favor, corrija os seguintes campos:\n${errorMessages.join('\n')}`,
-      { duration: 10000 }
-    );
+    toast.error('Erro de Validação', {
+      description: `Por favor, corrija os seguintes campos:\n${errorMessages.join('\n')}`,
+      duration: 10000,
+    });
 
     if (setFieldErrors) {
       setFieldErrors(fieldErrors);
@@ -73,4 +72,3 @@ export function validateAndNotify<T extends z.ZodTypeAny>(
 
   return { isValid, fieldErrors };
 }
-

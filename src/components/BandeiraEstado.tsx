@@ -9,7 +9,7 @@ interface BandeiraEstadoProps {
 
 const BandeiraEstado: React.FC<BandeiraEstadoProps> = ({ uf, className = "w-6 h-6" }) => {
   const getBandeiraSVG = (uf: string) => {
-    const bandeiras: Record<string, JSX.Element> = {
+    const bandeiras: Record<string, React.ReactElement> = {
       'AC': (
         <svg viewBox="0 0 100 70" className={className}>
           <rect width="100" height="70" fill="#0066CC"/>
