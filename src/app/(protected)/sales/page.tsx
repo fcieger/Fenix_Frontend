@@ -64,10 +64,8 @@ export default function PedidosVendaPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pedidoVendas, setPedidoVendas] = useState<SalesOrder[]>([]);
-  const [partnersCache, setPartnersCache] = useState<Map<string, Partner>>(
-    new Map()
-  );
+  const [pedidoVendas, setPedidoVendas] = useState<any[]>([]);
+  const [partnersCache, setPartnersCache] = useState<Map<string, Partner>>(new Map());
   const [isLoadingPedidoVendas, setIsLoadingPedidoVendas] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -77,12 +75,8 @@ export default function PedidosVendaPage() {
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
-  const [expandedPedidoVenda, setExpandedPedidoVenda] = useState<string | null>(
-    null
-  );
-  const [pedidoVendaDetalhes, setPedidoVendaDetalhes] = useState<{
-    [key: string]: SalesOrder;
-  }>({});
+  const [expandedPedidoVenda, setExpandedPedidoVenda] = useState<string | null>(null);
+  const [pedidoVendaDetalhes, setPedidoVendaDetalhes] = useState<{[key: string]: any}>({});
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isExportingPDF, setIsExportingPDF] = useState(false);

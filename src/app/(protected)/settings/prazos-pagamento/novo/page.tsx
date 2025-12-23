@@ -202,45 +202,52 @@ export default function NovoPrazoPagamentoPage() {
   };
 
   const addParcela = () => {
-    setFormData((prev) => ({
-      ...prev,
-      configuracoes: {
-        ...prev.configuracoes,
-        parcelas: [
-          ...(prev.configuracoes.parcelas || []),
-          {
-            numero: (prev.configuracoes.parcelas || []).length + 1,
-            dias: 30,
-            percentual: 0,
-            descricao: "",
-          },
-        ],
-      },
-    }));
+    setFormData(prev => {
+      const parcelasAtuais = prev.configuracoes.parcelas || [];
+      return {
+        ...prev,
+        configuracoes: {
+          ...prev.configuracoes,
+          parcelas: [
+            ...parcelasAtuais,
+            {
+              numero: parcelasAtuais.length + 1,
+              dias: 30,
+              percentual: 0,
+              descricao: ''
+            }
+          ]
+        }
+      };
+    });
   };
 
   const removeParcela = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      configuracoes: {
-        ...prev.configuracoes,
-        parcelas: (prev.configuracoes.parcelas || []).filter(
-          (_, i) => i !== index
-        ),
-      },
-    }));
+    setFormData(prev => {
+      const parcelasAtuais = prev.configuracoes.parcelas || [];
+      return {
+        ...prev,
+        configuracoes: {
+          ...prev.configuracoes,
+          parcelas: parcelasAtuais.filter((_, i) => i !== index)
+        }
+      };
+    });
   };
 
   const updateParcela = (index: number, field: string, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      configuracoes: {
-        ...prev.configuracoes,
-        parcelas: (prev.configuracoes.parcelas || []).map((p, i) =>
-          i === index ? { ...p, [field]: value } : p
-        ),
-      },
-    }));
+    setFormData(prev => {
+      const parcelasAtuais = prev.configuracoes.parcelas || [];
+      return {
+        ...prev,
+        configuracoes: {
+          ...prev.configuracoes,
+          parcelas: parcelasAtuais.map((p, i) =>
+            i === index ? { ...p, [field]: value } : p
+          )
+        }
+      };
+    });
   };
 
   const getTipoIcon = (tipo: string) => {
@@ -264,8 +271,8 @@ export default function NovoPrazoPagamentoPage() {
 
     const vencimentos = [];
 
-    if (tipo === "dias") {
-      const { dias, percentualEntrada, percentualRestante } = configuracoes;
+    if (tipo === 'dias') {
+      const { dias = 0, percentualEntrada, percentualRestante } = configuracoes;
 
       // Entrada (se houver)
       if (percentualEntrada && percentualEntrada > 0) {
@@ -291,13 +298,8 @@ export default function NovoPrazoPagamentoPage() {
           dias: dias || 0,
         });
       }
-    } else if (tipo === "parcelas") {
-      const {
-        numeroParcelas,
-        intervaloDias,
-        percentualEntrada,
-        percentualParcelas,
-      } = configuracoes;
+    } else if (tipo === 'parcelas') {
+      const { numeroParcelas = 0, intervaloDias = 0, percentualEntrada = 0, percentualParcelas = 0 } = configuracoes;
 
       // Entrada (se houver)
       if (percentualEntrada && percentualEntrada > 0) {
@@ -326,10 +328,10 @@ export default function NovoPrazoPagamentoPage() {
           dias: (i + 1) * (intervaloDias || 0),
         });
       }
-    } else if (tipo === "personalizado") {
-      const { parcelas } = configuracoes;
+    } else if (tipo === 'personalizado') {
+      const parcelas = configuracoes.parcelas || [];
 
-      (parcelas || []).forEach((parcela, index) => {
+      parcelas.forEach((parcela, index) => {
         const dataVencimento = new Date(dataVenda);
         dataVencimento.setDate(dataVencimento.getDate() + parcela.dias);
 
@@ -892,92 +894,71 @@ export default function NovoPrazoPagamentoPage() {
 
                       <div className="space-y-4">
                         <AnimatePresence>
-                          {(formData.configuracoes.parcelas || []).map(
-                            (parcela, index) => (
-                              <motion.div
-                                key={index}
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                transition={{ duration: 0.2 }}
-                                className="flex items-center gap-4 p-6 bg-gradient-to-r from-gray-50 to-white border-2 border-gray-100 rounded-2xl hover:border-purple-200 transition-all duration-200"
+                          {(formData.configuracoes.parcelas || []).map((parcela, index) => (
+                            <motion.div
+                              key={index}
+                              initial={{ opacity: 0, scale: 0.95 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.95 }}
+                              transition={{ duration: 0.2 }}
+                              className="flex items-center gap-4 p-6 bg-gradient-to-r from-gray-50 to-white border-2 border-gray-100 rounded-2xl hover:border-purple-200 transition-all duration-200"
+                            >
+                              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-lg">
+                                {parcela.numero}
+                              </div>
+                              <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                    <CalendarDays className="w-4 h-4" />
+                                    Dias
+                                  </Label>
+                                  <Input
+                                    type="number"
+                                    value={parcela.dias}
+                                    onChange={(e) => updateParcela(index, 'dias', parseInt(e.target.value) || 0)}
+                                    className="h-10 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all duration-200"
+                                    placeholder="Ex: 30"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                    <Percent className="w-4 h-4" />
+                                    Percentual (%)
+                                  </Label>
+                                  <Input
+                                    type="number"
+                                    value={parcela.percentual}
+                                    onChange={(e) => updateParcela(index, 'percentual', parseInt(e.target.value) || 0)}
+                                    className="h-10 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all duration-200"
+                                    placeholder="Ex: 50"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                    <Info className="w-4 h-4" />
+                                    Descrição
+                                  </Label>
+                                  <Input
+                                    value={parcela.descricao || ''}
+                                    onChange={(e) => updateParcela(index, 'descricao', e.target.value)}
+                                    placeholder="Opcional"
+                                    className="h-10 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all duration-200"
+                                  />
+                                </div>
+                              </div>
+                              <Button
+                                onClick={() => removeParcela(index)}
+                                variant="ghost"
+                                size="sm"
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-xl transition-all duration-200"
                               >
-                                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-lg">
-                                  {parcela.numero}
-                                </div>
-                                <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
-                                  <div className="space-y-2">
-                                    <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                                      <CalendarDays className="w-4 h-4" />
-                                      Dias
-                                    </Label>
-                                    <Input
-                                      type="number"
-                                      value={parcela.dias}
-                                      onChange={(e) =>
-                                        updateParcela(
-                                          index,
-                                          "dias",
-                                          parseInt(e.target.value) || 0
-                                        )
-                                      }
-                                      className="h-10 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all duration-200"
-                                      placeholder="Ex: 30"
-                                    />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                                      <Percent className="w-4 h-4" />
-                                      Percentual (%)
-                                    </Label>
-                                    <Input
-                                      type="number"
-                                      value={parcela.percentual}
-                                      onChange={(e) =>
-                                        updateParcela(
-                                          index,
-                                          "percentual",
-                                          parseInt(e.target.value) || 0
-                                        )
-                                      }
-                                      className="h-10 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all duration-200"
-                                      placeholder="Ex: 50"
-                                    />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                                      <Info className="w-4 h-4" />
-                                      Descrição
-                                    </Label>
-                                    <Input
-                                      value={parcela.descricao || ""}
-                                      onChange={(e) =>
-                                        updateParcela(
-                                          index,
-                                          "descricao",
-                                          e.target.value
-                                        )
-                                      }
-                                      placeholder="Opcional"
-                                      className="h-10 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all duration-200"
-                                    />
-                                  </div>
-                                </div>
-                                <Button
-                                  onClick={() => removeParcela(index)}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-xl transition-all duration-200"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </motion.div>
-                            )
-                          )}
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </motion.div>
+                          ))}
                         </AnimatePresence>
 
-                        {(formData.configuracoes.parcelas || []).length ===
-                          0 && (
+                        {(formData.configuracoes.parcelas?.length ?? 0) === 0 && (
                           <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -1341,13 +1322,8 @@ export default function NovoPrazoPagamentoPage() {
                     )}
                     {formData.tipo === "personalizado" && (
                       <div className="p-4 bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl">
-                        <p className="text-sm font-semibold text-gray-600 mb-1">
-                          Parcelas
-                        </p>
-                        <p className="font-bold text-purple-700">
-                          {(formData.configuracoes.parcelas || []).length}{" "}
-                          parcelas
-                        </p>
+                        <p className="text-sm font-semibold text-gray-600 mb-1">Parcelas</p>
+                        <p className="font-bold text-purple-700">{formData.configuracoes.parcelas?.length ?? 0} parcelas</p>
                       </div>
                     )}
                   </div>

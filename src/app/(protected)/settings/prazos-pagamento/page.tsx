@@ -830,20 +830,20 @@ export default function PrazosPagamentoPage() {
         isLoading={false}
       />
 
-      {/* Modal de IA */}
-      <PrazoPagamentoAI
-        isOpen={showAIModal}
-        onClose={() => setShowAIModal(false)}
-        onSuccess={(prazo) => {
-          setShowAIModal(false);
-          loadPrazos(); // Recarregar a lista após criar
-        }}
-        context={{
-          tipo: "cadastro" as "produto" | "cadastro",
-          nome: "Novo Prazo de Pagamento",
-          descricao: "Gerado automaticamente pela IA",
-        }}
-      />
-    </div>
+        {/* Modal de IA */}
+        <PrazoPagamentoAI
+          isOpen={showAIModal}
+          onClose={() => setShowAIModal(false)}
+          onSuccess={(prazo) => {
+            setShowAIModal(false);
+            loadPrazos(); // Recarregar a lista após criar
+          }}
+          context={{
+            tipo: 'cadastro',
+            nome: 'Novo Prazo de Pagamento',
+            descricao: 'Gerado automaticamente pela IA'
+          }}
+        />
+      </div>
   );
 }

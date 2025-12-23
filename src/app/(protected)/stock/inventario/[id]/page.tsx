@@ -65,9 +65,9 @@ export default function InventarioEditarPage() {
       if (!json?.success) {
         openSuccess({
           title: "Erro",
-          message: json?.error || "Erro ao carregar inventário",
+          message: json?.error || 'Erro ao carregar inventário'
         });
-        router.push("/stock/inventario");
+        router.push('/stock/inventario');
         return;
       }
 
@@ -75,8 +75,11 @@ export default function InventarioEditarPage() {
       setItens(json.data.itens || []);
     } catch (e) {
       console.error("Erro ao carregar inventário:", e);
-      openSuccess({ title: "Erro", message: "Erro ao carregar inventário" });
-      router.push("/stock/inventario");
+      openSuccess({
+        title: "Erro",
+        message: "Erro ao carregar inventário"
+      });
+      router.push('/stock/inventario');
     } finally {
       setLoading(false);
     }
@@ -120,7 +123,7 @@ export default function InventarioEditarPage() {
     if (itensComContagem.length === 0) {
       openSuccess({
         title: "Atenção",
-        message: "Nenhuma contagem foi preenchida",
+        message: "Nenhuma contagem foi preenchida"
       });
       return;
     }
@@ -147,10 +150,10 @@ export default function InventarioEditarPage() {
 
       const jsonContagens = await resContagens.json();
       if (!jsonContagens?.success) {
-        openSuccess({
-          title: "Erro",
-          message: jsonContagens?.error || "Erro ao salvar contagens",
-        });
+      openSuccess({
+        title: "Erro",
+        message: jsonContagens?.error || 'Erro ao salvar contagens'
+      });
         return;
       }
 
@@ -173,23 +176,23 @@ export default function InventarioEditarPage() {
       });
 
       if (itensComDiferenca.length === 0) {
-        openSuccess({
-          title: "Sucesso",
-          message: "Contagens salvas! Não há diferenças para aplicar.",
-        });
+      openSuccess({
+        title: "Sucesso",
+        message: "Contagens salvas! Não há diferenças para aplicar."
+      });
         return;
       }
 
-      const confirmou = await openConfirm(
-        "Aplicar Inventário",
-        `Deseja aplicar as diferenças encontradas em ${itensComDiferenca.length} item(ns)? Serão gerados movimentos de ajuste para cada diferença.`
-      );
+      const confirmou = await openConfirm({
+        title: "Aplicar Inventário",
+        message: `Deseja aplicar as diferenças encontradas em ${itensComDiferenca.length} item(ns)? Serão gerados movimentos de ajuste para cada diferença.`
+      });
 
       if (!confirmou) {
-        openSuccess({
-          title: "Sucesso",
-          message: "Contagens salvas com sucesso!",
-        });
+      openSuccess({
+        title: "Sucesso",
+        message: "Contagens salvas com sucesso!"
+      });
         return;
       }
 
@@ -251,15 +254,13 @@ export default function InventarioEditarPage() {
       }
 
       // Atualizar status do inventário
-      await fetch(`/api/stock/inventarios/${inventario.id}/aplicar`, {
-        method: "POST",
-      });
+      await fetch(`/api/stock/inventarios/${inventario.id}/aplicar`, { method: 'POST' });
 
       openSuccess({
         title: "Sucesso",
-        message: "Inventário aplicado com sucesso!",
+        message: "Inventário aplicado com sucesso!"
       });
-      router.push("/stock/inventario");
+      router.push('/stock/inventario');
     } catch (e) {
       console.error("Erro ao aplicar inventário:", e);
       openSuccess({
@@ -342,7 +343,7 @@ export default function InventarioEditarPage() {
   );
   const itensComContagem = itens.filter((item) => {
     const qtd = item.qtdContada;
-    return qtd !== null && qtd !== undefined && qtd !== "";
+    return qtd !== null && qtd !== undefined;
   });
 
   return (

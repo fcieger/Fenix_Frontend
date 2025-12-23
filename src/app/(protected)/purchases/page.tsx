@@ -1271,7 +1271,7 @@ export default function PedidosCompraPage() {
                 Confirmar Exclusão
               </h3>
               <p className="text-gray-600 mb-6">
-                Tem certeza que deseja excluir o pedido de compra{" "}
+                Tem certeza que deseja excluir o pedido de venda{" "}
                 <strong>{deleteConfirm.id}</strong> do fornecedor{" "}
                 <strong>{deleteConfirm.fornecedor}</strong>?
               </p>

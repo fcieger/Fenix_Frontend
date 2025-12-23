@@ -179,23 +179,26 @@ export default function AlertasPage() {
   if (showForm) {
     return (
       <div className="space-y-6">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between"
-        >
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              {editingAlerta ? "Editar Alerta" : "Novo Alerta"}
-            </h1>
-            <p className="text-gray-600 mt-1">
-              Configure critérios para receber notificações de licitações
-            </p>
-          </div>
-          <Button variant="outline" onClick={handleCancelar}>
-            Cancelar
-          </Button>
-        </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center justify-between"
+          >
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                {editingAlerta ? 'Editar Alerta' : 'Novo Alerta'}
+              </h1>
+              <p className="text-gray-600 mt-1">
+                Configure critérios para receber notificações de licitações
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={handleCancelar}
+            >
+              Cancelar
+            </Button>
+          </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -719,54 +722,53 @@ export default function AlertasPage() {
         </div>
       )}
 
-      {/* Modal de Confirmação de Exclusão */}
-      <AnimatePresence>
-        {deleteConfirm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-            onClick={() => setDeleteConfirm(null)}
-          >
+        {/* Modal de Confirmação de Exclusão */}
+        <AnimatePresence>
+          {deleteConfirm && (
             <motion.div
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+              onClick={() => setDeleteConfirm(null)}
             >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-red-100 rounded-full">
-                  <AlertCircle className="w-6 h-6 text-red-600" />
+              <motion.div
+                initial={{ scale: 0.9 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.9 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-red-100 rounded-full">
+                    <AlertCircle className="w-6 h-6 text-red-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Confirmar Exclusão
+                  </h3>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Confirmar Exclusão
-                </h3>
-              </div>
-              <p className="text-gray-600 mb-6">
-                Tem certeza que deseja excluir este alerta? Esta ação não pode
-                ser desfeita.
-              </p>
-              <div className="flex gap-3 justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => setDeleteConfirm(null)}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => handleExcluir(deleteConfirm)}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Excluir
-                </Button>
-              </div>
+                <p className="text-gray-600 mb-6">
+                  Tem certeza que deseja excluir este alerta? Esta ação não pode ser desfeita.
+                </p>
+                <div className="flex gap-3 justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => setDeleteConfirm(null)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => handleExcluir(deleteConfirm)}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Excluir
+                  </Button>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+          )}
+        </AnimatePresence>
+      </div>
   );
 }

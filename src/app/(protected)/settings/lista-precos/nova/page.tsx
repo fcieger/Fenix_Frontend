@@ -294,10 +294,9 @@ export default function NovaListaPrecosPage() {
       console.log("✅ Resposta da API:", response);
       alert(`API funcionando! Encontrados ${response.length} produtos.`);
     } catch (error) {
-      console.error("❌ Erro na API:", error);
-      alert(
-        `Erro na API: ${error instanceof Error ? error.message : String(error)}`
-      );
+      console.error('❌ Erro na API:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      alert(`Erro na API: ${message}`);
     }
   };
 
