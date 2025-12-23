@@ -16,7 +16,7 @@ async function run() {
     return;
   }
 
-  const browser = await puppeteer.launch({ headless: 'new' });
+  const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
 
   // Create
@@ -62,7 +62,7 @@ async function run() {
 
   // Conclude
   await page.click('button:has-text("Concluir")').catch(()=>{});
-  await page.waitForTimeout(500);
+  await new Promise((resolve) => setTimeout(resolve, 500));
   // Reopen
   await page.click('button:has-text("Reabrir")').catch(()=>{});
 
@@ -72,7 +72,7 @@ async function run() {
   const deleteBtn = await page.$('table tbody tr td button.text-red-600');
   if (deleteBtn) {
     await deleteBtn.click();
-    await page.waitForTimeout(500);
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
   await browser.close();
@@ -85,6 +85,3 @@ run().catch((e) => {
   console.error(e);
   process.exit(1);
 });
-
-
-

@@ -1,7 +1,7 @@
 import { SdkClientFactory } from "@/lib/sdk/client-factory";
 import { SdkErrorHandler } from "@/lib/sdk/error-handler";
 import { normalizeListResponse, normalizePaginatedResponse } from "@/lib/sdk/response-normalizer";
-import type { Quote, CreateQuoteDto, UpdateQuoteDto, QuoteStatus, QuoteChangeStatusDto, PaginatedResponse } from "@/types/sdk";
+import type { Quote, CreateQuoteDto, UpdateQuoteDto, QuoteStatus, PaginatedResponse } from "@/types/sdk";
 
 /**
  * Quotes Service
@@ -84,7 +84,7 @@ export async function updateQuote(id: string, payload: UpdateQuoteDto): Promise<
 export async function changeQuoteStatus(id: string, status: QuoteStatus): Promise<Quote> {
   try {
     const quotesClient = SdkClientFactory.getQuotesClient();
-    const statusDto: QuoteChangeStatusDto = { status };
+    const statusDto = { status } as any;
     const quote = await quotesClient.changeStatus(id, statusDto);
     return quote;
   } catch (error) {

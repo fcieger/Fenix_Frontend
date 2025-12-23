@@ -27,6 +27,7 @@ export default function NovoLancamentoModal({
   onSuccess 
 }: NovoLancamentoModalProps) {
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     descricao: '',
     descricao_detalhada: '',
@@ -96,11 +97,7 @@ export default function NovoLancamentoModal({
   };
 
   const handleVoltar = () => {
-    if (step > 1) {
-      setStep(step - 1);
-    } else {
-      onClose();
-    }
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -122,11 +119,9 @@ export default function NovoLancamentoModal({
                 <Plus className="h-6 w-6" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold">Novo Lançamento</h2>
-                <p className="text-purple-100 text-sm mt-1">
-                  {step === 1 && 'Informações básicas'}
-                  {step === 2 && 'Valores e data'}
-                  {step === 3 && 'Confirmação'}
+              <h2 className="text-2xl font-bold">Novo Lançamento</h2>
+              <p className="text-purple-100 text-sm mt-1">
+                  Cadastre uma movimentação financeira
                 </p>
               </div>
             </div>

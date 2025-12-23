@@ -32,7 +32,7 @@ interface EstadoConfig {
   habilitado: boolean;
   cfop?: string;
   naturezaOperacaoDescricao?: string;
-  localDestinoOperacao?: 'interna' | 'interestadual' | 'exterior';
+  localDestinoOperacao?: 'interna' | 'interestadual' | 'exterior' | string;
   icms: any;
   icmsSt: any;
   icmsConsumidorFinal: any;
@@ -815,7 +815,7 @@ export default function ConfiguracaoEstadoPage() {
         return;
       }
       
-      await apiService.saveConfiguracaoEstados(naturezaId, configuracoesParaSalvar, token);
+      await apiService.saveConfiguracaoEstados(naturezaId, configuracoesParaSalvar, token as string);
       openSuccess({ title: 'Configurações salvas', message: 'Configurações salvas com sucesso!' });
       
       // Não navegar automaticamente - permanecer na página
@@ -860,8 +860,8 @@ export default function ConfiguracaoEstadoPage() {
 
         {/* Painel de Ações */}
         <PainelAcoesEstados
-          estadosConfig={estadosConfig}
-          setEstadosConfig={setEstadosConfig}
+          estadosConfig={estadosConfig as any}
+          setEstadosConfig={setEstadosConfig as any}
         />
 
         {/* Lista de Estados */}
@@ -942,7 +942,7 @@ export default function ConfiguracaoEstadoPage() {
                           className="mt-4 pt-4 border-t border-gray-200"
                         >
                           <EstadoImpostoTabs 
-                            estado={estado} 
+                            estado={estado as any} 
                             updateEstadoConfig={updateEstadoConfig}
                           />
                         </motion.div>

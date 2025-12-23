@@ -85,8 +85,12 @@ function NaturezaOperacaoForm() {
 
   const loadNaturezaData = async (id: string) => {
     try {
+      if (!token || !activeCompanyId) {
+        alert('Token ou empresa não encontrado.');
+        return;
+      }
       setIsLoadingData(true);
-      const natureza = await apiService.getNaturezaOperacao(id, token, activeCompanyId);
+      const natureza = await apiService.getNaturezaOperacao(id, token as string, activeCompanyId as string);
       
       console.log('📥 Natureza carregada:', natureza);
       

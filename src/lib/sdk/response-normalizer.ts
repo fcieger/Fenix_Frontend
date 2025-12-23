@@ -9,13 +9,15 @@
  * These functions handle edge cases and ensure type safety.
  */
 
-import type { PaginatedResponse } from '@fenix/api-sdk';
+import type { PaginatedResponse } from "@fenix/api-sdk";
 
 /**
  * Extract data array from SDK response
  * Handles both PaginatedResponse<T> and direct array responses
  */
-export function normalizeListResponse<T>(response: PaginatedResponse<T> | T[] | null | undefined): T[] {
+export function normalizeListResponse<T>(
+  response: PaginatedResponse<T> | T[] | null | undefined
+): T[] {
   if (!response) {
     return [];
   }
@@ -26,7 +28,7 @@ export function normalizeListResponse<T>(response: PaginatedResponse<T> | T[] | 
   }
 
   // If response is PaginatedResponse, extract data array
-  if ('data' in response && Array.isArray(response.data)) {
+  if ("data" in response && Array.isArray(response.data)) {
     return response.data;
   }
 
@@ -38,14 +40,21 @@ export function normalizeListResponse<T>(response: PaginatedResponse<T> | T[] | 
  * Extract single item from SDK response
  * SDK typically returns items directly, but handles wrapped responses
  */
-export function normalizeItemResponse<T>(response: T | { data: T } | null | undefined): T | null {
+export function normalizeItemResponse<T>(
+  response: T | { data: T } | null | undefined
+): T | null {
   if (!response) {
     return null;
   }
 
   // If response is wrapped in { data: T }
-  if ('data' in response && typeof response === 'object' && !Array.isArray(response)) {
-    return response.data;
+  if (
+    typeof response === "object" &&
+    response !== null &&
+    !Array.isArray(response) &&
+    "data" in response
+  ) {
+    return (response as { data: T }).data;
   }
 
   // Otherwise, assume response is the item itself
@@ -56,7 +65,9 @@ export function normalizeItemResponse<T>(response: T | { data: T } | null | unde
  * Normalize paginated response
  * SDK returns PaginatedResponse<T> directly, but this ensures consistent structure
  */
-export function normalizePaginatedResponse<T>(response: PaginatedResponse<T> | T[] | null | undefined): PaginatedResponse<T> {
+export function normalizePaginatedResponse<T>(
+  response: PaginatedResponse<T> | T[] | null | undefined
+): PaginatedResponse<T> {
   if (!response) {
     return {
       data: [],
@@ -72,7 +83,7 @@ export function normalizePaginatedResponse<T>(response: PaginatedResponse<T> | T
   }
 
   // If response is already PaginatedResponse, return it
-  if ('data' in response && 'meta' in response) {
+  if ("data" in response && "meta" in response) {
     return response as PaginatedResponse<T>;
   }
 
@@ -104,4 +115,3 @@ export function normalizePaginatedResponse<T>(response: PaginatedResponse<T> | T
     },
   };
 }
-

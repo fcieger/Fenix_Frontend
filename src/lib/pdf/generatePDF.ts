@@ -1,4 +1,5 @@
 import puppeteer from 'puppeteer';
+import { Buffer } from 'buffer';
 
 interface PDFOptions {
   format?: 'A4' | 'Letter' | 'Legal';
@@ -100,7 +101,9 @@ export async function generatePDFFromHTML(
       preferCSSPageSize: false
     });
 
-    return pdf;
+    const pdfBuffer = Buffer.from(pdf);
+
+    return pdfBuffer;
   } finally {
     await browser.close();
   }

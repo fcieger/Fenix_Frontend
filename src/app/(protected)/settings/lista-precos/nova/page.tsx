@@ -261,7 +261,8 @@ export default function NovaListaPrecosPage() {
       alert(`API funcionando! Encontrados ${response.length} produtos.`);
     } catch (error) {
       console.error('❌ Erro na API:', error);
-      alert(`Erro na API: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      alert(`Erro na API: ${message}`);
     }
   };
 
@@ -425,7 +426,8 @@ export default function NovaListaPrecosPage() {
   // }
 
   return (
-    <div className="space-y-8">
+    <>
+      <div className="space-y-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -1072,12 +1074,12 @@ export default function NovaListaPrecosPage() {
         </div>
       </div>
 
-      {/* Botões Flutuantes */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className="fixed bottom-6 right-6 flex flex-col gap-3 z-50"
+    {/* Botões Flutuantes */}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.2 }}
+      className="fixed bottom-6 right-6 flex flex-col gap-3 z-50"
       >
         <Button
           onClick={handleSave}
@@ -1108,5 +1110,6 @@ export default function NovaListaPrecosPage() {
           Voltar
         </Button>
       </motion.div>
+    </>
   );
 }

@@ -10,8 +10,7 @@ export type {
 } from '@/types/sdk';
 
 export { OrderStatus } from '@/types/sdk';
-export type StatusPedidoCompra = OrderStatus;
-
+export type { OrderStatus as StatusPedidoCompra } from '@/types/sdk';
 
 
 

@@ -114,8 +114,8 @@ export default function CriarCartaoCreditoModal({ isOpen, onClose, onVoltarParaS
         bandeira_cartao: formData.bandeira,
         emissor_cartao: selectedEmissor.nome,
         conta_padrao_pagamento: formData.contaPagamento,
-        dia_fechamento: parseInt(formData.diaFechamento) || null,
-        dia_vencimento: parseInt(formData.diaVencimento) || null,
+        dia_fechamento: parseInt(formData.diaFechamento) || undefined,
+        dia_vencimento: parseInt(formData.diaVencimento) || undefined,
         saldo_inicial: 0,
         data_saldo: new Date().toISOString().split('T')[0],
         created_by: '123e4567-e89b-12d3-a456-426614174001'

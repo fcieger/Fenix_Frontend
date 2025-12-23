@@ -3,6 +3,12 @@
  * Use types from @/types/sdk instead of local types
  */
 
+import type {
+  QuoteStatus as SdkQuoteStatus,
+  QuoteItem as SdkQuoteItem,
+  Quote as SdkQuote,
+} from '@/types/sdk';
+
 // Re-export SDK types
 export type {
   Quote,
@@ -10,14 +16,11 @@ export type {
   QuoteItemDto,
   CreateQuoteDto,
   UpdateQuoteDto,
-  QuoteChangeStatusDto,
 } from '@/types/sdk';
 
 export { QuoteStatus } from '@/types/sdk';
 
 // Legacy exports for backward compatibility
-export type StatusOrcamento = QuoteStatus;
-export type OrcamentoItem = QuoteItem;
-export type Orcamento = Quote;
-
-
+export type StatusOrcamento = SdkQuoteStatus;
+export type OrcamentoItem = SdkQuoteItem;
+export type Orcamento = SdkQuote;

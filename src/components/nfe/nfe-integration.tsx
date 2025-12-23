@@ -95,7 +95,8 @@ export default function NFeIntegration({
 
   const buscarStatusDetalhado = async () => {
     try {
-      const response = await apiService.getStatusIntegracaoNFe(nfeId, token);
+      if (!token) return;
+      const response = await apiService.getStatusIntegracaoNFe(nfeId, token as string);
       setStatusInfo(response);
     } catch (error) {
       console.error('Erro ao buscar status detalhado:', error);
@@ -107,7 +108,8 @@ export default function NFeIntegration({
     setError(null);
     
     try {
-      const response = await apiService.emitirNFeExterna(nfeId, token);
+      if (!token) return;
+      const response = await apiService.emitirNFeExterna(nfeId, token as string);
       
       setStatusAtual(response.status);
       onStatusChange?.(response.status);
@@ -133,7 +135,8 @@ export default function NFeIntegration({
     setError(null);
     
     try {
-      const response = await apiService.sincronizarNFe(nfeId, token);
+      if (!token) return;
+      const response = await apiService.sincronizarNFe(nfeId, token as string);
       
       if (response.success) {
         await buscarStatusDetalhado();
@@ -316,9 +319,6 @@ export default function NFeIntegration({
     </motion.div>
   );
 }
-
-
-
 
 
 

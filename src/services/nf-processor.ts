@@ -1,8 +1,9 @@
 import { apiService } from '@/lib/api';
 import { CadastroData } from '@/lib/api';
 import type { Product } from '@/types/sdk';
+import { OrderStatus } from '@/types/sdk';
 import { ParsedNFData } from '@/lib/ocr-parser';
-import { criarPedidoCompra } from './pedidos-compra';
+import { criarPedidoCompra } from './purchase-orders-service';
 import type { PedidoCompra, PedidoCompraItem } from '@/types/pedido-compra';
 
 export interface ProcessingResult {
@@ -172,16 +173,19 @@ export class NFProcessor {
 
     for (const item of itens) {
       // Buscar produto existente
-      let produtoExistente = produtos.find(p =>
-        (item.codigo && ((p as any).codigo === item.codigo || p.sku === item.codigo)) ||
-        this.similaridade(p.nome, item.descricao) > 0.85
-      );
+      let produtoExistente = produtos.find((p) => {
+        const produtoAtual = p as any;
+        const codigoMatch =
+          item.codigo &&
+          (produtoAtual.codigo === item.codigo || produtoAtual.sku === item.codigo);
+        return codigoMatch || this.similaridade(produtoAtual.nome, item.descricao) > 0.85;
+      });
 
       if (produtoExistente) {
         resultado.push({
           id: produtoExistente.id!,
-          nome: produtoExistente.nome,
-          codigo: produtoExistente.sku || '',
+          nome: (produtoExistente as any).nome || produtoExistente.description,
+          codigo: (produtoExistente as any).sku || (produtoExistente as any).codigo || '',
           isNew: false
         });
       } else {
@@ -203,8 +207,8 @@ export class NFProcessor {
   /**
    * Montar payload do pedido de compra
    */
-  private montarPedidoCompra(parsedData: ParsedNFData, fornecedorId: string, produtos: any[]): PedidoCompra {
-    const itens: PedidoCompraItem[] = parsedData.itens.map((item, index) => {
+  private montarPedidoCompra(parsedData: ParsedNFData, fornecedorId: string, produtos: any[]): any {
+    const itens: any[] = parsedData.itens.map((item, index) => {
       const produtoMatch = produtos[index];
 
       // Validar e corrigir quantidade (não pode ser valor monetário)
@@ -266,7 +270,7 @@ export class NFProcessor {
       totalDescontos: totalDescontos,
       totalImpostos: totalImpostos,
       totalGeral: totalGeral,
-      status: 'rascunho',
+      status: OrderStatus.DRAFT,
       observacoes: `Lançamento automático via OCR\nConfiança: ${parsedData.confidence.toFixed(1)}%${parsedData.nota.chaveAcesso ? `\nChave: ${parsedData.nota.chaveAcesso}` : ''}`,
       itens
     };
@@ -334,4 +338,3 @@ export class NFProcessor {
     return new Date().toISOString().split('T')[0];
   }
 }
-

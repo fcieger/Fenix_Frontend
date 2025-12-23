@@ -106,13 +106,13 @@ export function handleValidationError(error: any, setFieldErrors?: (errors: Reco
   const fieldErrors: Record<string, boolean> = {};
 
   if (!error) {
-    toast.error('Erro', 'Ocorreu um erro desconhecido');
+    toast.error('Erro', { description: 'Ocorreu um erro desconhecido' });
     return fieldErrors;
   }
 
   // Check for 409 Conflict error (duplicate data)
   if (SdkErrorHandler.isConflictError(error) || error.statusCode === 409 || error?.response?.status === 409) {
-    toast.error('Registro duplicado', 'Já existe um registro com essas informações');
+    toast.error('Registro duplicado', { description: 'Já existe um registro com essas informações' });
     return fieldErrors;
   }
 
@@ -126,11 +126,10 @@ export function handleValidationError(error: any, setFieldErrors?: (errors: Reco
       return `${path}: ${err.message}`;
     });
 
-    toast.error(
-      'Erro de Validação',
-      `Por favor, corrija os seguintes campos:\n${errorMessages.join('\n')}`,
-      { duration: 10000 }
-    );
+    toast.error('Erro de Validação', {
+      description: `Por favor, corrija os seguintes campos:\n${errorMessages.join('\n')}`,
+      duration: 10000,
+    });
 
     // Map errors to field names and mark fields with errors
     validationErrors.forEach((err) => {
@@ -156,17 +155,17 @@ export function handleValidationError(error: any, setFieldErrors?: (errors: Reco
       try {
         const errorData = JSON.parse(error.message);
         if (errorData.message) {
-          toast.error('Erro', errorData.message);
+          toast.error('Erro', { description: errorData.message });
         } else {
-          toast.error('Erro', error.message);
+          toast.error('Erro', { description: error.message });
         }
       } catch {
-        toast.error('Erro', error.message);
+        toast.error('Erro', { description: error.message });
       }
     } else if (typeof error === 'string') {
-      toast.error('Erro', error);
+      toast.error('Erro', { description: error });
     } else {
-      toast.error('Erro', 'Ocorreu um erro ao processar a solicitação');
+      toast.error('Erro', { description: 'Ocorreu um erro ao processar a solicitação' });
     }
   }
 
@@ -177,4 +176,3 @@ export function handleValidationError(error: any, setFieldErrors?: (errors: Reco
 
   return fieldErrors;
 }
-

@@ -78,16 +78,16 @@ export default function EditCadastroModal({
   };
 
   const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({
+    setFormData((prev: any) => ({
       ...prev,
       [field]: value
     }));
   };
 
   const handleEnderecoChange = (index: number, field: string, value: any) => {
-    setFormData(prev => ({
+    setFormData((prev: any) => ({
       ...prev,
-      enderecos: prev.enderecos.map((endereco: any, i: number) => 
+      enderecos: (prev.enderecos || []).map((endereco: any, i: number) => 
         i === index ? { ...endereco, [field]: value } : endereco
       )
     }));
@@ -358,7 +358,6 @@ export default function EditCadastroModal({
     </div>
   );
 }
-
 
 
 

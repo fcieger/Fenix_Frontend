@@ -74,7 +74,8 @@ export default function ImageUploadZone({ onFileProcessed }: ImageUploadZoneProp
       console.log('🖼️ Renderizando página no canvas...');
       await page.render({
         canvasContext: context,
-        viewport: viewport
+        viewport: viewport,
+        canvas
       }).promise;
       console.log('✅ Página renderizada');
       
@@ -342,4 +343,3 @@ export default function ImageUploadZone({ onFileProcessed }: ImageUploadZoneProp
     </div>
   );
 }
-

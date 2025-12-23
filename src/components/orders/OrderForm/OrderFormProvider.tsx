@@ -34,6 +34,7 @@ export interface OrderTotals {
 
 export interface OrderFormContextValue {
   order: Order | null;
+  orderId?: string;
   items: OrderItem[];
   totals: OrderTotals;
   isLoading: boolean;
@@ -205,6 +206,7 @@ export function OrderFormProvider({
 
   const value: OrderFormContextValue = {
     order,
+    orderId,
     items,
     totals,
     isLoading,

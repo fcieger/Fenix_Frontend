@@ -16,6 +16,7 @@ type ConfirmOptions = {
   cancelText?: string;
   onConfirm?: () => void;
   onCancel?: () => void;
+  onClose?: () => void;
 };
 
 type FeedbackContextType = {
@@ -58,7 +59,8 @@ export const FeedbackProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       confirmResolve(true);
       setConfirmResolve(null);
     }
-    if ((opts as ConfirmOptions)?.onConfirm) (opts as ConfirmOptions).onConfirm();
+    const confirmOpts = opts as ConfirmOptions | undefined;
+    confirmOpts?.onConfirm?.();
     setIsOpen(false);
   }, [confirmResolve, opts]);
 
@@ -67,7 +69,8 @@ export const FeedbackProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       confirmResolve(false);
       setConfirmResolve(null);
     }
-    if ((opts as ConfirmOptions)?.onCancel) (opts as ConfirmOptions).onCancel();
+    const confirmOpts = opts as ConfirmOptions | undefined;
+    confirmOpts?.onCancel?.();
     setIsOpen(false);
   }, [confirmResolve, opts]);
 
@@ -149,5 +152,3 @@ export function useFeedback(): FeedbackContextType {
   if (!ctx) throw new Error('useFeedback must be used within FeedbackProvider');
   return ctx;
 }
-
-

@@ -1,6 +1,7 @@
 "use client";
 
 import { StatsCard, StatsCardProps } from "./StatsCard";
+export type { StatsCardProps } from "./StatsCard";
 
 export interface StatsGridProps {
   stats: StatsCardProps[];
@@ -18,4 +19,3 @@ export function StatsGrid({ stats, className }: StatsGridProps) {
     </div>
   );
 }
-

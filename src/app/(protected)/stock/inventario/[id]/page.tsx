@@ -17,7 +17,7 @@ type ItemInv = {
   produto_nome?: string;
   produto_sku?: string;
   qtdSistema: number; 
-  qtdContada: number; 
+  qtdContada: number | null; 
   diferenca: number;
   observacoes?: string;
 };
@@ -50,7 +50,10 @@ export default function InventarioEditarPage() {
       const res = await fetch(`/api/stock/inventarios/${id}`, { cache: 'no-store' });
       const json = await res.json();
       if (!json?.success) {
-        openSuccess("Erro", json?.error || 'Erro ao carregar inventário');
+        openSuccess({
+          title: "Erro",
+          message: json?.error || 'Erro ao carregar inventário'
+        });
         router.push('/stock/inventario');
         return;
       }
@@ -59,7 +62,10 @@ export default function InventarioEditarPage() {
       setItens(json.data.itens || []);
     } catch (e) {
       console.error("Erro ao carregar inventário:", e);
-      openSuccess("Erro", "Erro ao carregar inventário");
+      openSuccess({
+        title: "Erro",
+        message: "Erro ao carregar inventário"
+      });
       router.push('/stock/inventario');
     } finally {
       setLoading(false);
@@ -94,11 +100,14 @@ export default function InventarioEditarPage() {
     // Primeiro, salvar todas as contagens atualizadas (incluindo zero)
     const itensComContagem = itens.filter(item => {
       const qtd = item.qtdContada;
-      return qtd !== null && qtd !== undefined && qtd !== '';
+      return qtd !== null && qtd !== undefined;
     });
     
     if (itensComContagem.length === 0) {
-      openSuccess("Atenção", "Nenhuma contagem foi preenchida");
+      openSuccess({
+        title: "Atenção",
+        message: "Nenhuma contagem foi preenchida"
+      });
       return;
     }
 
@@ -121,7 +130,10 @@ export default function InventarioEditarPage() {
       
       const jsonContagens = await resContagens.json();
       if (!jsonContagens?.success) {
-        openSuccess("Erro", jsonContagens?.error || 'Erro ao salvar contagens');
+      openSuccess({
+        title: "Erro",
+        message: jsonContagens?.error || 'Erro ao salvar contagens'
+      });
         return;
       }
       
@@ -140,17 +152,23 @@ export default function InventarioEditarPage() {
       });
 
       if (itensComDiferenca.length === 0) {
-        openSuccess("Sucesso", "Contagens salvas! Não há diferenças para aplicar.");
+      openSuccess({
+        title: "Sucesso",
+        message: "Contagens salvas! Não há diferenças para aplicar."
+      });
         return;
       }
 
-      const confirmou = await openConfirm(
-        "Aplicar Inventário",
-        `Deseja aplicar as diferenças encontradas em ${itensComDiferenca.length} item(ns)? Serão gerados movimentos de ajuste para cada diferença.`
-      );
+      const confirmou = await openConfirm({
+        title: "Aplicar Inventário",
+        message: `Deseja aplicar as diferenças encontradas em ${itensComDiferenca.length} item(ns)? Serão gerados movimentos de ajuste para cada diferença.`
+      });
       
       if (!confirmou) {
-        openSuccess("Sucesso", "Contagens salvas com sucesso!");
+      openSuccess({
+        title: "Sucesso",
+        message: "Contagens salvas com sucesso!"
+      });
         return;
       }
       
@@ -214,11 +232,17 @@ export default function InventarioEditarPage() {
       // Atualizar status do inventário
       await fetch(`/api/stock/inventarios/${inventario.id}/aplicar`, { method: 'POST' });
       
-      openSuccess("Sucesso", "Inventário aplicado com sucesso!");
+      openSuccess({
+        title: "Sucesso",
+        message: "Inventário aplicado com sucesso!"
+      });
       router.push('/stock/inventario');
     } catch (e) {
       console.error("Erro ao aplicar inventário:", e);
-      openSuccess("Erro", "Erro ao aplicar inventário");
+      openSuccess({
+        title: "Erro",
+        message: "Erro ao aplicar inventário"
+      });
     } finally {
       setSaving(false);
     }
@@ -283,7 +307,7 @@ export default function InventarioEditarPage() {
   const itensComDiferenca = itens.filter(item => Math.abs(item.diferenca) > 0.001);
   const itensComContagem = itens.filter(item => {
     const qtd = item.qtdContada;
-    return qtd !== null && qtd !== undefined && qtd !== '';
+    return qtd !== null && qtd !== undefined;
   });
 
   return (
@@ -474,4 +498,3 @@ export default function InventarioEditarPage() {
       </div>
   );
 }
-

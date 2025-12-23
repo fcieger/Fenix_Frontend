@@ -14,11 +14,9 @@ import type {
   UpdateQuoteDto,
   UpdateSalesOrderDto,
   UpdatePurchaseOrderDto,
-  AddressDto,
   ContactDto,
   QuoteItemDto,
   SalesOrderItemDto,
-  CreatePurchaseOrderItemDto,
 } from '@/types/sdk';
 import {
   RegistrationType,
@@ -128,6 +126,13 @@ export function mapPartnerToDisplay(partner: Partner): DisplayPartner {
   const primaryContact = partner.contacts?.find((c) => c.isPrimary);
   const email = partner.email || primaryContact?.email || null;
   const phone = partner.phone || primaryContact?.phone || null;
+  const types = partner.types || [];
+  const hasCustomer = types.includes(RegistrationType.CUSTOMER);
+  const hasSupplier = types.includes(RegistrationType.SUPPLIER);
+  const type =
+    hasCustomer && hasSupplier
+      ? 'BOTH'
+      : types[0] ?? RegistrationType.CUSTOMER;
 
   return {
     id: partner.id,
@@ -136,7 +141,7 @@ export function mapPartnerToDisplay(partner: Partner): DisplayPartner {
     taxId: partner.taxId || null,
     email,
     phone,
-    type: partner.type,
+    type,
   };
 }
 
@@ -277,14 +282,15 @@ export function mapSdkPartnerToFormData(partner: Partner): PartnerFormData {
   const cpf = tipoPessoa === 'Pessoa Física' ? taxId : '';
   const cnpj = tipoPessoa === 'Pessoa Jurídica' ? taxId : '';
 
+  const partnerTypes = partner.types || [];
   // Map registration type to tiposCliente object
   const tiposCliente = {
-    cliente: partner.type === RegistrationType.CUSTOMER || partner.type === RegistrationType.BOTH,
+    cliente: partnerTypes.includes(RegistrationType.CUSTOMER),
     vendedor: false, // Not in SDK
-    fornecedor: partner.type === RegistrationType.SUPPLIER || partner.type === RegistrationType.BOTH,
+    fornecedor: partnerTypes.includes(RegistrationType.SUPPLIER),
     funcionario: false, // Not in SDK
-    transportadora: false, // Not in SDK
-    prestadorServico: false, // Not in SDK
+    transportadora: partnerTypes.includes(RegistrationType.CARRIER),
+    prestadorServico: partnerTypes.includes(RegistrationType.SERVICE_PROVIDER),
   };
 
   // Get primary contact
@@ -600,10 +606,10 @@ function buildPartnerAddressesAndContacts(formData: PartnerFormData) {
  */
 export function mapFormDataToCreatePartnerDto(formData: PartnerFormData): CreatePartnerDto {
   // Determine registration type from tiposCliente
+  const hasCliente = formData.tiposCliente.cliente;
+  const hasFornecedor = formData.tiposCliente.fornecedor;
   let type: RegistrationType = RegistrationType.CUSTOMER;
-  if (formData.tiposCliente.cliente && formData.tiposCliente.fornecedor) {
-    type = RegistrationType.BOTH;
-  } else if (formData.tiposCliente.fornecedor) {
+  if (hasFornecedor && !hasCliente) {
     type = RegistrationType.SUPPLIER;
   }
 
@@ -618,7 +624,7 @@ export function mapFormDataToCreatePartnerDto(formData: PartnerFormData): Create
   const { addresses, contacts } = buildPartnerAddressesAndContacts(formData);
 
   const dto: CreatePartnerDto = {
-    type,
+    types: [type],
     legalName: formData.nomeRazaoSocial.trim(),
     tradeName: formData.nomeFantasia?.trim() || undefined,
     personType,
@@ -646,10 +652,10 @@ export function mapFormDataToCreatePartnerDto(formData: PartnerFormData): Create
  */
 export function mapFormDataToUpdatePartnerDto(formData: PartnerFormData): UpdatePartnerDto {
   // Determine registration type from tiposCliente
+  const hasCliente = formData.tiposCliente.cliente;
+  const hasFornecedor = formData.tiposCliente.fornecedor;
   let type: RegistrationType = RegistrationType.CUSTOMER;
-  if (formData.tiposCliente.cliente && formData.tiposCliente.fornecedor) {
-    type = RegistrationType.BOTH;
-  } else if (formData.tiposCliente.fornecedor) {
+  if (hasFornecedor && !hasCliente) {
     type = RegistrationType.SUPPLIER;
   }
 
@@ -664,7 +670,7 @@ export function mapFormDataToUpdatePartnerDto(formData: PartnerFormData): Update
   const { addresses, contacts } = buildPartnerAddressesAndContacts(formData);
 
   const dto: UpdatePartnerDto = {
-    type,
+    types: [type],
     legalName: formData.nomeRazaoSocial.trim(),
     tradeName: formData.nomeFantasia?.trim() || undefined,
     personType,
@@ -759,7 +765,7 @@ export function mapFormDataToUpdateSalesOrderDto(formData: SalesOrderFormData, i
  */
 export function mapFormDataToUpdatePurchaseOrderDto(formData: PurchaseOrderFormData, items: any[]): UpdatePurchaseOrderDto {
   // Map items to CreatePurchaseOrderItemDto format
-  const purchaseItems: CreatePurchaseOrderItemDto[] = items.map((item, index) => ({
+  const purchaseItems = items.map((item, index) => ({
     productId: item.produtoId || '',
     quantity: Number(item.quantidade) || 0,
     unitValue: Number(item.precoUnitario) || 0,
@@ -786,4 +792,3 @@ export function mapFormDataToUpdatePurchaseOrderDto(formData: PurchaseOrderFormD
 
   return dto;
 }
-

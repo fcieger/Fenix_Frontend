@@ -22,7 +22,7 @@ export function translateQuoteStatus(status: QuoteStatus): string {
  * Translate OrderStatus enum to Portuguese
  */
 export function translateOrderStatus(status: OrderStatus): string {
-  const translations: Record<OrderStatus, string> = {
+  const translations: Record<string, string> = {
     [OrderStatus.DRAFT]: 'Rascunho',
     [OrderStatus.IN_PROGRESS]: 'Em Andamento',
     [OrderStatus.COMPLETED]: 'Concluído',
@@ -35,16 +35,16 @@ export function translateOrderStatus(status: OrderStatus): string {
  * Translate RegistrationType enum to Portuguese
  */
 export function translateRegistrationType(type: RegistrationType): string {
-  const translations: Record<RegistrationType, string> = {
+  const translations: Record<string, string> = {
     [RegistrationType.CUSTOMER]: 'Cliente',
     [RegistrationType.SUPPLIER]: 'Fornecedor',
     [RegistrationType.SELLER]: 'Vendedor',
     [RegistrationType.EMPLOYEE]: 'Funcionário',
     [RegistrationType.CARRIER]: 'Transportadora',
     [RegistrationType.SERVICE_PROVIDER]: 'Prestador de Serviço',
-    [RegistrationType.BOTH]: 'Cliente e Fornecedor',
+    BOTH: 'Cliente e Fornecedor',
   };
-  return translations[type] || type;
+  return translations[type as unknown as string] || (type as unknown as string);
 }
 
 /**
@@ -64,7 +64,7 @@ export function getQuoteStatusBadgeColor(status: QuoteStatus): string {
  * Get badge color class for OrderStatus
  */
 export function getOrderStatusBadgeColor(status: OrderStatus): string {
-  const colors: Record<OrderStatus, string> = {
+  const colors: Record<string, string> = {
     [OrderStatus.DRAFT]: 'bg-gray-100 text-gray-800',
     [OrderStatus.IN_PROGRESS]: 'bg-blue-100 text-blue-800',
     [OrderStatus.COMPLETED]: 'bg-green-100 text-green-800',
@@ -105,4 +105,3 @@ export function translateAddressType(type: AddressType): string {
   };
   return translations[type] || type;
 }
-

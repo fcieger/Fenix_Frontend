@@ -72,10 +72,16 @@ export function useOrderTaxes() {
     });
 
     // Calcular alíquotas
-    const details: TaxDetail[] = Array.from(taxMap.values()).map((tax) => ({
-      ...tax,
-      rate: tax.base > 0 ? (tax.value / tax.base) * 100 : 0,
-    }));
+    const details: TaxDetail[] = Array.from(taxMap.values()).map((tax) => {
+      const base = tax.base ?? 0;
+      const value = tax.value ?? 0;
+      return {
+        ...tax,
+        base,
+        value,
+        rate: base > 0 ? (value / base) * 100 : 0,
+      };
+    });
 
     return details;
   }, [items]);

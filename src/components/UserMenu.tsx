@@ -216,7 +216,7 @@ export default function UserMenu() {
                       <span className="font-semibold text-gray-900">{item.title}</span>
                     </div>
                     <div className="ml-8 space-y-1">
-                      {item.children.map((child, childIndex) => (
+                      {item.children.map((child: any, childIndex) => (
                         <button
                           key={childIndex}
                           onClick={() => {

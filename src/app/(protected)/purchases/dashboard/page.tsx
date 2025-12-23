@@ -90,7 +90,7 @@ export default function DashboardComprasPage() {
         } else if (filtroPeriodo !== '30dias') {
           // Só enviar datas se não for o padrão de 30 dias
           const hoje = new Date();
-          let dataInicio: Date;
+          let dataInicio: Date = hoje;
           let dataFim: Date = hoje;
 
           switch (filtroPeriodo) {
@@ -116,10 +116,8 @@ export default function DashboardComprasPage() {
               break;
           }
 
-          if (filtroPeriodo !== '30dias') {
-            startDate = dataInicio.toISOString().split('T')[0];
-            endDate = dataFim.toISOString().split('T')[0];
-          }
+          startDate = dataInicio.toISOString().split('T')[0];
+          endDate = dataFim.toISOString().split('T')[0];
         }
         // Se filtroPeriodo === '30dias', não enviar parâmetros de data (undefined) para a API usar seu padrão
 
@@ -674,4 +672,3 @@ export default function DashboardComprasPage() {
       </div>
   );
 }
-

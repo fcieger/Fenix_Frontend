@@ -770,7 +770,7 @@ export default function PrazosPagamentoPage() {
             loadPrazos(); // Recarregar a lista após criar
           }}
           context={{
-            tipo: 'geral',
+            tipo: 'cadastro',
             nome: 'Novo Prazo de Pagamento',
             descricao: 'Gerado automaticamente pela IA'
           }}

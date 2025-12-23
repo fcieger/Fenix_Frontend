@@ -131,7 +131,7 @@ export default function IALancarCompraPage() {
         setStep('success');
 
         toast.success('Pedido de compra criado!', {
-          description: `Pedido #${pedidoCriado.numero || pedidoCriado.id} criado com sucesso`
+          description: `Pedido #${pedidoCriado.number || pedidoCriado.id} criado com sucesso`
         });
       }
 
@@ -479,4 +479,3 @@ export default function IALancarCompraPage() {
       </div>
   );
 }
-

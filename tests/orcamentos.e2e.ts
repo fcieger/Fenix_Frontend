@@ -3,7 +3,7 @@ import puppeteer from 'puppeteer';
 async function run() {
   const port = process.env.PORT || '3004';
   const base = `http://localhost:${port}`;
-  const browser = await puppeteer.launch({ headless: 'new' });
+  const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
   await page.goto(`${base}/orcamentos`, { waitUntil: 'domcontentloaded' });
   const title = await page.$eval('h1', el => el.textContent || '');
@@ -21,6 +21,5 @@ run().catch((e) => {
   console.error(e);
   process.exit(1);
 });
-
 
 

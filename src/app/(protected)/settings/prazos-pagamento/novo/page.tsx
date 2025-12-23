@@ -179,43 +179,52 @@ export default function NovoPrazoPagamentoPage() {
   };
 
   const addParcela = () => {
-    setFormData(prev => ({
-      ...prev,
-      configuracoes: {
-        ...prev.configuracoes,
-        parcelas: [
-          ...prev.configuracoes.parcelas,
-          {
-            numero: prev.configuracoes.parcelas.length + 1,
-            dias: 30,
-            percentual: 0,
-            descricao: ''
-          }
-        ]
-      }
-    }));
+    setFormData(prev => {
+      const parcelasAtuais = prev.configuracoes.parcelas || [];
+      return {
+        ...prev,
+        configuracoes: {
+          ...prev.configuracoes,
+          parcelas: [
+            ...parcelasAtuais,
+            {
+              numero: parcelasAtuais.length + 1,
+              dias: 30,
+              percentual: 0,
+              descricao: ''
+            }
+          ]
+        }
+      };
+    });
   };
 
   const removeParcela = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      configuracoes: {
-        ...prev.configuracoes,
-        parcelas: prev.configuracoes.parcelas.filter((_, i) => i !== index)
-      }
-    }));
+    setFormData(prev => {
+      const parcelasAtuais = prev.configuracoes.parcelas || [];
+      return {
+        ...prev,
+        configuracoes: {
+          ...prev.configuracoes,
+          parcelas: parcelasAtuais.filter((_, i) => i !== index)
+        }
+      };
+    });
   };
 
   const updateParcela = (index: number, field: string, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      configuracoes: {
-        ...prev.configuracoes,
-        parcelas: prev.configuracoes.parcelas.map((p, i) => 
-          i === index ? { ...p, [field]: value } : p
-        )
-      }
-    }));
+    setFormData(prev => {
+      const parcelasAtuais = prev.configuracoes.parcelas || [];
+      return {
+        ...prev,
+        configuracoes: {
+          ...prev.configuracoes,
+          parcelas: parcelasAtuais.map((p, i) => 
+            i === index ? { ...p, [field]: value } : p
+          )
+        }
+      };
+    });
   };
 
   const getTipoIcon = (tipo: string) => {
@@ -236,7 +245,7 @@ export default function NovoPrazoPagamentoPage() {
     const vencimentos = [];
 
     if (tipo === 'dias') {
-      const { dias, percentualEntrada, percentualRestante } = configuracoes;
+      const { dias = 0, percentualEntrada, percentualRestante } = configuracoes;
       
       // Entrada (se houver)
       if (percentualEntrada && percentualEntrada > 0) {
@@ -263,7 +272,7 @@ export default function NovoPrazoPagamentoPage() {
         });
       }
     } else if (tipo === 'parcelas') {
-      const { numeroParcelas, intervaloDias, percentualEntrada, percentualParcelas } = configuracoes;
+      const { numeroParcelas = 0, intervaloDias = 0, percentualEntrada = 0, percentualParcelas = 0 } = configuracoes;
       
       // Entrada (se houver)
       if (percentualEntrada && percentualEntrada > 0) {
@@ -291,7 +300,7 @@ export default function NovoPrazoPagamentoPage() {
         });
       }
     } else if (tipo === 'personalizado') {
-      const { parcelas } = configuracoes;
+      const parcelas = configuracoes.parcelas || [];
       
       parcelas.forEach((parcela, index) => {
         const dataVencimento = new Date(dataVenda);
@@ -343,7 +352,8 @@ export default function NovoPrazoPagamentoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50/30">
+    <>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header Moderno */}
           <motion.div 
@@ -767,7 +777,7 @@ export default function NovoPrazoPagamentoPage() {
                       
                       <div className="space-y-4">
                         <AnimatePresence>
-                          {formData.configuracoes.parcelas.map((parcela, index) => (
+                          {(formData.configuracoes.parcelas || []).map((parcela, index) => (
                             <motion.div
                               key={index}
                               initial={{ opacity: 0, scale: 0.95 }}
@@ -831,7 +841,7 @@ export default function NovoPrazoPagamentoPage() {
                           ))}
                         </AnimatePresence>
                         
-                        {formData.configuracoes.parcelas.length === 0 && (
+                        {(formData.configuracoes.parcelas?.length ?? 0) === 0 && (
                           <motion.div 
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -1102,7 +1112,7 @@ export default function NovoPrazoPagamentoPage() {
                     {formData.tipo === 'personalizado' && (
                       <div className="p-4 bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl">
                         <p className="text-sm font-semibold text-gray-600 mb-1">Parcelas</p>
-                        <p className="font-bold text-purple-700">{formData.configuracoes.parcelas.length} parcelas</p>
+                        <p className="font-bold text-purple-700">{formData.configuracoes.parcelas?.length ?? 0} parcelas</p>
                       </div>
                     )}
                   </div>
@@ -1135,5 +1145,6 @@ export default function NovoPrazoPagamentoPage() {
           </motion.div>
         )}
       </AnimatePresence>
+    </>
   );
 }

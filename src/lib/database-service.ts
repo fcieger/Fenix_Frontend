@@ -88,8 +88,8 @@ export class UserService {
   }
 
   static async update(id: string, user: Partial<User>): Promise<User> {
-    const fields = [];
-    const values = [];
+    const fields: string[] = [];
+    const values: any[] = [];
     let paramCount = 1;
 
     Object.entries(user).forEach(([key, value]) => {
@@ -159,8 +159,8 @@ export class CompanyService {
   }
 
   static async update(id: string, company: Partial<Company>): Promise<Company> {
-    const fields = [];
-    const values = [];
+    const fields: string[] = [];
+    const values: any[] = [];
     let paramCount = 1;
 
     Object.entries(company).forEach(([key, value]) => {

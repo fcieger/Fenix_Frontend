@@ -31,11 +31,19 @@ function NovaConfiguracaoNfeForm() {
   
   // Estados para configuração do modelo
   const [descricaoModelo, setDescricaoModelo] = useState('');
-  const [tipoModelo, setTipoModelo] = useState('');
+  type TipoModelo =
+    | 'nfe-produto'
+    | 'nfse-servico'
+    | 'nf-entrada'
+    | 'nfce-consumidor'
+    | 'mdfe';
+  type AmbienteTipo = 'producao' | 'homologacao';
+
+  const [tipoModelo, setTipoModelo] = useState<TipoModelo>('nfe-produto');
   const [modelo, setModelo] = useState('');
   const [serie, setSerie] = useState('');
   const [numeroAtual, setNumeroAtual] = useState('');
-  const [ambiente, setAmbiente] = useState('PRODUCAO');
+  const [ambiente, setAmbiente] = useState<AmbienteTipo>('producao');
   
   // Estados para RPS
   const [naturezaOperacao, setNaturezaOperacao] = useState('1');
@@ -106,11 +114,15 @@ function NovaConfiguracaoNfeForm() {
         
         // Preencher os campos com os dados existentes
         setDescricaoModelo(config.descricaoModelo);
-        setTipoModelo(config.tipoModelo);
+        if (config.tipoModelo) {
+          setTipoModelo(config.tipoModelo as TipoModelo);
+        }
         setModelo(config.modelo);
         setSerie(config.serie);
         setNumeroAtual(config.numeroAtual.toString());
-        setAmbiente(config.ambiente);
+        if (config.ambiente) {
+          setAmbiente(config.ambiente.toLowerCase() as AmbienteTipo);
+        }
         
         // Campos RPS
         setNaturezaOperacao(config.rpsNaturezaOperacao || '1');
@@ -328,7 +340,7 @@ function NovaConfiguracaoNfeForm() {
                 <Label htmlFor="tipoModelo" className="text-sm font-semibold text-gray-700">
                   Tipo de modelo Documentos Fiscais *
                 </Label>
-                <Select value={tipoModelo} onValueChange={setTipoModelo}>
+                <Select value={tipoModelo} onValueChange={(value) => setTipoModelo(value as TipoModelo)}>
                   <SelectTrigger className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg">
                     <SelectValue placeholder="Selecione o tipo" />
                   </SelectTrigger>
@@ -385,13 +397,13 @@ function NovaConfiguracaoNfeForm() {
                 <Label htmlFor="ambiente" className="text-sm font-semibold text-gray-700">
                   Ambiente *
                 </Label>
-                <Select value={ambiente} onValueChange={setAmbiente}>
+                <Select value={ambiente} onValueChange={(value) => setAmbiente(value as AmbienteTipo)}>
                   <SelectTrigger className="h-11 border-gray-300 focus:ring-purple-500 rounded-lg">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-lg">
-                    <SelectItem value="HOMOLOGACAO">Homologação</SelectItem>
-                    <SelectItem value="PRODUCAO">Produção</SelectItem>
+                    <SelectItem value="homologacao">Homologação</SelectItem>
+                    <SelectItem value="producao">Produção</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

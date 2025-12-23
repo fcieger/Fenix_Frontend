@@ -125,14 +125,13 @@ export function ExemploUsoPDF() {
  *   await exportPDF({
  *     tipo: 'vendas',
  *     subTipo: 'vendas-periodo',
- *     dados: { /* seus dados */ },
- *     filtros: { /* seus filtros */ },
+ *     dados: { ...seusDados },
+ *     filtros: { ...seusFiltros },
  *     token,
  *     companyId: activeCompanyId
  *   });
  * };
  */
-
 
 
 

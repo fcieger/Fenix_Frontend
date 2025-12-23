@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import type { Product, CreateProductDto, UpdateProductDto } from "@/types/sdk";
 
-interface ProdutoFormData {
+export interface ProdutoFormData {
   nome: string;
   codigo: string;
   descricao: string;

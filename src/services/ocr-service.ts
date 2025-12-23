@@ -79,12 +79,13 @@ export class OCRService {
 
       console.log('📖 Reconhecendo texto...');
       const { data } = await worker.recognize(image);
+      const dataAny = data as any;
       console.log('✅ Texto reconhecido');
       console.log('📊 Dados retornados:', {
         hasText: !!data.text,
         hasConfidence: data.confidence !== undefined,
-        hasLines: !!data.lines,
-        linesLength: data.lines?.length
+        hasLines: !!dataAny.lines,
+        linesLength: dataAny.lines?.length
       });
 
       if (onProgress) {
@@ -109,7 +110,7 @@ export class OCRService {
       const result: OCRResult = {
         text: data.text || '',
         confidence: data.confidence || 0,
-        lines: (data.lines || []).map(line => ({
+        lines: (dataAny.lines || []).map((line: any) => ({
           text: line.text || '',
           confidence: line.confidence || 0,
           bbox: line.bbox || { x0: 0, y0: 0, x1: 0, y1: 0 }
@@ -196,4 +197,3 @@ export class OCRService {
     }
   }
 }
-

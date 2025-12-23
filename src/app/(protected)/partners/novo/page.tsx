@@ -7,7 +7,7 @@ import { createPartner, updatePartner, getPartner } from '@/services/partners-se
 import { makeCnpjRequest, extractCompanyData, CnpjResponse } from '@/lib/cnpj-api';
 import type { CadastroData } from '@/lib/api';
 import { consultarCep, formatCep, ViaCepResponse } from '@/lib/viacep-api';
-import { mapSdkPartnerToFormData, mapFormDataToUpdatePartnerDto, mapFormDataToCreatePartnerDto } from '@/lib/sdk/field-mappers';
+import { mapSdkPartnerToFormData, mapFormDataToUpdatePartnerDto, mapFormDataToCreatePartnerDto, type PartnerFormData } from '@/lib/sdk/field-mappers';
 import type { Partner } from '@/types/sdk';
 import { updatePartnerSchema, createPartnerSchema } from '@/types/sdk';
 import { validateAndNotify } from '@/lib/utils/validation';
@@ -54,7 +54,7 @@ function NovoClienteForm() {
   const searchParams = useSearchParams();
 
   // TODOS OS HOOKS DEVEM VIR ANTES DE QUALQUER RETURN CONDICIONAL
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<PartnerFormData>({
     // Dados Gerais
     nomeRazaoSocial: '',
     tipoPessoa: 'Pessoa Física',
@@ -374,7 +374,7 @@ function NovoClienteForm() {
     }));
   };
 
-  const updateEndereco = (index: number, field: string, value: string) => {
+  const updateEndereco = (index: number, field: string, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
       enderecos: prev.enderecos.map((endereco, i) =>
@@ -391,7 +391,7 @@ function NovoClienteForm() {
     setContactCount(prev => Math.max(1, prev - 1));
   };
 
-  const updateContato = (index: number, field: string, value: string) => {
+  const updateContato = (index: number, field: string, value: string | boolean) => {
         setFormData(prev => ({
           ...prev,
       contatos: prev.contatos.map((contato, i) =>
@@ -599,23 +599,23 @@ function NovoClienteForm() {
       }
 
       if (formData.tipoPessoa === 'Pessoa Física' && !formData.cpf.replace(/\D/g, '')) {
-        toast.error('Validação', 'CPF é obrigatório para Pessoa Física');
+        toast.error('Validação', { description: 'CPF é obrigatório para Pessoa Física' });
         return;
       }
 
       if (formData.tipoPessoa === 'Pessoa Jurídica' && !formData.cnpj.replace(/\D/g, '')) {
-        toast.error('Validação', 'CNPJ é obrigatório para Pessoa Jurídica');
+        toast.error('Validação', { description: 'CNPJ é obrigatório para Pessoa Jurídica' });
         return;
       }
 
       const hasSelectedType = Object.values(formData.tiposCliente).some(value => value === true);
       if (!hasSelectedType) {
-        toast.error('Validação', 'Selecione pelo menos um tipo de cliente (Cliente, Fornecedor, etc.)');
+        toast.error('Validação', { description: 'Selecione pelo menos um tipo de cliente (Cliente, Fornecedor, etc.)' });
         return;
       }
 
       if (!formData.enderecos || formData.enderecos.length === 0) {
-        toast.error('Validação', 'Pelo menos um endereço é obrigatório');
+        toast.error('Validação', { description: 'Pelo menos um endereço é obrigatório' });
         return;
       }
 

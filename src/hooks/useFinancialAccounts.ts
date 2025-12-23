@@ -9,17 +9,17 @@ import {
 } from '@/services/financial-accounts-service';
 
 interface UseFinancialAccountsReturn {
-  contas: ContaFinanceira[];
+  contas: any[];
   loading: boolean;
   error: string | null;
-  createConta: (data: CreateFinancialAccountRequest) => Promise<FinancialAccount>;
-  updateConta: (id: string, data: Partial<FinancialAccount>) => Promise<FinancialAccount>;
+  createConta: (data: CreateFinancialAccountRequest) => Promise<any>;
+  updateConta: (id: string, data: Partial<FinancialAccount>) => Promise<any>;
   deleteConta: (id: string) => Promise<boolean>;
   refreshContas: () => Promise<void>;
 }
 
 export function useFinancialAccounts(companyId?: string): UseFinancialAccountsReturn {
-  const [contas, setContas] = useState<FinancialAccount[]>([]);
+  const [contas, setContas] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,8 +30,8 @@ export function useFinancialAccounts(companyId?: string): UseFinancialAccountsRe
     setError(null);
 
     try {
-      const response = await listFinancialAccounts({ company_id: companyId });
-      setContas(response.data || []);
+      const accounts = await listFinancialAccounts();
+      setContas((accounts as unknown as ContaFinanceira[]) || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error fetching accounts');
       console.error('❌ Error fetching accounts:', err);
@@ -40,12 +40,12 @@ export function useFinancialAccounts(companyId?: string): UseFinancialAccountsRe
     }
   };
 
-  const createConta = async (data: CreateFinancialAccountRequest): Promise<FinancialAccount> => {
+  const createConta = async (data: CreateFinancialAccountRequest): Promise<any> => {
     setLoading(true);
     setError(null);
 
     try {
-      const account = await createFinancialAccount(data);
+      const account = await createFinancialAccount(data as any);
       setContas(prev => [account, ...prev]);
       return account;
     } catch (err) {
@@ -57,12 +57,12 @@ export function useFinancialAccounts(companyId?: string): UseFinancialAccountsRe
     }
   };
 
-  const updateConta = async (id: string, data: Partial<FinancialAccount>): Promise<FinancialAccount> => {
+  const updateConta = async (id: string, data: Partial<FinancialAccount>): Promise<any> => {
     setLoading(true);
     setError(null);
 
     try {
-      const account = await updateFinancialAccount(id, data);
+      const account = await updateFinancialAccount(id, data as any);
       setContas(prev => prev.map(conta =>
         conta.id === id ? account : conta
       ));
@@ -116,4 +116,3 @@ export function useFinancialAccounts(companyId?: string): UseFinancialAccountsRe
 
 // Legacy export for backward compatibility
 export { useFinancialAccounts as useContas };
-

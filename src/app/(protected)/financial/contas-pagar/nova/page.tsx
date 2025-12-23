@@ -1483,7 +1483,8 @@ export default function NovaContaPagarPage() {
   }, [contasBancarias, contaPagar.parcelas]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      <div className="min-h-screen bg-gray-50">
         {/* Header Roxo Moderno */}
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
@@ -3153,5 +3154,6 @@ export default function NovaContaPagarPage() {
         </div>
       )}
       {/* Modal de sucesso agora é global via FeedbackProvider */}
+    </>
   );
 }

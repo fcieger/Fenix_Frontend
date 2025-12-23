@@ -5,6 +5,7 @@ import { Package, Save, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BaseModal } from "@/components/ui/BaseModal";
 import { ProdutoForm } from "./ProdutoForm";
+import type { ProdutoFormData } from "./ProdutoForm";
 import type { Product, CreateProductDto, UpdateProductDto } from "@/types/sdk";
 import { useCreateProduct, useUpdateProduct } from "@/hooks/queries/useProducts";
 import { useAuth } from "@/contexts/auth-context";
@@ -37,7 +38,7 @@ export function ModalProduto({
   const isEditMode = !!product;
   const isLoading = createProductMutation.isPending || updateProductMutation.isPending;
 
-  const [formData, setFormData] = useState({
+  const initialFormData: ProdutoFormData = {
     nome: "",
     codigo: "",
     descricao: "",
@@ -45,7 +46,19 @@ export function ModalProduto({
     ncm: "",
     cest: "",
     precoVenda: "",
-  });
+    comprimento: "",
+    largura: "",
+    altura: "",
+    peso: "",
+    cor: "",
+    textura: "",
+    material: "",
+    garantia: "",
+    certificacao: "",
+    observacoes: "",
+  };
+
+  const [formData, setFormData] = useState<ProdutoFormData>(initialFormData);
 
   // Funções de formatação
   const formatCurrencyFromNumber = (value: number): string => {
@@ -96,6 +109,7 @@ export function ModalProduto({
         const cestFormatted = product.cest ? formatCEST(product.cest) : "";
 
         setFormData({
+          ...initialFormData,
           nome: product.description || "",
           codigo: product.code || "",
           descricao: product.description || "",
@@ -107,15 +121,7 @@ export function ModalProduto({
             : "",
         });
       } else {
-        setFormData({
-          nome: "",
-          codigo: "",
-          descricao: "",
-          unidadeMedida: "UN",
-          ncm: "",
-          cest: "",
-          precoVenda: "",
-        });
+        setFormData(initialFormData);
       }
       setError(null);
       setFieldErrors({});
@@ -206,7 +212,7 @@ export function ModalProduto({
         }
       );
     } else {
-      createProductMutation.mutate(produtoData, {
+      createProductMutation.mutate(produtoData as CreateProductDto, {
         onSuccess: () => {
           openSuccess({
             title: "Produto salvo",

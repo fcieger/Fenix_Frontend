@@ -70,7 +70,7 @@ export function useOptimisticMutation<
   },
   mutationOptions?: Omit<
     UseMutationOptions<TData, TError, TVariables, TContext>,
-    "mutationFn" | "onMutate" | "onError" | "onSettled"
+    "mutationFn"
   >
 ): UseMutationResult<TData, TError, TVariables, TContext> {
   const queryClient = useQueryClient();
@@ -107,28 +107,34 @@ export function useOptimisticMutation<
 
       // Invalidate queries on error
       invalidateOnError.forEach((key) => {
-        queryClient.invalidateQueries({ queryKey: key });
+        const queryKeyValue = Array.isArray(key) ? key : [key];
+        queryClient.invalidateQueries({ queryKey: queryKeyValue });
       });
 
       // Call custom onError if provided
       if (mutationOptions?.onError) {
-        mutationOptions.onError(error, variables, context);
+        mutationOptions.onError(error, variables, context, undefined as any);
       }
     },
     onSettled: (data, error, variables, context) => {
       // Invalidate queries on success
       if (!error) {
         invalidateQueries.forEach((key) => {
-          queryClient.invalidateQueries({ queryKey: key });
+          const queryKeyValue = Array.isArray(key) ? key : [key];
+          queryClient.invalidateQueries({ queryKey: queryKeyValue });
         });
       }
 
       // Call custom onSettled if provided
       if (mutationOptions?.onSettled) {
-        mutationOptions.onSettled(data, error, variables, context);
+        mutationOptions.onSettled(
+          data,
+          error,
+          variables,
+          context,
+          undefined as any
+        );
       }
     },
   });
 }
-
-

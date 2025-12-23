@@ -37,7 +37,7 @@ export function generateRelatorioGenericoPDFHTML(
       return '<p>Sem dados disponíveis</p>';
     }
 
-    const items = dados.data;
+    const items: any[] = dados.data;
     if (items.length === 0) {
       return '<p>Nenhum registro encontrado</p>';
     }
@@ -394,5 +394,4 @@ export function generateEstoquePDFHTML(dados: any, filtros?: any): string {
     </html>
   `;
 }
-
 

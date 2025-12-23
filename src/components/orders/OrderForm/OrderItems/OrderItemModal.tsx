@@ -67,7 +67,7 @@ export function OrderItemModal({
     const newItem: any = {
       ...formData,
       id: item ? (item as any).id : undefined,
-      product: item?.product || {
+      product: (item as any)?.product || {
         id: formData.productId,
         code: formData.code,
         name: formData.name,

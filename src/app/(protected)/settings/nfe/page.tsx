@@ -156,7 +156,7 @@ export default function ConfiguracoesNFEPage() {
       delete (novaConfig as any).createdAt;
       delete (novaConfig as any).updatedAt;
       
-      await apiService.createConfiguracaoNfe(novaConfig, token);
+      await apiService.createConfiguracaoNfe(novaConfig as any, token);
       
       // Recarregar lista
       const data = await apiService.getConfiguracoesNfe(token, false);
@@ -516,5 +516,4 @@ export default function ConfiguracoesNFEPage() {
       </div>
   );
 }
-
 

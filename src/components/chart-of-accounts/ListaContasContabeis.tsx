@@ -37,11 +37,12 @@ export function ListaContasContabeis({
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
+  type ContaComFilhos = ContaContabil & { filhos: ContaComFilhos[] };
 
   // Organizar contas em hierarquia
-  const organizarHierarquia = (contas: ContaContabil[]) => {
-    const mapa = new Map<string, ContaContabil & { filhos: ContaContabil[] }>();
-    const raizes: (ContaContabil & { filhos: ContaContabil[] })[] = [];
+  const organizarHierarquia = (contas: ContaContabil[]): ContaComFilhos[] => {
+    const mapa = new Map<string, ContaComFilhos>();
+    const raizes: ContaComFilhos[] = [];
 
     // Criar mapa com filhos
     contas.forEach(conta => {
@@ -64,7 +65,7 @@ export function ListaContasContabeis({
     return raizes;
   };
 
-  const contasHierarquicas = organizarHierarquia(contas);
+  const contasHierarquicas: ContaComFilhos[] = organizarHierarquia(contas);
   
 
   const toggleExpanded = (id: string) => {
@@ -82,7 +83,7 @@ export function ListaContasContabeis({
     const contasComFilhos = new Set<string>();
     
     // Encontrar todas as contas que têm filhos
-    const encontrarContasComFilhos = (contas: (ContaContabil & { filhos: ContaContabil[] })[]) => {
+    const encontrarContasComFilhos = (contas: ContaComFilhos[]) => {
       contas.forEach(conta => {
         if (conta.filhos.length > 0) {
           contasComFilhos.add(conta.id);
@@ -100,7 +101,7 @@ export function ListaContasContabeis({
     setExpandedIds(new Set());
   };
 
-  const renderConta = (conta: ContaContabil & { filhos: ContaContabil[] }, nivel = 0) => {
+  const renderConta = (conta: ContaComFilhos, nivel = 0) => {
     const isExpanded = expandedIds.has(conta.id);
     const hasFilhos = conta.filhos.length > 0;
     const indent = nivel * 24;

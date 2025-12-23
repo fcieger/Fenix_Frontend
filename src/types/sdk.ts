@@ -72,16 +72,13 @@ export type {
   QuoteItemDto,
   CreateQuoteDto,
   UpdateQuoteDto,
-  ChangeStatusDto as QuoteChangeStatusDto,
   CreateQuoteInput,
   UpdateQuoteInput,
-  ChangeStatusInput as QuoteChangeStatusInput,
 } from '@fenix/api-sdk';
 export {
   createQuoteSchema,
   updateQuoteSchema,
   quoteItemSchema,
-  changeStatusSchema as quoteChangeStatusSchema,
 } from '@fenix/api-sdk';
 // QuoteStatus is exported as type from main index, but we also export it directly from the module
 export { QuoteStatus } from '@fenix/api-sdk/dist/clients/quotes/types';
@@ -94,21 +91,17 @@ export type {
   SalesOrderInstallment,
   CreateSalesOrderDto,
   UpdateSalesOrderDto,
-  ChangeStatusDto as SalesOrderChangeStatusDto,
   CreateSalesOrderInput,
   UpdateSalesOrderInput,
-  ChangeStatusInput as SalesOrderChangeStatusInput,
 } from '@fenix/api-sdk';
 export {
   SalesOrderStatus,
   createSalesOrderSchema,
   updateSalesOrderSchema,
   salesOrderItemSchema,
-  changeStatusSchema as salesOrderChangeStatusSchema,
 } from '@fenix/api-sdk';
-// OrderStatus is exported as SalesOrderStatus from main index, but we also export it directly from the module
-export { OrderStatus } from '@fenix/api-sdk/dist/clients/sales-orders/types';
-
+// Alias OrderStatus to SalesOrderStatus for backwards compatibility
+export { SalesOrderStatus as OrderStatus } from '@fenix/api-sdk';
 // Purchase Order types
 export type {
   PurchaseOrder,
@@ -117,17 +110,14 @@ export type {
   PurchaseOrderInstallment,
   CreatePurchaseOrderDto,
   UpdatePurchaseOrderDto,
-  ChangeStatusDto as PurchaseOrderChangeStatusDto,
   CreatePurchaseOrderInput,
   UpdatePurchaseOrderInput,
-  ChangeStatusInput as PurchaseOrderChangeStatusInput,
 } from '@fenix/api-sdk';
 export {
   PurchaseOrderStatus,
   createPurchaseOrderSchema,
   updatePurchaseOrderSchema,
   purchaseOrderItemSchema,
-  changeStatusSchema as purchaseOrderChangeStatusSchema,
 } from '@fenix/api-sdk';
 
 // Payment Terms types
@@ -155,7 +145,6 @@ export type {
   CreateAccountPayableDto,
   UpdateAccountPayableDto,
   RecordPaymentDto,
-  Installment as AccountPayableInstallment,
   CreateAccountPayableInput,
   UpdateAccountPayableInput,
   RecordPaymentInput,
@@ -167,7 +156,6 @@ export type {
   CreateAccountReceivableDto,
   UpdateAccountReceivableDto,
   RecordReceiptDto,
-  Installment as AccountReceivableInstallment,
   CreateAccountReceivableInput,
   UpdateAccountReceivableInput,
   RecordReceiptInput,
@@ -191,20 +179,7 @@ export {
   StockMovementSource,
 } from '@fenix/api-sdk';
 
-// Taxes types
-export type {
-  Tax,
-  CreateTaxDto,
-  UpdateTaxDto,
-} from '@fenix/api-sdk';
-
 // Certificates types
-export type {
-  Certificate,
-  CreateCertificateDto,
-  UpdateCertificateDto,
-} from '@fenix/api-sdk';
-
 // Companies Users types
 export type {
   Company,
@@ -226,12 +201,6 @@ export type {
 } from '@fenix/api-sdk';
 
 // NFe Config types
-export type {
-  NfeConfig,
-  CreateNfeConfigDto,
-  UpdateNfeConfigDto,
-} from '@fenix/api-sdk';
-
 // Operation Nature types
 export type {
   OperationNature,
@@ -249,4 +218,3 @@ export type {
   ApiKey,
   CreateApiKeyDto,
 } from '@fenix/api-sdk';
-

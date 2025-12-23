@@ -48,7 +48,7 @@ export default function PedidosVendaPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pedidoVendas, setPedidoVendas] = useState<SalesOrder[]>([]);
+  const [pedidoVendas, setPedidoVendas] = useState<any[]>([]);
   const [partnersCache, setPartnersCache] = useState<Map<string, Partner>>(new Map());
   const [isLoadingPedidoVendas, setIsLoadingPedidoVendas] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +57,7 @@ export default function PedidosVendaPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [expandedPedidoVenda, setExpandedPedidoVenda] = useState<string | null>(null);
-  const [pedidoVendaDetalhes, setPedidoVendaDetalhes] = useState<{[key: string]: SalesOrder}>({});
+  const [pedidoVendaDetalhes, setPedidoVendaDetalhes] = useState<{[key: string]: any}>({});
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
@@ -275,7 +275,9 @@ export default function PedidosVendaPage() {
       },
     };
 
-    const config = statusConfig[status] || statusConfig[OrderStatus.DRAFT];
+    const config =
+      statusConfig[status as keyof typeof statusConfig] ||
+      statusConfig[OrderStatus.DRAFT];
     const Icon = config.icon;
 
     return (
@@ -1064,5 +1066,3 @@ export default function PedidosVendaPage() {
       </div>
   );
 }
-
-
