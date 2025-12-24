@@ -2,10 +2,10 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useOrderForm } from "@/hooks/orders/useOrderForm";
-import { useOrderItems } from "@/hooks/orders/useOrderItems";
-import { useOrderTotals } from "@/hooks/orders/useOrderTotals";
-import { useOrderTaxes } from "@/hooks/orders/useOrderTaxes";
+import { useSalesOrderForm } from "@/hooks/orders/useSalesOrderForm";
+import { useSalesOrderItems } from "@/hooks/orders/useSalesOrderItems";
+import { useSalesOrderTotals } from "@/hooks/orders/useSalesOrderTotals";
+import { useSalesOrderTaxes } from "@/hooks/orders/useSalesOrderTaxes";
 import { OrderHeader } from "./OrderForm/OrderHeader";
 import { OrderItemsList } from "./OrderForm/OrderItems/OrderItemsList";
 import { OrderItemModal } from "./OrderForm/OrderItems/OrderItemModal";
@@ -17,10 +17,10 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export function SalesOrderForm() {
   const router = useRouter();
-  const orderForm = useOrderForm("sales");
-  const { items, addItem, editItem, removeItem } = useOrderItems();
-  const { totals, formatCurrency } = useOrderTotals();
-  const { taxDetails, totalTaxes } = useOrderTaxes();
+  const orderForm = useSalesOrderForm();
+  const { items, addItem, editItem, removeItem } = useSalesOrderItems();
+  const { totals, formatCurrency } = useSalesOrderTotals();
+  const { taxDetails, totalTaxes } = useSalesOrderTaxes();
 
   const [activeTab, setActiveTab] = useState("items");
   const [showItemModal, setShowItemModal] = useState(false);
@@ -98,6 +98,7 @@ export function SalesOrderForm() {
         onTabChange={setActiveTab}
         itemsContent={
           <OrderItemsList
+            items={items}
             onAddItem={handleAddItem}
             onEditItem={handleEditItem}
             onRemoveItem={handleRemoveItem}
@@ -105,7 +106,7 @@ export function SalesOrderForm() {
         }
         taxesContent={
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <OrderTotalsCard />
+            <OrderTotalsCard totals={totals} />
             <OrderTaxesCard taxes={taxDetails} totalTaxes={totalTaxes} />
           </div>
         }
