@@ -2,10 +2,10 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useOrderForm } from "@/hooks/orders/useOrderForm";
-import { useOrderItems } from "@/hooks/orders/useOrderItems";
-import { useOrderTotals } from "@/hooks/orders/useOrderTotals";
-import { useOrderTaxes } from "@/hooks/orders/useOrderTaxes";
+import { useQuoteForm } from "@/hooks/orders/useQuoteForm";
+import { useQuoteItems } from "@/hooks/orders/useQuoteItems";
+import { useQuoteTotals } from "@/hooks/orders/useQuoteTotals";
+import { useQuoteTaxes } from "@/hooks/orders/useQuoteTaxes";
 import { OrderHeader } from "./OrderForm/OrderHeader";
 import { OrderItemsList } from "./OrderForm/OrderItems/OrderItemsList";
 import { OrderItemModal } from "./OrderForm/OrderItems/OrderItemModal";
@@ -20,10 +20,10 @@ import { toast } from "sonner";
 
 export function QuoteForm() {
   const router = useRouter();
-  const orderForm = useOrderForm("quote");
-  const { items, addItem, editItem, removeItem } = useOrderItems();
-  const { totals, formatCurrency } = useOrderTotals();
-  const { taxDetails, totalTaxes } = useOrderTaxes();
+  const orderForm = useQuoteForm();
+  const { items, addItem, editItem, removeItem } = useQuoteItems();
+  const { totals, formatCurrency } = useQuoteTotals();
+  const { taxDetails, totalTaxes } = useQuoteTaxes();
   const createSalesOrder = useCreateSalesOrder();
 
   const [activeTab, setActiveTab] = useState("items");
@@ -110,6 +110,7 @@ export function QuoteForm() {
         onTabChange={setActiveTab}
         itemsContent={
           <OrderItemsList
+            items={items}
             onAddItem={handleAddItem}
             onEditItem={handleEditItem}
             onRemoveItem={handleRemoveItem}
@@ -117,7 +118,7 @@ export function QuoteForm() {
         }
         taxesContent={
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <OrderTotalsCard />
+            <OrderTotalsCard totals={totals} />
             <OrderTaxesCard taxes={taxDetails} totalTaxes={totalTaxes} />
           </div>
         }
