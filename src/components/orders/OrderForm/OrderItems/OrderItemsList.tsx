@@ -5,22 +5,25 @@ import { motion } from "framer-motion";
 import { Plus, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useOrderForm } from "../OrderFormProvider";
 import { OrderItemRow } from "./OrderItemRow";
+import type { PurchaseOrderItem, SalesOrderItem, QuoteItem } from "@/types/sdk";
+
+// Union type dos itens do SDK
+type OrderItem = PurchaseOrderItem | SalesOrderItem | QuoteItem;
 
 export interface OrderItemsListProps {
+  items: OrderItem[];
   onAddItem: () => void;
   onEditItem: (itemId: string) => void;
   onRemoveItem: (itemId: string) => void;
 }
 
 export function OrderItemsList({
+  items,
   onAddItem,
   onEditItem,
   onRemoveItem,
 }: OrderItemsListProps) {
-  const { items } = useOrderForm();
-
   if (items.length === 0) {
     return (
       <Card className="border-2 border-dashed border-gray-300">
