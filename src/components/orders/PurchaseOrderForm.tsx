@@ -2,10 +2,10 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useOrderForm } from "@/hooks/orders/useOrderForm";
-import { useOrderItems } from "@/hooks/orders/useOrderItems";
-import { useOrderTotals } from "@/hooks/orders/useOrderTotals";
-import { useOrderTaxes } from "@/hooks/orders/useOrderTaxes";
+import { usePurchaseOrderForm } from "@/hooks/orders/usePurchaseOrderForm";
+import { usePurchaseOrderItems } from "@/hooks/orders/usePurchaseOrderItems";
+import { usePurchaseOrderTotals } from "@/hooks/orders/usePurchaseOrderTotals";
+import { usePurchaseOrderTaxes } from "@/hooks/orders/usePurchaseOrderTaxes";
 import { OrderHeader } from "./OrderForm/OrderHeader";
 import { OrderItemsList } from "./OrderForm/OrderItems/OrderItemsList";
 import { OrderItemModal } from "./OrderForm/OrderItems/OrderItemModal";
@@ -17,10 +17,10 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export function PurchaseOrderForm() {
   const router = useRouter();
-  const orderForm = useOrderForm("purchase");
-  const { items, addItem, editItem, removeItem } = useOrderItems();
-  const { totals, formatCurrency } = useOrderTotals();
-  const { taxDetails, totalTaxes } = useOrderTaxes();
+  const orderForm = usePurchaseOrderForm();
+  const { items, addItem, editItem, removeItem } = usePurchaseOrderItems();
+  const { totals, formatCurrency } = usePurchaseOrderTotals();
+  const { taxDetails, totalTaxes } = usePurchaseOrderTaxes();
 
   const [activeTab, setActiveTab] = useState("items");
   const [showItemModal, setShowItemModal] = useState(false);
@@ -92,6 +92,7 @@ export function PurchaseOrderForm() {
         onTabChange={setActiveTab}
         itemsContent={
           <OrderItemsList
+            items={items}
             onAddItem={handleAddItem}
             onEditItem={handleEditItem}
             onRemoveItem={handleRemoveItem}
@@ -99,7 +100,7 @@ export function PurchaseOrderForm() {
         }
         taxesContent={
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <OrderTotalsCard />
+            <OrderTotalsCard totals={totals} />
             <OrderTaxesCard taxes={taxDetails} totalTaxes={totalTaxes} />
           </div>
         }
