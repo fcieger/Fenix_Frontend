@@ -1,0 +1,64 @@
+---
+
+Prompt de Rules – Formulário Create/Edit
+
+Você deve gerar um componente de formulário seguindo rigorosamente as regras abaixo:
+
+Stack e Bibliotecas
+	- O formulário DEVE utilizar react-hook-form para controle de estado e validações.
+	- Todas as requisições HTTP DEVEM ser feitas exclusivamente via @fenix/api-sdk.
+	- NÃO utilizar fetch, axios ou qualquer outro client HTTP direto.
+
+Componente
+	- O formulário deve ser um único componente reutilizável, capaz de:
+	- Criar um novo registro
+	- Editar um registro existente
+	- O componente recebe as seguintes props:
+
+{
+  type: 'create' | 'edit'
+  id?: string
+}
+
+
+Rotas
+  - [module]/create
+  - [module]/edit/[id]
+
+Comportamento
+	- Quando type === 'create':
+	- O formulário deve iniciar vazio (valores default).
+	- Ao submeter, deve chamar o endpoint de criação via @fenix/api-sdk.
+	- Quando type === 'edit':
+	- A prop id é obrigatória.
+	- O formulário deve:
+	- Buscar os dados iniciais usando o id
+	- Popular os campos usando reset do react-hook-form
+	- Ao submeter, deve chamar o endpoint de atualização via @fenix/api-sdk.
+
+Validação e UX
+	- Utilizar validações nativas do react-hook-form (ou resolver, se aplicável).
+	- Exibir erros de validação de forma clara no formulário.
+	- Tratar estados de:
+	- loading inicial (no modo edit)
+	- loading de submit
+	- erro de request
+	- sucesso (opcional, mas recomendado)
+
+Organização de Código
+	- Separar:
+	- lógica de form (hooks)
+	- chamadas de API
+	- JSX do formulário
+	- Evitar duplicação de lógica entre create e edit.
+	- Preferir condicionais baseadas em type ao invés de múltiplos componentes.
+
+Boas Práticas
+	- Tipar corretamente:
+	- valores do formulário
+	- props do componente
+	- respostas da API
+	- O código deve ser limpo, legível e pronto para produção.
+
+alwaysApply: true
+---
