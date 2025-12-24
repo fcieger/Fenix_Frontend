@@ -192,11 +192,11 @@ export default function PedidosVendaPage() {
   const currentPedidoVendas = filteredPedidoVendas.slice(startIndex, endIndex);
 
   const handleEdit = (id: string) => {
-    router.push(`/sales/${id}`);
+    router.push(`/sales/edit/${id}`);
   };
 
   const handleView = (id: string) => {
-    router.push(`/sales/${id}`);
+    router.push(`/sales/edit/${id}`);
   };
 
   const handleDelete = (id: string, cliente: string) => {
@@ -223,7 +223,7 @@ export default function PedidosVendaPage() {
   };
 
   const handleNewPedidoVenda = () => {
-    router.push("/sales/novo");
+    router.push("/sales/create");
   };
 
   const handleExpand = async (id: string) => {
