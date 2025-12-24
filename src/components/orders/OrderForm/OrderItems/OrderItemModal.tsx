@@ -19,7 +19,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useProducts } from "@/hooks/queries/useProducts";
-import type { OrderItem } from "../OrderFormProvider";
+import type { PurchaseOrderItem, SalesOrderItem, QuoteItem } from "@/types/sdk";
+
+// Union type dos itens do SDK
+type OrderItem = PurchaseOrderItem | SalesOrderItem | QuoteItem;
 
 export interface OrderItemModalProps {
   isOpen: boolean;
@@ -52,7 +55,7 @@ export function OrderItemModal({
     isLoading: isLoadingProducts,
     error: productsError,
   } = useProducts({
-    limit: 1000, // Get a large number of products
+    limit: 100, // Get a large number of products
   });
 
   // Extract products from response (handle different response formats)
