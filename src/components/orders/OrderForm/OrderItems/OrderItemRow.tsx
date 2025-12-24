@@ -4,7 +4,10 @@ import React from "react";
 import { Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import type { OrderItem } from "../OrderFormProvider";
+import type { PurchaseOrderItem, SalesOrderItem, QuoteItem } from "@/types/sdk";
+
+// Union type dos itens do SDK
+type OrderItem = PurchaseOrderItem | SalesOrderItem | QuoteItem;
 
 export interface OrderItemRowProps {
   item: OrderItem;
