@@ -186,11 +186,11 @@ export default function OrcamentosPage() {
   const currentOrcamentos = filteredOrcamentos.slice(startIndex, endIndex);
 
   const handleEdit = (id: string) => {
-    router.push(`/quotes/${id}`);
+    router.push(`/quotes/edit/${id}`);
   };
 
   const handleView = (id: string) => {
-    router.push(`/quotes/${id}`);
+    router.push(`/quotes/edit/${id}`);
   };
 
   const handleDelete = (id: string, cliente: string) => {
@@ -215,7 +215,7 @@ export default function OrcamentosPage() {
   };
 
   const handleNewOrcamento = () => {
-    router.push("/quotes/novo");
+    router.push("/quotes/create");
   };
 
   const handleExpand = async (id: string) => {
