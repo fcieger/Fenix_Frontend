@@ -2,12 +2,21 @@
 
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useOrderForm } from "../OrderFormProvider";
 import { Calculator, DollarSign, Percent, Receipt } from "lucide-react";
 
-export function OrderTotalsCard() {
-  const { totals } = useOrderForm();
+export interface OrderTotals {
+  totalDescontos: number;
+  totalImpostos: number;
+  impostosAprox: number;
+  totalProdutos: number;
+  totalPedido: number;
+}
 
+export interface OrderTotalsCardProps {
+  totals: OrderTotals;
+}
+
+export function OrderTotalsCard({ totals }: OrderTotalsCardProps) {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
